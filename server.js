@@ -2,7 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
-const QRCode = require('qrcode'); // QR ke liye
+const QRCode = require('qrcode');
 
 const app = express();
 app.use(cors());
@@ -11,7 +11,7 @@ app.use(express.static('public'));
 
 // MONGODB CONNECT
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://username:password@cluster.mongodb.net/quickbite";
-mongoose.connect(MONGO_URI).then(() => console.log("MongoDB Connected"));
+mongoose.connect(MONGO_URI).then(() => console.log("MongoDB Connected")).catch(err => console.log(err));
 
 // SCHEMA
 const productSchema = new mongoose.Schema({
@@ -26,21 +26,46 @@ const Order = mongoose.model('Order', orderSchema);
 
 // AUTO SAMPLE DATA
 const seedProducts = async () => {
-  if(await Product.countDocuments() === 0){
-    await Product.insertMany([
-      { name: "Zinger Burger", price: 450, category: "Burgers", image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400", offer: "" },
-      { name: "Chicken Pizza", price: 1200, category: "Pizza", image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400", offer: "Buy 1 Get 1" }
-    ]);
-    console.log("Sample Products Added");
-  }
+  try {
+    if(await Product.countDocuments() === 0){
+      await Product.insertMany([
+        { name: "Zinger Burger", price: 450, category: "Burgers", image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400", offer: "" },
+        { name: "Chicken Pizza", price: 1200, category: "Pizza", image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400", offer: "Buy 1 Get 1" }
+      ]);
+      console.log("Sample Products Added");
+    }
+  } catch(err){ console.log(err) }
 };
 seedProducts();
 
 // API - PRODUCTS
-app.get('/api/products', async (req, res) => res.json(await Product.find()));
-app.post('/api/products', async (req, res) => res.json(await Product.create(req.body)));
-app.put('/api/products/:id', async (req, res) => res.json(await Product.findByIdAndUpdate(req.params.id, req.body, {new: true})));
-app.delete('/api/products/:id', async (req, res) => res.json(await Product.findByIdAndDelete(req.params.id)));
+app.get('/api/products', async (req, res) => { res.json(await Product.find()) });
+app.post('/api/products', async (req, res) => { res.json(await Product.create(req.body)) });
+app.put('/api/products/:id', async (req, res) => { res.json(await Product.findByIdAndUpdate(req.params.id, req.body, {new: true})) });
+app.delete('/api/products/:id', async (req, res) => { res.json(await Product.findByIdAndDelete(req.params.id)) });
 
-// API - ORDERS - SIRF 1 BAAR
-app.get('/api/orders', async (req, res) => res.json(await Order.find().sort({createdAt: -1})));
+// API - ORDERS
+app.get('/api/orders', async (req, res) => { res.json(await Order.find().sort({createdAt: -1})) });
+app.post('/api/orders', async (req, res) => { res.json(await Order.create(req.body)) });
+app.put('/api/orders/:id', async (req, res) => { res.json(await Order.findByIdAndUpdate(req.params.id, {status: req.body.status})) });
+
+// QR CODE WALA ROUTE - UPI
+app.get('/api/qr/:amount', async (req, res) => {
+  try {
+    const amount = req.params.amount;
+    const upiID = "tanweer@upi"; // <-- YAHAN APNA UPI ID DAAL DE
+    const upiLink = `upi://pay?pa=${upiID}&pn=QuickBite&am=${amount}&cu=INR`;
+    const qr = await QRCode.toDataURL(upiLink);
+    res.json({ qr, upiID, amount });
+  } catch (err) {
+    res.status(500).json({error: err.message});
+  }
+});
+
+// PAGES
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+app.get('/orders', (req, res) => res.sendFile(path.join(__dirname, 'public', 'orders.html')));
+
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log(`Server running on ${PORT}`));
