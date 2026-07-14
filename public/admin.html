@@ -1,0 +1,14 @@
+<!DOCTYPE html><html><head><title>Admin</title><style>body{font-family:Arial;padding:20px;background:#f5f5f5} .card{background:white;padding:15px;margin:10px 0;border-radius:8px} input{padding:8px;margin:5px;width:90%}</style></head>
+<body>
+<h1>🏪 Dukan Panel</h1>
+<div class="card"><h3>Naya Product</h3>
+<input id="name" placeholder="Naam"><input id="price" type="number" placeholder="Rate">
+<input id="category" placeholder="Category"><input id="image" placeholder="Image URL">
+<input id="offer" placeholder="Offer - 20% OFF"><button onclick="add()">Add Karo</button></div>
+<h3>Menu Manage</h3><div id="list"></div>
+<script>
+async function load(){const d=await(await fetch('/api/products')).json();document.getElementById('list').innerHTML=d.map(p=>`<div class="card"><input value="${p.name}" id="n${p._id}"><input value="${p.price}" id="pr${p._id}" type="number"><input value="${p.offer}" id="of${p._id}"><button onclick="upd('${p._id}')">Update</button><button style="background:red" onclick="del('${p._id}')">Delete</button></div>`).join('')}
+async function add(){await fetch('/api/products',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name.value,price:price.value,category:category.value,image:image.value,offer:offer.value})});load()}
+async function upd(id){await fetch('/api/products/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('n'+id).value,price:document.getElementById('pr'+id).value,offer:document.getElementById('of'+id).value})});alert('Update ho gaya')}
+async function del(id){await fetch('/api/products/'+id,{method:'DELETE'});load()}
+load()</script></body></html>
