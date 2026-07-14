@@ -12,6 +12,7 @@
     "mongoose": "^8.0.3"
   }
 }
+
 const QRCode = require('qrcode');
 
 app.get('/qr/:amount', async (req, res) => {
