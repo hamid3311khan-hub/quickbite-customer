@@ -42,14 +42,18 @@ const Order = mongoose.model('Order', new mongoose.Schema({
 
 // MENU API
 app.get('/api/menu', async (req,res)=> res.json(await MenuItem.find().sort({createdAt:-1})));
+
 app.post('/api/menu', upload.single('img'), async (req,res)=>{
     const data = {...req.body, img: req.file ? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/400'};
     await new MenuItem(data).save();
     res.json({success:true});
+}); // <-- YE BRACKET MISS THA
+
 app.put('/api/menu/:id', async (req,res)=>{
     await MenuItem.findByIdAndUpdate(req.params.id, req.body);
     res.json({success:true});
-});
+}); // <-- YE BRACKET MISS THA
+
 app.delete('/api/menu/:id', async (req,res)=>{
     await MenuItem.findByIdAndDelete(req.params.id);
     res.json({success:true});
@@ -60,7 +64,6 @@ app.post('/api/orders', async (req,res)=>{
     const trackId = 'QB' + Date.now();
     await new Order({...req.body, trackId}).save();
     res.json({success:true, trackId});
-});
 app.get('/api/orders', async (req,res)=> res.json(await Order.find().sort({createdAt:-1})));
 app.get('/api/orders/track/:id', async (req,res)=> {
     const order = await Order.findOne({trackId:req.params.id});
