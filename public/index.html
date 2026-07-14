@@ -73,7 +73,7 @@ header h1{font-size:24px}
 </div>
 
 <script>
-const API_URL = 'https://mqk.onrender.com/api'; // RENDER KA URL
+const API_URL = 'https://quickbite-ymqk.onrender.com/api'; // <-- YE CHANGE KIYA HAI
 
 let cart = [];
 let menuItems = [
@@ -182,7 +182,10 @@ function placeOrder(){
         toggleCart();
         document.getElementById('checkoutForm').style.display='none';
         document.getElementById('cartView').style.display='block';
-    }).catch(err=>alert("Order Failed!"))
+    }).catch(err=>{
+        console.log(err);
+        alert("Order Failed!")
+    })
 }
 
 // Page load
