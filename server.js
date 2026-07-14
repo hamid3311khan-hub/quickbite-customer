@@ -1,92 +1,72 @@
 const express = require('express');
-const { MongoClient, ObjectId } = require('mongodb');
+const mongoose = require('mongoose');
 const cors = require('cors');
-const path = require('path');
+require('dotenv').config();
+
 const app = express();
-const PORT = process.env.PORT || 10000;
-
-const MONGO_URL = process.env.MONGO_URL;
-let db;
-
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname)));
 
-async function connectDB() {
-  try {
-    const client = new MongoClient(MONGO_URL);
-    await client.connect();
-    db = client.db('quickbite');
-    console.log("MongoDB Connected");
-  } catch (e) {
-    console.error("DB Connection Failed", e);
-  }
-}
+const PORT = process.env.PORT || 10000;
+const MONGO_URL = process.env.MONGO_URL;
+
+// DB Connect
+const connectDB = async () => {
+    try {
+        await mongoose.connect(MONGO_URL);
+        console.log('MongoDB Connected');
+    } catch (err) {
+        console.error('DB Connection Failed', err);
+    }
+};
 connectDB();
 
+// Order Schema
+const orderSchema = new mongoose.Schema({
+    name: String, phone: String, address: String,
+    items: Array, total: Number, status: { type: String, default: 'Pending' }
+}, { timestamps: true });
+const Order = mongoose.model('Order', orderSchema);
+
+// Routes
 app.post('/api/orders', async (req, res) => {
-  try {
-    const order = { ...req.body, status: 'Paid', createdAt: new Date() };
-    const result = await db.collection('orders').insertOne(order);
-    res.json({ success: true, orderId: result.insertedId });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+    try {
+        const newOrder = new Order(req.body);
+        await newOrder.save();
+        res.status(201).json({ message: 'Order Placed' });
+    } catch (err) {
+        res.status(500).json({ message: 'Server Error' });
+    }
 });
 
 app.get('/api/orders', async (req, res) => {
-  try {
-    const orders = await db.collection('orders').find({}).sort({ createdAt: -1 }).toArray();
+    const orders = await Order.find().sort({ createdAt: -1 });
     res.json(orders);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
 });
 
-app.put('/api/orders/:id', async (req, res) => {
-  try {
+app.put('/api/orders/:id/status', async (req, res) => {
     const { status } = req.body;
-    await db.collection('orders').updateOne(
-      { _id: new ObjectId(req.params.id) },
-      { $set: { status: status } }
-    );
-    res.json({ success: true });
-  } catch(e) {
-    res.status(500).json({ error: e.message });
-  }
+    await Order.findByIdAndUpdate(req.params.id, { status });
+    res.json({ message: 'Status Updated' });
 });
 
 app.delete('/api/orders/:id', async (req, res) => {
-  try {
-    await db.collection('orders').deleteOne({ _id: new ObjectId(req.params.id) });
-    res.json({ success: true });
-  } catch(e) {
-    res.status(500).json({ error: e.message });
-  }
+    await Order.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Order Deleted' });
 });
 
-app.get('/api/sales/today', async (req, res) => {
-  try {
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const orders = await db.collection('orders').find({ 
-      createdAt: { $gte: today },
-      status: "Delivered" 
-    }).toArray();
-    const total = orders.reduce((sum, o) => sum + o.total, 0);
-    res.json({ total: total, count: orders.length });
-  } catch(e) {
-    res.status(500).json({ error: e.message });
-  }
+app.post('/api/admin/login', (req, res) => {
+    const { password } = req.body;
+    if (password === 'admin123') res.json({ success: true });
+    else res.status(401).json({ success: false });
 });
 
-// Test route
+// Home Route
 app.get('/', (req, res) => {
     res.send('QuickBite API is Running ✅ <br> Go to /orders.html for admin panel');
 });
 
+// SIRF 1 BAAR LISTEN
 app.listen(PORT, () => {
     console.log(`Server running on ${PORT}`);
 });
-
-app.listen(PORT, () => console.log(`Server running on ${PORT}`));
