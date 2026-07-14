@@ -104,3 +104,21 @@ app.put('/api/orders/:id', async (req, res) => {
   );
   res.json({ success: true });
 });
+
+// 1. DELETE ORDER
+app.delete('/api/orders/:id', async (req, res) => {
+  await db.collection('orders').deleteOne({ _id: new ObjectId(req.params.id) });
+  res.json({ success: true });
+});
+
+// 2. TODAY'S SALES
+app.get('/api/sales/today', async (req, res) => {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const orders = await db.collection('orders').find({ 
+    createdAt: { $gte: today },
+    status: "Delivered" 
+  }).toArray();
+  const total = orders.reduce((sum, o) => sum + o.total, 0);
+  res.json({ total: total, count: orders.length });
+});
