@@ -44,16 +44,18 @@ app.post('/api/products', async (req, res) => { res.json(await Product.create(re
 app.put('/api/products/:id', async (req, res) => { res.json(await Product.findByIdAndUpdate(req.params.id, req.body, {new: true})) });
 app.delete('/api/products/:id', async (req, res) => { res.json(await Product.findByIdAndDelete(req.params.id)) });
 
-// API - ORDERS
-app.get('/api/orders', async (req, res) => { res.json(await Order.find().sort({createdAt: -1})) });
+// API - ORDERS - BRACKET THEEK HAI AB
+app.get('/api/orders', async (req, res) => { 
+  res.json(await Order.find().sort({createdAt: -1})) 
+});
 app.post('/api/orders', async (req, res) => { res.json(await Order.create(req.body)) });
 app.put('/api/orders/:id', async (req, res) => { res.json(await Order.findByIdAndUpdate(req.params.id, {status: req.body.status})) });
 
-// QR CODE WALA ROUTE - UPI
+// QR CODE WALA ROUTE
 app.get('/api/qr/:amount', async (req, res) => {
   try {
     const amount = req.params.amount;
-    const upiID = "tanweer@upi"; // <-- YAHAN APNA UPI ID DAAL DE
+    const upiID = "tanweer@upi"; // APNA UPI ID YAHAN
     const upiLink = `upi://pay?pa=${upiID}&pn=QuickBite&am=${amount}&cu=INR`;
     const qr = await QRCode.toDataURL(upiLink);
     res.json({ qr, upiID, amount });
@@ -67,5 +69,6 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('/orders', (req, res) => res.sendFile(path.join(__dirname, 'public', 'orders.html')));
 
+// PORT BIND - RENDER KE LIYE ZARURI
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`Server running on ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Server running on ${PORT}`));
