@@ -55,14 +55,14 @@ app.put('/api/orders/:id', async (req, res) => { res.json(await Order.findByIdAn
 app.get('/api/qr/:amount', async (req, res) => {
   try {
     const amount = req.params.amount;
-    const upiID = "tanweer@upi"; // APNA UPI ID YAHAN
+    const upiID = "tanbalkhi2014-3@okhdfcbank"; // APNA UPI ID YAHAN
     const upiLink = `upi://pay?pa=${upiID}&pn=QuickBite&am=${amount}&cu=INR`;
     const qr = await QRCode.toDataURL(upiLink);
     res.json({ qr, upiID, amount });
   } catch (err) {
     res.status(500).json({error: err.message});
   }
-});
+}); 
 
 // PAGES
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
