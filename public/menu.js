@@ -22,5 +22,19 @@ function addToCart(name, price){
   document.getElementById('cart-count').innerText = cart.length;
   alert(name + " added to cart");
 }
-
+async function placeOrder(){
+  if(cart.length === 0) return alert("Cart empty");
+  
+  const total = cart.reduce((sum, item) => sum + item.price, 0);
+  
+  await fetch('/api/orders', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({items: cart, total: total})
+  });
+  
+  alert("Order Placed! Total: ₹" + total);
+  cart = [];
+  document.getElementById('cart-count').innerText = 0;
+}
 loadMenu();
