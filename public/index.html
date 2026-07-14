@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>QuickBite - Order Food</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+   .item { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; }
+    button { background: #ff6b00; color: white; border: none; padding: 10px 20px; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <h1>🍔 QuickBite Customer</h1>
+  <div id="menu">Loading menu...</div>
+  <script>
+    fetch('/api/menu')
+     .then(res => res.json())
+     .then(data => {
+        document.getElementById('menu').innerHTML = data.map(item => 
+          `<div class="item"><h3>${item.name}</h3><p>₹${item.price}</p></div>`
+        ).join('');
+      });
+  </script>
+</body>
+</html>
