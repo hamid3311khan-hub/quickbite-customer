@@ -11,7 +11,7 @@ const MONGO_URL = process.env.MONGO_URL;
 app.use(cors());
 app.use(express.json());
 
-// YE LINE CHANGE KI HAI - public folder se serve hoga
+// public folder se saari files serve hongi
 app.use(express.static(path.join(__dirname, 'public')));
 
 // DB Connect
@@ -36,7 +36,7 @@ app.post('/api/orders', async (req, res) => {
     try {
         const newOrder = new Order(req.body);
         await newOrder.save();
-        res.status(201).json({ message: 'Order Placed' });
+        res.status(201).json({ message: 'Order Placed Successfully' });
     } catch (err) {
         res.status(500).json({ message: 'Server Error' });
     }
