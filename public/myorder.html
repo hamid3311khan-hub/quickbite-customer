@@ -5,21 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
-  <h1>📋 My Order</h1>
+  <h1>📋 My Last Order</h1>
   <div id="myorder">Loading...</div>
+
   <script>
-    // Abhi ke liye last order dikha dega
-    fetch('/api/orders').then(res => res.json()).then(orders => {
+    fetch('https://quickbite-ymqk.onrender.com/api/orders')
+    .then(res => res.json())
+    .then(orders => {
       const div = document.getElementById('myorder');
       if(orders.length === 0) div.innerHTML = "<p>Koi order nahi hai</p>";
       else {
-        const lastOrder = orders[0]; // sabse naya order
-        div.innerHTML = `
-          <div style="background:white; padding:15px; border-radius:8px;">
-            <h3>Status: ${lastOrder.status}</h3>
-            <p><b>Total:</b> ₹${lastOrder.total}</p>
-          </div>
-        `;
+        const o = orders[0];
+        div.innerHTML = `<div style="background:white; padding:15px; border-radius:8px;">
+          <h3>Status: ${o.status}</h3>
+          <p><b>Total:</b> ₹${o.total}</p>
+        </div>`;
       }
     });
   </script>
