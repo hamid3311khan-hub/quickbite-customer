@@ -29,6 +29,7 @@ const seedProducts = async () => {
       { name: "Zinger Burger", price: 450, category: "Burgers", image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400", offer: "" },
       { name: "Chicken Pizza", price: 1200, category: "Pizza", image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400", offer: "Buy 1 Get 1" }
     ]);
+    console.log("Sample Products Added");
   }
 };
 seedProducts();
