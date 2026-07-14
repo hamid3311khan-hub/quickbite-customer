@@ -1,25 +1,38 @@
 <!DOCTYPE html>
 <html>
-<head><title>Admin Panel</title></head>
+<head>
+  <title>Admin - Orders</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+   .order { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 5px solid #ff6b00; }
+   .order h3 { margin: 0 0 10px 0; }
+  </style>
+</head>
 <body>
-<h1>Admin - Add Product</h1>
-<input id="name" placeholder="Product Name"><br>
-<input id="price" placeholder="Price" type="number"><br>
-<button onclick="addProduct()">Add</button>
-<h2>All Products</h2>
-<div id="list"></div>
+  <h1>📦 All Orders</h1>
+  <div id="orders">Loading...</div>
 
-<script>
-async function load(){
-  const res = await fetch('/api/products');
-  const data = await res.json();
-  document.getElementById('list').innerHTML = data.map(p=>`<p>${p.name} - ₹${p.price}</p>`).join('');
-}
-async function addProduct(){
-  await fetch('/api/products', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name: name.value, price: price.value})});
-  load();
-}
-load();
-</script>
+  <script>
+    async function loadOrders() {
+      const res = await fetch('/api/orders');
+      const data = await res.json();
+      
+      if(data.length === 0){
+        document.getElementById('orders').innerHTML = "<p>No orders yet</p>";
+        return;
+      }
+
+      document.getElementById('orders').innerHTML = data.map(order => 
+        `<div class="order">
+          <h3>Order #${order.id} - ₹${order.total}</h3>
+          <p><b>Items:</b> ${JSON.parse(order.items).map(i=>i.name).join(', ')}</p>
+          <p><b>Status:</b> ${order.status}</p>
+          <p><b>Time:</b> ${new Date(order.created_at).toLocaleString()}</p>
+        </div>`
+      ).join('');
+    }
+    loadOrders();
+  </script>
 </body>
 </html>
