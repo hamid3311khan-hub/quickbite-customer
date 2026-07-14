@@ -80,4 +80,13 @@ app.get('/api/sales/today', async (req, res) => {
   }
 });
 
+// Test route
+app.get('/', (req, res) => {
+    res.send('QuickBite API is Running ✅ <br> Go to /orders.html for admin panel');
+});
+
+app.listen(PORT, () => {
+    console.log(`Server running on ${PORT}`);
+});
+
 app.listen(PORT, () => console.log(`Server running on ${PORT}`));
