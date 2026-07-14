@@ -61,3 +61,10 @@ app.get('/api/orders', async (req, res) => {
     res.status(500).json({error: err.message});
   }
 });
+const Razorpay = require('razorpay');
+const rzp = new Razorpay({ key_id: 'rzp_test_XXX', key_secret: 'XXX' });
+
+app.post('/api/create-order', async (req, res)=>{
+  const order = await rzp.orders.create({amount: req.body.amount, currency: "INR"});
+  res.json(order);
+});
