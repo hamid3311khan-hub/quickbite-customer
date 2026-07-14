@@ -94,3 +94,13 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => console.log(`Server running on ${PORT}`));
 
 app.get('/myorder', (req, res) => res.sendFile(path.join(__dirname, 'public', 'myorder.html')));
+
+// UPDATE ORDER STATUS
+app.put('/api/orders/:id', async (req, res) => {
+  const { status } = req.body;
+  await db.collection('orders').updateOne(
+    { _id: new ObjectId(req.params.id) },
+    { $set: { status: status } }
+  );
+  res.json({ success: true });
+});
