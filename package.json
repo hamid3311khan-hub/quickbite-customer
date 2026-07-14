@@ -12,11 +12,3 @@
     "mongoose": "^8.0.3"
   }
 }
-
-const QRCode = require('qrcode');
-
-app.get('/qr/:amount', async (req, res) => {
-  const upiLink = `upi://pay?pa=tanweer@upi&pn=QuickBite&am=${req.params.amount}&cu=INR`;
-  const qr = await QRCode.toDataURL(upiLink);
-  res.send(`<img src="${qr}"/>`);
-});
