@@ -9,7 +9,6 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Create uploads folder if not exists
 if (!fs.existsSync('./public/uploads')) fs.mkdirSync('./public/uploads', { recursive: true });
 
 app.use(cors({origin: "*"}));
@@ -17,20 +16,16 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
-// Home Page
 app.get('/', (req,res)=> res.sendFile(path.join(__dirname, 'public/home.html')));
 
-// Image Upload
 const storage = multer.diskStorage({
     destination: './public/uploads/',
     filename: (req,file,cb)=> cb(null, Date.now() + '-' + file.originalname)
 });
 const upload = multer({storage});
 
-// DB Connect
 mongoose.connect(process.env.MONGO_URL).then(()=>console.log('✅ MongoDB Connected')).catch(e=>console.log(e));
 
-// Schemas
 const MenuItem = mongoose.model('MenuItem', new mongoose.Schema({
     name:String, price:Number, desc:String, img:String, offer:{type:Number, default:0}, category:String
 }, {timestamps:true}));
@@ -47,12 +42,12 @@ app.post('/api/menu', upload.single('img'), async (req,res)=>{
     const data = {...req.body, img: req.file ? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/400'};
     await new MenuItem(data).save();
     res.json({success:true});
-}); // <-- YE BRACKET MISS THA
+});
 
 app.put('/api/menu/:id', async (req,res)=>{
     await MenuItem.findByIdAndUpdate(req.params.id, req.body);
     res.json({success:true});
-}); // <-- YE BRACKET MISS THA
+});
 
 app.delete('/api/menu/:id', async (req,res)=>{
     await MenuItem.findByIdAndDelete(req.params.id);
@@ -64,11 +59,15 @@ app.post('/api/orders', async (req,res)=>{
     const trackId = 'QB' + Date.now();
     await new Order({...req.body, trackId}).save();
     res.json({success:true, trackId});
+}); // <-- YE WALA BRACKET PEHLE MISS THA
+
 app.get('/api/orders', async (req,res)=> res.json(await Order.find().sort({createdAt:-1})));
+
 app.get('/api/orders/track/:id', async (req,res)=> {
     const order = await Order.findOne({trackId:req.params.id});
     res.json(order);
 });
+
 app.put('/api/orders/:id/status', async (req,res)=>{
     await Order.findByIdAndUpdate(req.params.id, {status:req.body.status});
     res.json({success:true});
