@@ -2,22 +2,22 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const path = require('path'); // HTML serve karne ke liye
+const path = require('path');
 
 const app = express();
-app.use(cors());
-app.use(express.json());
-
-// YE LINE SABSE IMPORTANT HAI - Saari HTML/CSS/JS file serve karegi
-app.use(express.static(path.join(__dirname)));
-
 const PORT = process.env.PORT || 10000;
 const MONGO_URL = process.env.MONGO_URL;
 
+app.use(cors());
+app.use(express.json());
+
+// YE LINE HTML FILE SERVE KAREGI
+app.use(express.static(path.join(__dirname)));
+
 // DB Connect
 mongoose.connect(MONGO_URL)
-.then(() => console.log('MongoDB Connected'))
-.catch((err) => console.error('DB Connection Failed', err));
+.then(() => console.log('✅ MongoDB Connected'))
+.catch((err) => console.error('❌ DB Connection Failed', err));
 
 // Order Schema
 const orderSchema = new mongoose.Schema({
@@ -78,7 +78,11 @@ app.post('/api/admin/login', (req, res) => {
     }
 });
 
-// Server Start
+// Agar / khole to bhi orders.html khul jaye
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'orders.html'));
+});
+
 app.listen(PORT, () => {
-    console.log(`Server running on ${PORT}`);
+    console.log(`🚀 Server running on ${PORT}`);
 });
