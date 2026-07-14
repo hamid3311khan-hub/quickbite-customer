@@ -1,24 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>My Orders</title>
-  <style>body { font-family: Arial; padding: 20px; }</style>
+  <title>My Order - QuickBite</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
-  <h1>📜 My Orders</h1>
-  <div id="my-orders">Loading...</div>
+  <h1>📋 My Order</h1>
+  <div id="myorder">Loading...</div>
   <script>
-    // Abhi ke liye sab order dikha rahe. Baad me login add karenge
-    async function loadMyOrders() {
-      const res = await fetch('/api/orders');
-      const data = await res.json();
-      document.getElementById('my-orders').innerHTML = data.map(o => 
-        `<div style="border:1px solid #ccc; padding:10px; margin:10px 0">
-          <b>Order #${o.id}</b> - ₹${o.total} - ${o.status}
-        </div>`
-      ).join('');
-    }
-    loadMyOrders();
+    // Abhi ke liye last order dikha dega
+    fetch('/api/orders').then(res => res.json()).then(orders => {
+      const div = document.getElementById('myorder');
+      if(orders.length === 0) div.innerHTML = "<p>Koi order nahi hai</p>";
+      else {
+        const lastOrder = orders[0]; // sabse naya order
+        div.innerHTML = `
+          <div style="background:white; padding:15px; border-radius:8px;">
+            <h3>Status: ${lastOrder.status}</h3>
+            <p><b>Total:</b> ₹${lastOrder.total}</p>
+          </div>
+        `;
+      }
+    });
   </script>
 </body>
 </html>
