@@ -1,116 +1,192 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>QuickBite - Order Food</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { font-family: Arial; padding: 20px; background: #f5f5f5; padding-bottom: 80px; }
-    .item { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .item img { width: 80px; height: 80px; border-radius: 5px; margin-right: 10px; object-fit: cover; }
-    button { background: #ff6b00; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-    #cart { position: fixed; top: 20px; right: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 999; }
-    #qr-section { display:none; text-align:center; margin-top:20px; padding:20px; background:white; border-radius:12px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-    #qr-section img { margin:10px 0; border:1px solid #ddd; padding:10px; border-radius:10px; }
-    
-    /* ADMIN BUTTON */
-    .admin-btn { position: fixed; bottom: 20px; right: 20px; background: #333; color: white; padding: 12px 20px; border-radius: 50px; text-decoration: none; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.3); z-index: 1000; }
-    .admin-btn:hover { background: #000; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuickBite - Order Food Online</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Arial',sans-serif}
+body{background:#f8f8f8}
+header{background:#ff6600;color:white;padding:15px;text-align:center;position:sticky;top:0;z-index:10}
+header h1{font-size:24px}
+.cart-btn{position:absolute;right:20px;top:15px;background:white;color:#ff6600;border:none;padding:8px 15px;border-radius:20px;cursor:pointer;font-weight:bold}
+.container{max-width:1200px;margin:20px auto;padding:0 15px}
+.menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px}
+.item-card{background:white;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);transition:0.3s}
+.item-card:hover{transform:translateY(-5px)}
+.item-card img{width:100%;height:180px;object-fit:cover}
+.item-info{padding:15px}
+.item-info h3{margin-bottom:5px;color:#333}
+.item-info p{color:#666;font-size:14px;margin-bottom:10px}
+.price-add{display:flex;justify-content:space-between;align-items:center}
+.price{font-size:20px;font-weight:bold;color:#ff6600}
+.add-btn{background:#ff6600;color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer}
+.cart-sidebar{position:fixed;right:-400px;top:0;width:350px;height:100%;background:white;box-shadow:-2px 0 10px rgba(0,0,0,0.2);transition:0.3s;padding:20px;z-index:20;overflow-y:auto}
+.cart-sidebar.active{right:0}
+.cart-header{display:flex;justify-content:space-between;margin-bottom:20px}
+.close-cart{background:none;border:none;font-size:24px;cursor:pointer}
+.cart-item{display:flex;justify-content:space-between;margin:10px 0;padding-bottom:10px;border-bottom:1px solid #eee}
+.total{font-size:20px;font-weight:bold;margin:20px 0;text-align:right}
+.checkout-btn{width:100%;padding:12px;background:#ff6600;color:white;border:none;border-radius:5px;font-size:16px;cursor:pointer}
+.checkout-form{display:none}
+.checkout-form input{width:100%;padding:10px;margin:8px 0;border:1px solid #ddd;border-radius:5px}
+.overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:15}
+.overlay.active{display:block}
+.loading{text-align:center;padding:50px;font-size:18px}
+</style>
 </head>
 <body>
-  <h1>🍔 QuickBite Customer</h1>
-  
-  <div id="cart">
-    Cart: <span id="cart-count">0</span> items
-    <br>
-    <button onclick="goToCart()">Order Now</button>
-  </div>
 
-  <div id="menu">Loading menu...</div>
+<header>
+    <h1>🍔 QuickBite</h1>
+    <button class="cart-btn" onclick="toggleCart()">Cart (<span id="cartCount">0</span>)</button>
+</header>
 
-  <!-- QR WALA SECTION -->
-  <div id="qr-section">
-    <h3>Scan karke UPI se pay karein</h3>
-    <img id="qr-img" src="" width="250"/>
-    <p>UPI ID: <b id="upi-id"></b></p>
-    <p>Total: ₹<b id="qr-total"></b></p>
-    <button onclick="confirmOrder()" style="background:green;">Payment Ho Gaya</button>
-    <button onclick="cancelQR()" style="background:#999;">Cancel</button>
-  </div>
+<div class="container">
+    <h2 style="margin-bottom:20px">Our Menu</h2>
+    <div class="menu-grid" id="menu">
+        <div class="loading">Loading menu...</div>
+    </div>
+</div>
 
-  <!-- ADMIN BUTTON - FIXED -->
-  <a href="https://quickbite-ymqk.onrender.com/orders" class="admin-btn">⚙️ Admin</a>
+<div class="overlay" id="overlay" onclick="toggleCart()"></div>
 
-  <script>
-    let cart = [];
+<div class="cart-sidebar" id="cartSidebar">
+    <div class="cart-header">
+        <h2>Your Cart</h2>
+        <button class="close-cart" onclick="toggleCart()">×</button>
+    </div>
+    <div id="cartItems"></div>
+    <div class="total">Total: ₹<span id="cartTotal">0</span></div>
+    
+    <div id="cartView">
+        <button class="checkout-btn" onclick="showCheckout()">Proceed to Checkout</button>
+    </div>
 
-    // MENU LOAD
-    async function loadMenu(){
-      const res = await fetch('/api/products');
-      const products = await res.json();
-      const menuDiv = document.getElementById('menu');
-      menuDiv.innerHTML = '';
-      products.forEach(p => {
+    <div class="checkout-form" id="checkoutForm">
+        <h3>Delivery Details</h3>
+        <input type="text" id="name" placeholder="Your Name" required>
+        <input type="text" id="phone" placeholder="Phone Number" required>
+        <input type="text" id="address" placeholder="Full Address" required>
+        <button class="checkout-btn" onclick="placeOrder()">Place Order</button>
+    </div>
+</div>
+
+<script>
+const API_URL = 'https://mqk.onrender.com/api'; // RENDER KA URL
+
+let cart = [];
+let menuItems = [
+    {id:1,name:"Veg Burger",price:99,img:"https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400",desc:"Crispy veg patty with cheese"},
+    {id:2,name:"Cheese Pizza",price:249,img:"https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=400",desc:"Loaded with extra cheese"},
+    {id:3,name:"Chicken Biryani",price:199,img:"https://images.unsplash.com/photo-1631515242808-497c3f1d7f29?w=400",desc:"Spicy hyderabadi biryani"},
+    {id:4,name:"French Fries",price:79,img:"https://images.unsplash.com/photo-1573080496219-bb7050e5f819?w=400",desc:"Crispy potato fries"},
+    {id:5,name:"Cold Drink",price:49,img:"https://images.unsplash.com/photo-1553456558-aff11c5ccdd2?w=400",desc:"Chilled coke 500ml"},
+    {id:6,name:"Paneer Tikka",price:179,img:"https://images.unsplash.com/photo-1626132647523-66c3b1e3c0c6?w=400",desc:"Grilled paneer cubes"}
+];
+
+function loadMenu(){
+    const menuDiv = document.getElementById('menu');
+    menuDiv.innerHTML = '';
+    menuItems.forEach(item=>{
         menuDiv.innerHTML += `
-          <div class="item">
-            <div style="display:flex; align-items:center;">
-              <img src="${p.image}"/>
-              <div>
-                <b>${p.name}</b> ${p.offer ? `<span style="color:green;">${p.offer}</span>` : ''}
-                <br>₹${p.price}
-              </div>
+        <div class="item-card">
+            <img src="${item.img}" alt="${item.name}">
+            <div class="item-info">
+                <h3>${item.name}</h3>
+                <p>${item.desc}</p>
+                <div class="price-add">
+                    <span class="price">₹${item.price}</span>
+                    <button class="add-btn" onclick="addToCart(${item.id})">Add +</button>
+                </div>
             </div>
-            <button onclick='addToCart(${JSON.stringify(p)})'>Add</button>
-          </div>
-        `;
-      });
-    }
+        </div>`
+    })
+}
 
-    function addToCart(item){
-      cart.push(item);
-      document.getElementById('cart-count').innerText = cart.length;
+function addToCart(id){
+    const item = menuItems.find(i=>i.id===id);
+    const existing = cart.find(i=>i.id===id);
+    if(existing){
+        existing.qty++;
+    }else{
+        cart.push({...item,qty:1});
     }
+    updateCart();
+    alert(`${item.name} added to cart!`);
+}
 
-    function goToCart(){
-      if(cart.length === 0) return alert("Cart khali hai");
-      placeOrder();
-    }
+function updateCart(){
+    const cartDiv = document.getElementById('cartItems');
+    const total = cart.reduce((sum,i)=>sum + i.price*i.qty,0);
+    const count = cart.reduce((sum,i)=>sum + i.qty,0);
+    
+    document.getElementById('cartCount').innerText = count;
+    document.getElementById('cartTotal').innerText = total;
+    
+    cartDiv.innerHTML = '';
+    cart.forEach(item=>{
+        cartDiv.innerHTML += `
+        <div class="cart-item">
+            <div>
+                <b>${item.name}</b><br>
+                ₹${item.price} x ${item.qty}
+            </div>
+            <div>
+                <button onclick="changeQty(${item.id},-1)">-</button>
+                <button onclick="changeQty(${item.id},1)">+</button>
+            </div>
+        </div>`
+    })
+}
 
-    // PAYMENT WALA FUNCTION
-    async function placeOrder(){
-      const total = cart.reduce((sum, item) => sum + item.price, 0);
-      
-      const res = await fetch(`/api/qr/${total}`);
-      const data = await res.json();
-      
-      document.getElementById('qr-img').src = data.qr;
-      document.getElementById('upi-id').innerText = data.upiID;
-      document.getElementById('qr-total').innerText = total;
-      document.getElementById('qr-section').style.display = 'block';
-      document.getElementById('menu').style.display = 'none';
-    }
+function changeQty(id,change){
+    const item = cart.find(i=>i.id===id);
+    item.qty += change;
+    if(item.qty<=0) cart = cart.filter(i=>i.id!==id);
+    updateCart();
+}
 
-    async function confirmOrder(){
-      const total = cart.reduce((sum, item) => sum + item.price, 0);
-      
-      await fetch('/api/orders', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({items: cart, total: total, status: "Paid"})
-      });
-      
-      alert("Order Place ho gaya!");
-      cart = [];
-      document.getElementById('cart-count').innerText = 0;
-      cancelQR();
-    }
+function toggleCart(){
+    document.getElementById('cartSidebar').classList.toggle('active');
+    document.getElementById('overlay').classList.toggle('active');
+}
 
-    function cancelQR(){
-      document.getElementById('qr-section').style.display = 'none';
-      document.getElementById('menu').style.display = 'block';
-    }
+function showCheckout(){
+    if(cart.length===0){alert("Cart is empty!");return;}
+    document.getElementById('cartView').style.display='none';
+    document.getElementById('checkoutForm').style.display='block';
+}
 
-    loadMenu();
-  </script>
+function placeOrder(){
+    const name = document.getElementById('name').value;
+    const phone = document.getElementById('phone').value;
+    const address = document.getElementById('address').value;
+    
+    if(!name || !phone || !address){alert("Fill all details");return;}
+    
+    const orderData = {
+        name,phone,address,
+        items:cart,
+        total: cart.reduce((sum,i)=>sum + i.price*i.qty,0)
+    };
+    
+    fetch(`${API_URL}/orders`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(orderData)
+    }).then(res=>res.json()).then(data=>{
+        alert("Order Placed Successfully!");
+        cart = [];
+        updateCart();
+        toggleCart();
+        document.getElementById('checkoutForm').style.display='none';
+        document.getElementById('cartView').style.display='block';
+    }).catch(err=>alert("Order Failed!"))
+}
+
+// Page load
+loadMenu();
+</script>
 </body>
 </html>
