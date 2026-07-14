@@ -52,3 +52,12 @@ app.get('/orders', (req, res) => res.sendFile(path.join(__dirname, 'public', 'or
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`Server running on ${PORT}`));
+// Sab orders nikalne ka API
+app.get('/api/orders', async (req, res) => {
+  try {
+    const [orders] = await db.query("SELECT * FROM orders ORDER BY id DESC");
+    res.json(orders);
+  } catch (err) {
+    res.status(500).json({error: err.message});
+  }
+});
