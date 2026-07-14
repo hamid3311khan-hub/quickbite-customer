@@ -2,10 +2,14 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path'); // HTML serve karne ke liye
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// YE LINE SABSE IMPORTANT HAI - Saari HTML/CSS/JS file serve karegi
+app.use(express.static(path.join(__dirname)));
 
 const PORT = process.env.PORT || 10000;
 const MONGO_URL = process.env.MONGO_URL;
@@ -27,7 +31,7 @@ const orderSchema = new mongoose.Schema({
 
 const Order = mongoose.model('Order', orderSchema);
 
-// Routes
+// API Routes
 app.post('/api/orders', async (req, res) => {
     try {
         const newOrder = new Order(req.body);
@@ -74,12 +78,7 @@ app.post('/api/admin/login', (req, res) => {
     }
 });
 
-// Home Route
-app.get('/', (req, res) => {
-    res.send('QuickBite API is Running ✅ <br> Go to /orders.html for admin panel');
-});
-
-// Server Start - SIRF 1 BAAR
+// Server Start
 app.listen(PORT, () => {
     console.log(`Server running on ${PORT}`);
 });
