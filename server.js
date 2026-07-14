@@ -51,6 +51,16 @@ app.get('/api/orders', async (req, res) => {
 app.post('/api/orders', async (req, res) => { res.json(await Order.create(req.body)) });
 app.put('/api/orders/:id', async (req, res) => { res.json(await Order.findByIdAndUpdate(req.params.id, {status: req.body.status})) });
 
+// GET ALL ORDERS - Admin ke liye
+app.get('/api/orders', async (req, res) => {
+  try {
+    const orders = await db.all('SELECT * FROM orders ORDER BY id DESC');
+    res.json(orders);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // QR CODE WALA ROUTE
 app.get('/api/qr/:amount', async (req, res) => {
   try {
