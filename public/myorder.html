@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>My Orders</title>
+  <style>body { font-family: Arial; padding: 20px; }</style>
+</head>
+<body>
+  <h1>📜 My Orders</h1>
+  <div id="my-orders">Loading...</div>
+  <script>
+    // Abhi ke liye sab order dikha rahe. Baad me login add karenge
+    async function loadMyOrders() {
+      const res = await fetch('/api/orders');
+      const data = await res.json();
+      document.getElementById('my-orders').innerHTML = data.map(o => 
+        `<div style="border:1px solid #ccc; padding:10px; margin:10px 0">
+          <b>Order #${o.id}</b> - ₹${o.total} - ${o.status}
+        </div>`
+      ).join('');
+    }
+    loadMyOrders();
+  </script>
+</body>
+</html>
