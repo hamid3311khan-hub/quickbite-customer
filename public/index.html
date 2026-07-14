@@ -4,13 +4,17 @@
   <title>QuickBite - Order Food</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+    body { font-family: Arial; padding: 20px; background: #f5f5f5; padding-bottom: 80px; }
     .item { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .item img { width: 80px; height: 80px; border-radius: 5px; margin-right: 10px; }
+    .item img { width: 80px; height: 80px; border-radius: 5px; margin-right: 10px; object-fit: cover; }
     button { background: #ff6b00; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
     #cart { position: fixed; top: 20px; right: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 999; }
     #qr-section { display:none; text-align:center; margin-top:20px; padding:20px; background:white; border-radius:12px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
     #qr-section img { margin:10px 0; border:1px solid #ddd; padding:10px; border-radius:10px; }
+    
+    /* ADMIN BUTTON */
+    .admin-btn { position: fixed; bottom: 20px; right: 20px; background: #333; color: white; padding: 12px 20px; border-radius: 50px; text-decoration: none; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.3); z-index: 1000; }
+    .admin-btn:hover { background: #000; }
   </style>
 </head>
 <body>
@@ -24,7 +28,7 @@
 
   <div id="menu">Loading menu...</div>
 
-  <!-- QR WALA SECTION YAHI ADD KIYA -->
+  <!-- QR WALA SECTION -->
   <div id="qr-section">
     <h3>Scan karke UPI se pay karein</h3>
     <img id="qr-img" src="" width="250"/>
@@ -33,6 +37,9 @@
     <button onclick="confirmOrder()" style="background:green;">Payment Ho Gaya</button>
     <button onclick="cancelQR()" style="background:#999;">Cancel</button>
   </div>
+
+  <!-- ADMIN BUTTON -->
+  <a href="/admin" class="admin-btn">⚙️ Admin</a>
 
   <script>
     let cart = [];
@@ -73,11 +80,9 @@
     async function placeOrder(){
       const total = cart.reduce((sum, item) => sum + item.price, 0);
       
-      // Backend se QR mangwao
       const res = await fetch(`/api/qr/${total}`);
       const data = await res.json();
       
-      // QR dikhao
       document.getElementById('qr-img').src = data.qr;
       document.getElementById('upi-id').innerText = data.upiID;
       document.getElementById('qr-total').innerText = total;
@@ -88,7 +93,6 @@
     async function confirmOrder(){
       const total = cart.reduce((sum, item) => sum + item.price, 0);
       
-      // Order DB me save
       await fetch('/api/orders', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
