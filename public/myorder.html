@@ -3,25 +3,36 @@
 <head>
   <title>My Order - QuickBite</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+    .order { background: white; padding: 15px; border-radius: 8px; }
+    .btn { background: #ff6b00; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+  </style>
 </head>
 <body>
   <h1>📋 My Last Order</h1>
-  <div id="myorder">Loading...</div>
+  <button class="btn" onclick="loadMyOrder()">🔄 Check Status</button>
+  <div id="myorder" style="margin-top:15px;">Loading...</div>
 
   <script>
-    fetch('https://quickbite-ymqk.onrender.com/api/orders')
-    .then(res => res.json())
-    .then(orders => {
-      const div = document.getElementById('myorder');
-      if(orders.length === 0) div.innerHTML = "<p>Koi order nahi hai</p>";
-      else {
-        const o = orders[0];
-        div.innerHTML = `<div style="background:white; padding:15px; border-radius:8px;">
-          <h3>Status: ${o.status}</h3>
-          <p><b>Total:</b> ₹${o.total}</p>
-        </div>`;
-      }
-    });
+    function loadMyOrder(){
+      fetch('/api/orders')
+      .then(res => res.json())
+      .then(orders => {
+        const div = document.getElementById('myorder');
+        if(orders.length === 0) div.innerHTML = "<p>Koi order nahi hai</p>";
+        else {
+          const o = orders[0];
+          div.innerHTML = `<div class="order">
+            <h3>Status: ${o.status}</h3>
+            <p><b>Total:</b> ₹${o.total}</p>
+            <p><b>Items:</b> ${o.items.map(i=>i.name).join(', ')}</p>
+            <small>${new Date(o.createdAt).toLocaleString('en-IN')}</small>
+          </div>`;
+        }
+      });
+    }
+    loadMyOrder();
   </script>
 </body>
 </html>
