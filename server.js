@@ -92,3 +92,5 @@ app.get('/orders', (req, res) => res.sendFile(path.join(__dirname, 'public', 'or
 // PORT BIND
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => console.log(`Server running on ${PORT}`));
+
+app.get('/myorder', (req, res) => res.sendFile(path.join(__dirname, 'public', 'myorder.html')));
