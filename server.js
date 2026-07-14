@@ -3,84 +3,77 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
+const multer = require('multer');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
-const MONGO_URL = process.env.MONGO_URL;
 
-// FIXED CORS
-app.use(cors({origin: "*", methods: ["GET", "POST", "PUT", "DELETE"]}));
+// Create uploads folder if not exists
+if (!fs.existsSync('./public/uploads')) fs.mkdirSync('./public/uploads', { recursive: true });
+
+app.use(cors({origin: "*"}));
 app.use(express.json());
-
-// public folder se saari files serve hongi
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+
+// Home Page
+app.get('/', (req,res)=> res.sendFile(path.join(__dirname, 'public/home.html')));
+
+// Image Upload
+const storage = multer.diskStorage({
+    destination: './public/uploads/',
+    filename: (req,file,cb)=> cb(null, Date.now() + '-' + file.originalname)
+});
+const upload = multer({storage});
 
 // DB Connect
-mongoose.connect(MONGO_URL)
-.then(() => console.log('✅ MongoDB Connected'))
-.catch((err) => console.error('❌ DB Connection Failed', err));
+mongoose.connect(process.env.MONGO_URL).then(()=>console.log('✅ MongoDB Connected')).catch(e=>console.log(e));
 
-// Order Schema
-const orderSchema = new mongoose.Schema({
-    name: String, 
-    phone: String, 
-    address: String,
-    items: Array, 
-    total: Number, 
-    status: { type: String, default: 'Pending' }
-}, { timestamps: true });
+// Schemas
+const MenuItem = mongoose.model('MenuItem', new mongoose.Schema({
+    name:String, price:Number, desc:String, img:String, offer:{type:Number, default:0}, category:String
+}, {timestamps:true}));
 
-const Order = mongoose.model('Order', orderSchema);
+const Order = mongoose.model('Order', new mongoose.Schema({
+    name:String, phone:String, address:String, items:Array, total:Number, 
+    payment:{type:String, default:'COD'}, status:{type:String, default:'Pending'}, trackId:String
+}, {timestamps:true}));
 
-// API Routes
-app.post('/api/orders', async (req, res) => {
-    try {
-        console.log("Order Received:", req.body); // Debug ke liye
-        const newOrder = new Order(req.body);
-        await newOrder.save();
-        res.status(201).json({ message: 'Order Placed Successfully' });
-    } catch (err) {
-        console.log("Order Error:", err); // Error dikhega logs me
-        res.status(500).json({ message: 'Server Error' });
-    }
+// MENU API
+app.get('/api/menu', async (req,res)=> res.json(await MenuItem.find().sort({createdAt:-1})));
+app.post('/api/menu', upload.single('img'), async (req,res)=>{
+    const data = {...req.body, img: req.file ? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/400'};
+    await new MenuItem(data).save();
+    res.json({success:true});
+app.put('/api/menu/:id', async (req,res)=>{
+    await MenuItem.findByIdAndUpdate(req.params.id, req.body);
+    res.json({success:true});
+});
+app.delete('/api/menu/:id', async (req,res)=>{
+    await MenuItem.findByIdAndDelete(req.params.id);
+    res.json({success:true});
 });
 
-app.get('/api/orders', async (req, res) => {
-    try {
-        const orders = await Order.find().sort({ createdAt: -1 });
-        res.json(orders);
-    } catch (err) {
-        res.status(500).json({ message: 'Server Error' });
-    }
+// ORDER API
+app.post('/api/orders', async (req,res)=>{
+    const trackId = 'QB' + Date.now();
+    await new Order({...req.body, trackId}).save();
+    res.json({success:true, trackId});
+});
+app.get('/api/orders', async (req,res)=> res.json(await Order.find().sort({createdAt:-1})));
+app.get('/api/orders/track/:id', async (req,res)=> {
+    const order = await Order.findOne({trackId:req.params.id});
+    res.json(order);
+});
+app.put('/api/orders/:id/status', async (req,res)=>{
+    await Order.findByIdAndUpdate(req.params.id, {status:req.body.status});
+    res.json({success:true});
 });
 
-app.put('/api/orders/:id/status', async (req, res) => {
-    try {
-        await Order.findByIdAndUpdate(req.params.id, { status: req.body.status });
-        res.json({ message: 'Status Updated' });
-    } catch (err) {
-        res.status(500).json({ message: 'Server Error' });
-    }
+// ADMIN LOGIN
+app.post('/api/admin/login', (req,res)=>{
+    res.json({success: req.body.password === 'admin123'});
 });
 
-app.delete('/api/orders/:id', async (req, res) => {
-    try {
-        await Order.findByIdAndDelete(req.params.id);
-        res.json({ message: 'Order Deleted' });
-    } catch (err) {
-        res.status(500).json({ message: 'Server Error' });
-    }
-});
-
-app.post('/api/admin/login', (req, res) => {
-    const { password } = req.body;
-    if (password === 'admin123') {
-        res.json({ success: true });
-    } else {
-        res.status(401).json({ success: false });
-    }
-});
-
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on ${PORT}`);
-});
+app.listen(PORT, ()=>console.log(`🚀 Server on ${PORT}`));
