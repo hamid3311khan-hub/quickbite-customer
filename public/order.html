@@ -1,0 +1,5 @@
+<!DOCTYPE html><html><head><title>Orders</title><style>body{font-family:Arial;padding:20px}.order{background:white;padding:15px;margin:10px;border-left:5px solid orange}</style></head>
+<body><h1>📢 Naye Orders</h1><div id="orders"></div><script>
+async function load(){const d=await(await fetch('/api/orders')).json();document.getElementById('orders').innerHTML=d.map(o=>`<div class="order"><h3>Order #${o._id.slice(-4)}</h3><p>Total: Rs ${o.total}</p><p>Status: ${o.status}</p><button onclick="up('${o._id}','Cooking')">Cooking</button><button onclick="up('${o._id}','Ready')">Ready</button></div>`).join('')}
+async function up(id,s){await fetch('/api/orders/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:s})});load()}
+setInterval(load,5000); load()</script></body></html>
