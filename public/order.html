@@ -8,6 +8,8 @@
     .order { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .order h3 { margin: 0 0 10px 0; color: #ff6b00; }
     .status { background: green; color: white; padding: 4px 10px; border-radius: 5px; font-size: 12px; }
+    ul { margin: 5px 0; padding-left: 20px; }
+    .error { color: red; }
   </style>
 </head>
 <body>
@@ -16,33 +18,41 @@
 
   <script>
     async function loadOrders(){
+      const div = document.getElementById('orders');
       try {
         const res = await fetch('/api/orders');
+        
+        if(!res.ok) throw new Error('API Error: ' + res.status);
+        
         const orders = await res.json();
-        const div = document.getElementById('orders');
         
         if(orders.length === 0){
-          div.innerHTML = "<p>Abhi koi order nahi hai</p>";
+          div.innerHTML = "<p>Abhi koi order nahi hai. Pehle customer se order karwao 😄</p>";
           return;
         }
 
         div.innerHTML = '';
         orders.forEach(o => {
-          const items = JSON.parse(o.items);
+          let itemsList = '';
+          if(Array.isArray(o.items)){
+            itemsList = o.items.map(i => `<li>${i.name} - ₹${i.price}</li>`).join('');
+          } else {
+            itemsList = `<li>${JSON.stringify(o.items)}</li>`;
+          }
+
           div.innerHTML += `
             <div class="order">
-              <h3>Order #${o.id} <span class="status">${o.status}</span></h3>
+              <h3>Order #${o._id.slice(-6)} <span class="status">${o.status}</span></h3>
               <p><b>Total:</b> ₹${o.total}</p>
               <p><b>Items:</b></p>
-              <ul>
-                ${items.map(i => `<li>${i.name} - ₹${i.price}</li>`).join('')}
-              </ul>
-              <small>${new Date(o.created_at).toLocaleString()}</small>
+              <ul>${itemsList}</ul>
+              <small>${new Date(o.createdAt).toLocaleString('en-IN')}</small>
             </div>
           `;
         });
       } catch(err) {
-        document.getElementById('orders').innerHTML = "<p style='color:red;'>Error: API nahi mil rahi</p>";
+        div.innerHTML = `<p class="error">Error: ${err.message}</p><p>Check karo /api/orders chal raha hai ya nahi</p>`;
+        console.log(err);
       }
     }
     loadOrders();
