@@ -1,0 +1,19 @@
+    <!DOCTYPE html>
+    <html>
+    <head><title>Your Cart</title></head>
+    <body style="font-family:Arial; padding:20px">
+      <h1>🛒 Your Cart</h1>
+      <div id="cart-items"></div>
+      <h2>Total: ₹<span id="total">0</span></h2>
+      <button onclick="placeOrder()" style="background:#ff6b00;color:white;padding:15px;border:none;border-radius:5px;width:100%">Place Order</button>
+      <script>
+        let cart = JSON.parse(localStorage.getItem('cart')) || [];
+        document.getElementById('cart-items').innerHTML = cart.map(i=>`<p>${i.name} - ₹${i.price}</p>`).join('');
+        document.getElementById('total').innerText = cart.reduce((s,i)=>s+i.price,0);
+        async function placeOrder(){
+          await fetch('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:cart,total:cart.reduce((s,i)=>s+i.price,0)})});
+          alert("Order Placed"); localStorage.removeItem('cart'); window.location.href='/';
+        }
+      </script>
+    </body>
+    </html>
