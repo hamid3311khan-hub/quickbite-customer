@@ -9,6 +9,8 @@
     .item img { width: 80px; height: 80px; border-radius: 5px; margin-right: 10px; }
     button { background: #ff6b00; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
     #cart { position: fixed; top: 20px; right: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 999; }
+    #qr-section { display:none; text-align:center; margin-top:20px; padding:20px; background:white; border-radius:12px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+    #qr-section img { margin:10px 0; border:1px solid #ddd; padding:10px; border-radius:10px; }
   </style>
 </head>
 <body>
@@ -22,7 +24,89 @@
 
   <div id="menu">Loading menu...</div>
 
-  <script src="menu.js"></script>
-  <script src="cart.js"></script>
+  <!-- QR WALA SECTION YAHI ADD KIYA -->
+  <div id="qr-section">
+    <h3>Scan karke UPI se pay karein</h3>
+    <img id="qr-img" src="" width="250"/>
+    <p>UPI ID: <b id="upi-id"></b></p>
+    <p>Total: ₹<b id="qr-total"></b></p>
+    <button onclick="confirmOrder()" style="background:green;">Payment Ho Gaya</button>
+    <button onclick="cancelQR()" style="background:#999;">Cancel</button>
+  </div>
+
+  <script>
+    let cart = [];
+
+    // MENU LOAD
+    async function loadMenu(){
+      const res = await fetch('/api/products');
+      const products = await res.json();
+      const menuDiv = document.getElementById('menu');
+      menuDiv.innerHTML = '';
+      products.forEach(p => {
+        menuDiv.innerHTML += `
+          <div class="item">
+            <div style="display:flex; align-items:center;">
+              <img src="${p.image}"/>
+              <div>
+                <b>${p.name}</b> ${p.offer ? `<span style="color:green;">${p.offer}</span>` : ''}
+                <br>₹${p.price}
+              </div>
+            </div>
+            <button onclick='addToCart(${JSON.stringify(p)})'>Add</button>
+          </div>
+        `;
+      });
+    }
+
+    function addToCart(item){
+      cart.push(item);
+      document.getElementById('cart-count').innerText = cart.length;
+    }
+
+    function goToCart(){
+      if(cart.length === 0) return alert("Cart khali hai");
+      placeOrder();
+    }
+
+    // PAYMENT WALA FUNCTION
+    async function placeOrder(){
+      const total = cart.reduce((sum, item) => sum + item.price, 0);
+      
+      // Backend se QR mangwao
+      const res = await fetch(`/api/qr/${total}`);
+      const data = await res.json();
+      
+      // QR dikhao
+      document.getElementById('qr-img').src = data.qr;
+      document.getElementById('upi-id').innerText = data.upiID;
+      document.getElementById('qr-total').innerText = total;
+      document.getElementById('qr-section').style.display = 'block';
+      document.getElementById('menu').style.display = 'none';
+    }
+
+    async function confirmOrder(){
+      const total = cart.reduce((sum, item) => sum + item.price, 0);
+      
+      // Order DB me save
+      await fetch('/api/orders', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({items: cart, total: total, status: "Paid"})
+      });
+      
+      alert("Order Place ho gaya!");
+      cart = [];
+      document.getElementById('cart-count').innerText = 0;
+      cancelQR();
+    }
+
+    function cancelQR(){
+      document.getElementById('qr-section').style.display = 'none';
+      document.getElementById('menu').style.display = 'block';
+    }
+
+    loadMenu();
+  </script>
 </body>
 </html>
