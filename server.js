@@ -8,7 +8,8 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 const MONGO_URL = process.env.MONGO_URL;
 
-app.use(cors());
+// FIXED CORS
+app.use(cors({origin: "*", methods: ["GET", "POST", "PUT", "DELETE"]}));
 app.use(express.json());
 
 // public folder se saari files serve hongi
@@ -34,10 +35,12 @@ const Order = mongoose.model('Order', orderSchema);
 // API Routes
 app.post('/api/orders', async (req, res) => {
     try {
+        console.log("Order Received:", req.body); // Debug ke liye
         const newOrder = new Order(req.body);
         await newOrder.save();
         res.status(201).json({ message: 'Order Placed Successfully' });
     } catch (err) {
+        console.log("Order Error:", err); // Error dikhega logs me
         res.status(500).json({ message: 'Server Error' });
     }
 });
