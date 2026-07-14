@@ -11,8 +11,8 @@ const MONGO_URL = process.env.MONGO_URL;
 app.use(cors());
 app.use(express.json());
 
-// YE LINE HTML FILE SERVE KAREGI
-app.use(express.static(path.join(__dirname)));
+// YE LINE CHANGE KI HAI - public folder se serve hoga
+app.use(express.static(path.join(__dirname, 'public')));
 
 // DB Connect
 mongoose.connect(MONGO_URL)
@@ -76,11 +76,6 @@ app.post('/api/admin/login', (req, res) => {
     } else {
         res.status(401).json({ success: false });
     }
-});
-
-// Agar / khole to bhi orders.html khul jaye
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'orders.html'));
 });
 
 app.listen(PORT, () => {
