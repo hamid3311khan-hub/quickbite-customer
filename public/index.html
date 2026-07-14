@@ -1,195 +1,59 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QuickBite - Order Food Online</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:'Arial',sans-serif}
-body{background:#f8f8f8}
-header{background:#ff6600;color:white;padding:15px;text-align:center;position:sticky;top:0;z-index:10}
-header h1{font-size:24px}
-.cart-btn{position:absolute;right:20px;top:15px;background:white;color:#ff6600;border:none;padding:8px 15px;border-radius:20px;cursor:pointer;font-weight:bold}
-.container{max-width:1200px;margin:20px auto;padding:0 15px}
-.menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px}
-.item-card{background:white;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);transition:0.3s}
-.item-card:hover{transform:translateY(-5px)}
-.item-card img{width:100%;height:180px;object-fit:cover}
-.item-info{padding:15px}
-.item-info h3{margin-bottom:5px;color:#333}
-.item-info p{color:#666;font-size:14px;margin-bottom:10px}
-.price-add{display:flex;justify-content:space-between;align-items:center}
-.price{font-size:20px;font-weight:bold;color:#ff6600}
-.add-btn{background:#ff6600;color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer}
-.cart-sidebar{position:fixed;right:-400px;top:0;width:350px;height:100%;background:white;box-shadow:-2px 0 10px rgba(0,0,0,0.2);transition:0.3s;padding:20px;z-index:20;overflow-y:auto}
-.cart-sidebar.active{right:0}
-.cart-header{display:flex;justify-content:space-between;margin-bottom:20px}
-.close-cart{background:none;border:none;font-size:24px;cursor:pointer}
-.cart-item{display:flex;justify-content:space-between;margin:10px 0;padding-bottom:10px;border-bottom:1px solid #eee}
-.total{font-size:20px;font-weight:bold;margin:20px 0;text-align:right}
-.checkout-btn{width:100%;padding:12px;background:#ff6600;color:white;border:none;border-radius:5px;font-size:16px;cursor:pointer}
-.checkout-form{display:none}
-.checkout-form input{width:100%;padding:10px;margin:8px 0;border:1px solid #ddd;border-radius:5px}
-.overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:15}
-.overlay.active{display:block}
-.loading{text-align:center;padding:50px;font-size:18px}
-</style>
-</head>
-<body>
+<!DOCTYPE html><html><head><title>QuickBite Menu</title>
+<style>*{margin:0;font-family:Arial} header{background:#ff6600;color:white;padding:15px;display:flex;justify-content:space-between}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px;padding:20px}
+.card{background:white;border-radius:10px;padding:15px;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
+.card img{width:100%;height:180px;object-fit:cover} .price{color:#ff6600;font-size:20px;font-weight:bold}
+button{background:#ff6600;color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer}
+#cart{position:fixed;right:0;top:0;width:350px;height:100%;background:white;box-shadow:-2px 0 10px rgba(0,0,0,0.2);padding:20px;display:none;overflow-y:auto}
+input{width:95%;padding:10px;margin:8px 0}</style>
+</head><body>
+<header><h1>🍔 QuickBite</h1><div><button onclick="showCart()">Cart (<span id="count">0</span>)</button></div></header>
+<div class="grid" id="menu"></div>
 
-<header>
-    <h1>🍔 QuickBite</h1>
-    <button class="cart-btn" onclick="toggleCart()">Cart (<span id="cartCount">0</span>)</button>
-</header>
-
-<div class="container">
-    <h2 style="margin-bottom:20px">Our Menu</h2>
-    <div class="menu-grid" id="menu">
-        <div class="loading">Loading menu...</div>
-    </div>
-</div>
-
-<div class="overlay" id="overlay" onclick="toggleCart()"></div>
-
-<div class="cart-sidebar" id="cartSidebar">
-    <div class="cart-header">
-        <h2>Your Cart</h2>
-        <button class="close-cart" onclick="toggleCart()">×</button>
-    </div>
-    <div id="cartItems"></div>
-    <div class="total">Total: ₹<span id="cartTotal">0</span></div>
-    
-    <div id="cartView">
-        <button class="checkout-btn" onclick="showCheckout()">Proceed to Checkout</button>
-    </div>
-
-    <div class="checkout-form" id="checkoutForm">
-        <h3>Delivery Details</h3>
-        <input type="text" id="name" placeholder="Your Name" required>
-        <input type="text" id="phone" placeholder="Phone Number" required>
-        <input type="text" id="address" placeholder="Full Address" required>
-        <button class="checkout-btn" onclick="placeOrder()">Place Order</button>
-    </div>
+<div id="cart">
+<h2>Your Cart <button onclick="showCart()">X</button></h2>
+<div id="cartItems"></div><h3>Total: ₹<span id="total">0</span></h3>
+<h3>Delivery Details</h3>
+<input id="name" placeholder="Name"><input id="phone" placeholder="Phone"><input id="address" placeholder="Address">
+<button onclick="placeOrder()" style="width:100%;padding:12px">Place Order COD</button>
 </div>
 
 <script>
-const API_URL = 'https://quickbite-ymqk.onrender.com/api'; // <-- YE CHANGE KIYA HAI
+const API = 'https://quickbite-ymqk.onrender.com/api';
+let cart = JSON.parse(localStorage.getItem('cart')) || [];
 
-let cart = [];
-let menuItems = [
-    {id:1,name:"Veg Burger",price:99,img:"https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400",desc:"Crispy veg patty with cheese"},
-    {id:2,name:"Cheese Pizza",price:249,img:"https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=400",desc:"Loaded with extra cheese"},
-    {id:3,name:"Chicken Biryani",price:199,img:"https://images.unsplash.com/photo-1631515242808-497c3f1d7f29?w=400",desc:"Spicy hyderabadi biryani"},
-    {id:4,name:"French Fries",price:79,img:"https://images.unsplash.com/photo-1573080496219-bb7050e5f819?w=400",desc:"Crispy potato fries"},
-    {id:5,name:"Cold Drink",price:49,img:"https://images.unsplash.com/photo-1553456558-aff11c5ccdd2?w=400",desc:"Chilled coke 500ml"},
-    {id:6,name:"Paneer Tikka",price:179,img:"https://images.unsplash.com/photo-1626132647523-66c3b1e3c0c6?w=400",desc:"Grilled paneer cubes"}
-];
-
-function loadMenu(){
-    const menuDiv = document.getElementById('menu');
-    menuDiv.innerHTML = '';
-    menuItems.forEach(item=>{
-        menuDiv.innerHTML += `
-        <div class="item-card">
-            <img src="${item.img}" alt="${item.name}">
-            <div class="item-info">
-                <h3>${item.name}</h3>
-                <p>${item.desc}</p>
-                <div class="price-add">
-                    <span class="price">₹${item.price}</span>
-                    <button class="add-btn" onclick="addToCart(${item.id})">Add +</button>
-                </div>
+fetch(`${API}/menu`).then(res=>res.json()).then(items=>{
+    document.getElementById('menu').innerHTML = items.map(item=>`
+        <div class="card">
+            <img src="${item.img}">
+            <h3>${item.name} ${item.offer?`<span style="color:red">-${item.offer}%</span>`:''}</h3>
+            <p>${item.desc}</p>
+            <div style="display:flex;justify-content:space-between">
+                <span class="price">₹${item.offer? Math.round(item.price*(1-item.offer/100)) : item.price}</span>
+                <button onclick='addToCart(${JSON.stringify(item)})'>Add +</button>
             </div>
-        </div>`
-    })
-}
+        </div>`).join('')
+});
 
-function addToCart(id){
-    const item = menuItems.find(i=>i.id===id);
-    const existing = cart.find(i=>i.id===id);
-    if(existing){
-        existing.qty++;
-    }else{
-        cart.push({...item,qty:1});
-    }
-    updateCart();
-    alert(`${item.name} added to cart!`);
+function addToCart(item){
+    const price = item.offer? Math.round(item.price*(1-item.offer/100)) : item.price;
+    const ex = cart.find(i=>i._id==item._id);
+    if(ex) ex.qty++; else cart.push({...item, price, qty:1});
+    localStorage.setItem('cart', JSON.stringify(cart)); updateCart();
 }
-
 function updateCart(){
-    const cartDiv = document.getElementById('cartItems');
-    const total = cart.reduce((sum,i)=>sum + i.price*i.qty,0);
-    const count = cart.reduce((sum,i)=>sum + i.qty,0);
-    
-    document.getElementById('cartCount').innerText = count;
-    document.getElementById('cartTotal').innerText = total;
-    
-    cartDiv.innerHTML = '';
-    cart.forEach(item=>{
-        cartDiv.innerHTML += `
-        <div class="cart-item">
-            <div>
-                <b>${item.name}</b><br>
-                ₹${item.price} x ${item.qty}
-            </div>
-            <div>
-                <button onclick="changeQty(${item.id},-1)">-</button>
-                <button onclick="changeQty(${item.id},1)">+</button>
-            </div>
-        </div>`
-    })
+    let total = cart.reduce((s,i)=>s+i.price*i.qty,0);
+    document.getElementById('count').innerText = cart.reduce((s,i)=>s+i.qty,0);
+    document.getElementById('total').innerText = total;
+    document.getElementById('cartItems').innerHTML = cart.map((i,idx)=>`
+        <div style="display:flex;justify-content:space-between;margin:10px 0">${i.name} x${i.qty} ₹${i.price*i.qty} <button onclick="cart.splice(${idx},1);updateCart()">X</button></div>
+    `).join('');
 }
-
-function changeQty(id,change){
-    const item = cart.find(i=>i.id===id);
-    item.qty += change;
-    if(item.qty<=0) cart = cart.filter(i=>i.id!==id);
-    updateCart();
-}
-
-function toggleCart(){
-    document.getElementById('cartSidebar').classList.toggle('active');
-    document.getElementById('overlay').classList.toggle('active');
-}
-
-function showCheckout(){
-    if(cart.length===0){alert("Cart is empty!");return;}
-    document.getElementById('cartView').style.display='none';
-    document.getElementById('checkoutForm').style.display='block';
-}
-
+function showCart(){document.getElementById('cart').style.display = document.getElementById('cart').style.display=='none'?'block':'none'}
 function placeOrder(){
-    const name = document.getElementById('name').value;
-    const phone = document.getElementById('phone').value;
-    const address = document.getElementById('address').value;
-    
-    if(!name || !phone || !address){alert("Fill all details");return;}
-    
-    const orderData = {
-        name,phone,address,
-        items:cart,
-        total: cart.reduce((sum,i)=>sum + i.price*i.qty,0)
-    };
-    
-    fetch(`${API_URL}/orders`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(orderData)
-    }).then(res=>res.json()).then(data=>{
-        alert("Order Placed Successfully!");
-        cart = [];
-        updateCart();
-        toggleCart();
-        document.getElementById('checkoutForm').style.display='none';
-        document.getElementById('cartView').style.display='block';
-    }).catch(err=>{
-        console.log(err);
-        alert("Order Failed!")
-    })
+    const order = {name:document.getElementById('name').value, phone:document.getElementById('phone').value, address:document.getElementById('address').value, items:cart, total:cart.reduce((s,i)=>s+i.price*i.qty,0)};
+    fetch(`${API}/orders`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(order)})
+    .then(res=>res.json()).then(d=>{alert('Order Placed! ID: '+d.trackId); localStorage.removeItem('cart'); cart=[]; updateCart(); window.location='/myorder.html?id='+d.trackId})
 }
-
-// Page load
-loadMenu();
-</script>
-</body>
-</html>
+updateCart();
+</script></body></html>
