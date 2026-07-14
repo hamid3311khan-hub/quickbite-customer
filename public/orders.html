@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>All Orders - QuickBite</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+    .dashboard { background: #333; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-around; text-align: center; }
+    .order { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 5px solid #ff6b00; }
+    .btn { background: #ff6b00; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; margin: 5px 2px; font-size: 12px; }
+    .btn.prep { background: #ffa500; }
+    .btn.out { background: #2196F3; }
+    .btn.del { background: #4CAF50; }
+    .btn.del2 { background: #f44336; }
+    .status { color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; }
+    .top { display: flex; justify-content: space-between; align-items: center; }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <div>
+      <h2 id="today-sales">₹0</h2>
+      <p>Aaj ki Sales</p>
+    </div>
+    <div>
+      <h2 id="today-count">0</h2>
+      <p>Aaj ke Orders</p>
+    </div>
+  </div>
+
+  <div class="top">
+    <h1>📦 All Orders</h1>
+    <button class="btn" onclick="loadOrders()">🔄 Refresh</button>
+  </div>
+  <div id="orders">Loading...</div>
+
+  <script>
+    const API = 'https://quickbite-ymqk.onrender.com';
+    
+    async function loadOrders() {
+      loadSales(); // sales bhi load hoga
+      document.getElementById('orders').innerHTML = "Loading...";
+      const res = await fetch(`${API}/api/orders`);
+      const data = await res.json();
+      
+      if(data.length === 0){
+        document.getElementById('orders').innerHTML = "<p>No orders yet</p>";
+        return;
+      }
+
+      document.getElementById('orders').innerHTML = data.map(order => {
+        let color = order.status === 'New' || order.status === 'Paid' ? '#4CAF50' : order.status === 'Preparing' ? '#ffa500' : order.status === 'Out for Delivery' ? '#2196F3' : '#888';
+        return `<div class="order">
+          <h3>Order #${order._id.slice(-6)} - ₹${order.total} <span class="status" style="background:${color}">${order.status}</span></h3>
+          <p><b>Items:</b> ${order.items.map(i=>i.name).join(', ')}</p>
+          <p><b>Time:</b> ${new Date(order.createdAt).toLocaleString('en-IN')}</p>
+          <div>
+            <button class="btn prep" onclick="updateStatus('${order._id}','Preparing')">Preparing</button>
+            <button class="btn out" onclick="updateStatus('${order._id}','Out for Delivery')">Out for Delivery</button>
+            <button class="btn del" onclick="updateStatus('${order._id}','Delivered')">Delivered</button>
+            <button class="btn del2" onclick="deleteOrder('${order._id}')">Delete</button>
+          </div>
+        </div>`
+      }).join('');
+    }
+
+    async function updateStatus(id, status){
+      await fetch(`${API}/api/orders/${id}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({status})
+      });
+      loadOrders();
+    }
+
+    async function deleteOrder(id){
+      if(confirm("Pakka delete karna hai?")){
+        await fetch(`${API}/api/orders/${id}`, { method: 'DELETE' });
+        loadOrders();
+      }
+    }
+
+    async function loadSales(){
+      const res = await fetch(`${API}/api/sales/today`);
+      const data = await res.json();
+      document.getElementById('today-sales').innerText = `₹${data.total}`;
+      document.getElementById('today-count').innerText = data.count;
+    }
+
+    loadOrders();
+    setInterval(loadOrders, 10000); // 10 sec auto refresh
+  </script>
+</body>
+</html>
