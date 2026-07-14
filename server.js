@@ -43,4 +43,4 @@ app.put('/api/products/:id', async (req, res) => res.json(await Product.findById
 app.delete('/api/products/:id', async (req, res) => res.json(await Product.findByIdAndDelete(req.params.id)));
 
 // API - ORDERS - SIRF 1 BAAR
-app.get('/api/orders', async (req, res) => res.json(await Order.find().sort({createdAt
+app.get('/api/orders', async (req, res) => res.json(await Order.find().sort({createdAt: -1})));
