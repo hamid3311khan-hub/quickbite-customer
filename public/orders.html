@@ -21,7 +21,7 @@
   <script>
     async function loadOrders() {
       document.getElementById('orders').innerHTML = "Loading...";
-      const res = await fetch('/api/orders'); // relative rakha
+      const res = await fetch('https://quickbite-ymqk.onrender.com/api/orders'); // FULL URL
       const data = await res.json();
       
       if(data.length === 0){
