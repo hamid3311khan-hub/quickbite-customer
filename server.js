@@ -42,10 +42,13 @@ const Order = mongoose.model('Order', new mongoose.Schema({
 
 // MENU API
 app.get('/api/menu', async (req,res)=> res.json(await MenuItem.find().sort({createdAt:-1})));
+
 app.post('/api/menu', upload.single('img'), async (req,res)=>{
     const data = {...req.body, img: req.file ? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/400'};
     await new MenuItem(data).save();
     res.json({success:true});
+}); // <-- Yaha bracket miss tha
+
 app.put('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndUpdate(req.params.id, req.body); res.json({success:true}); });
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
 
