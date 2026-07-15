@@ -17,14 +17,14 @@ input,button,select{padding:10px;margin:5px;border:1px solid #ddd;border-radius:
 </div>
 
 <script>
-const API = 'https://mqk.onrender.com/api';
+const API = 'https://quickbite-ymqk.onrender.com/api';
 function login(){
     fetch(`${API}/admin/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:document.getElementById('pass').value})})
     .then(res=>res.json()).then(d=>{if(d.success){document.getElementById('login').style.display='none';document.getElementById('panel').style.display='block';loadMenu();loadOrders()}else alert('Wrong Password')})
 }
 function loadMenu(){fetch(`${API}/menu`).then(res=>res.json()).then(items=>{
     document.getElementById('menu').innerHTML = items.map(i=>`
-    <div style="border:1px solid #eee;padding:10px;margin:5px;display:flex;justify-content:space-between"><img src="${i.img}" width="50"><b>${i.name}</b> - ₹${i.price} - ${i.offer}% <button onclick="del('${i._id}')">Delete</button></div>`).join('')})}
+    <div style="border:1px solid #eee;padding:10px;margin:5px;display:flex;justify-content:space-between;align-items:center"><img src="${i.img}" width="50"><b>${i.name}</b> - ₹${i.price} - ${i.offer}% <button onclick="del('${i._id}')">Delete</button></div>`).join('')})}
 function del(id){if(confirm('Delete?'))fetch(`${API}/menu/${id}`,{method:'DELETE'}).then(loadMenu)}
 document.getElementById('f').onsubmit=e=>{e.preventDefault();fetch(`${API}/menu`,{method:'POST',body:new FormData(e.target)}).then(()=>{e.target.reset();loadMenu()})}
 function loadOrders(){fetch(`${API}/orders`).then(res=>res.json()).then(orders=>{
