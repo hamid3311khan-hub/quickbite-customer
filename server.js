@@ -21,6 +21,7 @@ app.get('/', (req,res)=> res.sendFile(path.join(__dirname, 'public/index1.html')
 app.get('/admin', (req,res)=> res.sendFile(path.join(__dirname, 'public/admin.html')));
 app.get('/index', (req,res)=> res.sendFile(path.join(__dirname, 'public/index.html')));
 app.get('/track', (req,res)=> res.sendFile(path.join(__dirname, 'public/myorder.html')));
+app.get('/payment', (req,res)=> res.sendFile(path.join(__dirname, 'public/payment.html')));
 
 const storage = multer.diskStorage({
     destination: './public/uploads/',
@@ -45,45 +46,18 @@ app.post('/api/menu', upload.single('img'), async (req,res)=>{
     const data = {...req.body, img: req.file ? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/400'};
     await new MenuItem(data).save();
     res.json({success:true});
-}); // <-- FIXED
-
-app.put('/api/menu/:id', async (req,res)=>{
-    await MenuItem.findByIdAndUpdate(req.params.id, req.body);
-    res.json({success:true});
-});
-
-app.delete('/api/menu/:id', async (req,res)=>{
-    await MenuItem.findByIdAndDelete(req.params.id);
-    res.json({success:true});
-});
+app.put('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndUpdate(req.params.id, req.body); res.json({success:true}); });
+app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
 
 // ORDER API
-app.post('/api/orders', async (req,res)=>{
-    const trackId = 'QB' + Date.now();
-    await new Order({...req.body, trackId}).save();
-    res.json({success:true, trackId});
-}); // <-- FIXED
-
+app.post('/api/orders', async (req,res)=>{ const trackId = 'QB' + Date.now(); await new Order({...req.body, trackId}).save(); res.json({success:true, trackId}); });
 app.get('/api/orders', async (req,res)=> res.json(await Order.find().sort({createdAt:-1})));
 app.get('/api/orders/history/:phone', async (req,res)=> res.json(await Order.find({phone:req.params.phone}).sort({createdAt:-1})));
-app.get('/api/orders/track/:id', async (req,res)=> {
-    const order = await Order.findOne({trackId:req.params.id});
-    res.json(order);
-});
-
-app.put('/api/orders/:id/status', async (req,res)=>{
-    await Order.findByIdAndUpdate(req.params.id, {status:req.body.status});
-    res.json({success:true});
-});
-
-app.delete('/api/orders/:id', async (req,res)=>{
-    await Order.findByIdAndDelete(req.params.id);
-    res.json({success:true});
-});
+app.get('/api/orders/track/:id', async (req,res)=> { const order = await Order.findOne({trackId:req.params.id}); res.json(order); });
+app.put('/api/orders/:id/status', async (req,res)=>{ await Order.findByIdAndUpdate(req.params.id, {status:req.body.status}); res.json({success:true}); });
+app.delete('/api/orders/:id', async (req,res)=>{ await Order.findByIdAndDelete(req.params.id); res.json({success:true}); });
 
 // ADMIN LOGIN
-app.post('/api/admin/login', (req,res)=>{
-    res.json({success: req.body.password === 'admin123'});
-});
+app.post('/api/admin/login', (req,res)=>{ res.json({success: req.body.password === 'admin123'}); });
 
 app.listen(PORT, ()=>console.log(`🚀 Server on ${PORT}`));
