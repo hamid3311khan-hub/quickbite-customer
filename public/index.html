@@ -7,7 +7,7 @@ button{background:#ff6600;color:white;border:none;padding:10px 15px;border-radiu
 #cart{position:fixed;right:0;top:0;width:380px;height:100%;background:white;box-shadow:-2px 0 10px rgba(0,0,0,0.2);padding:20px;display:none;overflow-y:auto;z-index:999}
 input{width:95%;padding:10px;margin:8px 0;border:1px solid #ddd;border-radius:5px}</style>
 </head><body>
-<header><h1>🍔 QuickBite</h1><div><a href="/myorder.html" style="color:white;margin-right:15px">Track</a><button onclick="showCart()">Cart (<span id="count">0</span>)</button></div></header>
+<header><h1>🍔 QuickBite</h1><div><a href="/track" style="color:white;margin-right:15px">Track</a><button onclick="showCart()">Cart (<span id="count">0</span>)</button></div></header>
 <div class="grid" id="menu"><p style="text-align:center">Loading...</p></div>
 
 <div id="cart">
@@ -19,11 +19,11 @@ input{width:95%;padding:10px;margin:8px 0;border:1px solid #ddd;border-radius:5p
 </div>
 
 <script>
-const API = 'https://mqk.onrender.com/api'; // TERA LINK
+const API = 'https://quickbite-ymqk.onrender.com/api'; // <-- TERA URL
 let cart = JSON.parse(localStorage.getItem('cart')) || [];
 
 fetch(`${API}/menu`).then(res=>res.json()).then(items=>{
-    if(items.length==0) document.getElementById('menu').innerHTML="<h3 style='text-align:center;width:100%'>No items yet. Check back soon!</h3>"
+    if(items.length==0) document.getElementById('menu').innerHTML="<h3 style='text-align:center;width:100%'>No items yet. Add from Admin Panel</h3>"
     else document.getElementById('menu').innerHTML = items.map(item=>`
         <div class="card">
             <img src="${item.img}">
@@ -34,7 +34,7 @@ fetch(`${API}/menu`).then(res=>res.json()).then(items=>{
                 <button onclick='addToCart(${JSON.stringify(item)})'>Add +</button>
             </div>
         </div>`).join('')
-}).catch(()=>{document.getElementById('menu').innerHTML="<h3>Server Error</h3>"})
+}).catch(()=>{document.getElementById('menu').innerHTML="<h3>Server Error. Check API</h3>"})
 
 function addToCart(item){
     const price = item.offer? Math.round(item.price*(1-item.offer/100)) : item.price;
@@ -55,7 +55,7 @@ function placeOrder(){
     if(cart.length==0) return alert("Cart khali hai");
     const order = {name:document.getElementById('name').value, phone:document.getElementById('phone').value, address:document.getElementById('address').value, items:cart, total:cart.reduce((s,i)=>s+i.price*i.qty,0)};
     fetch(`${API}/orders`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(order)})
-    .then(res=>res.json()).then(d=>{alert('Order Placed! Track ID: '+d.trackId); localStorage.removeItem('cart'); cart=[]; updateCart(); window.location='/myorder.html?id='+d.trackId})
+    .then(res=>res.json()).then(d=>{alert('Order Placed! Track ID: '+d.trackId); localStorage.removeItem('cart'); cart=[]; updateCart(); window.location='/track?id='+d.trackId})
 }
 updateCart();
 </script></body></html>
