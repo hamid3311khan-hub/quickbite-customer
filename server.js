@@ -17,7 +17,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
 // PAGES ROUTES
-app.get('/', (req,res)=> res.sendFile(path.join(__dirname, 'public/home.html')));
+app.get('/', (req,res)=> res.sendFile(path.join(__dirname, 'public/index1.html')));
 app.get('/admin', (req,res)=> res.sendFile(path.join(__dirname, 'public/admin.html')));
 app.get('/index', (req,res)=> res.sendFile(path.join(__dirname, 'public/index.html')));
 app.get('/track', (req,res)=> res.sendFile(path.join(__dirname, 'public/myorder.html')));
@@ -45,7 +45,7 @@ app.post('/api/menu', upload.single('img'), async (req,res)=>{
     const data = {...req.body, img: req.file ? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/400'};
     await new MenuItem(data).save();
     res.json({success:true});
-});
+}); // <-- FIXED
 
 app.put('/api/menu/:id', async (req,res)=>{
     await MenuItem.findByIdAndUpdate(req.params.id, req.body);
@@ -62,7 +62,7 @@ app.post('/api/orders', async (req,res)=>{
     const trackId = 'QB' + Date.now();
     await new Order({...req.body, trackId}).save();
     res.json({success:true, trackId});
-});
+}); // <-- FIXED
 
 app.get('/api/orders', async (req,res)=> res.json(await Order.find().sort({createdAt:-1})));
 app.get('/api/orders/history/:phone', async (req,res)=> res.json(await Order.find({phone:req.params.phone}).sort({createdAt:-1})));
