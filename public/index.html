@@ -19,7 +19,7 @@ input{width:95%;padding:10px;margin:8px 0;border:1px solid #ddd;border-radius:5p
 </div>
 
 <script>
-const API = 'https://quickbite-ymqk.onrender.com/api'; // <-- TERA URL
+const API = 'https://quickbite-ymqk.onrender.com/api';
 let cart = JSON.parse(localStorage.getItem('cart')) || [];
 
 fetch(`${API}/menu`).then(res=>res.json()).then(items=>{
@@ -34,7 +34,7 @@ fetch(`${API}/menu`).then(res=>res.json()).then(items=>{
                 <button onclick='addToCart(${JSON.stringify(item)})'>Add +</button>
             </div>
         </div>`).join('')
-}).catch(()=>{document.getElementById('menu').innerHTML="<h3>Server Error. Check API</h3>"})
+}).catch(()=>{document.getElementById('menu').innerHTML="<h3>Server Error</h3>"})
 
 function addToCart(item){
     const price = item.offer? Math.round(item.price*(1-item.offer/100)) : item.price;
