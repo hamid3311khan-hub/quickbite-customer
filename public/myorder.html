@@ -1,4 +1,0 @@
-<!DOCTYPE html><html><body style="font-family:Arial;padding:20px;text-align:center">
-<h2>Track Order</h2><input id="t" placeholder="Enter Track ID"><button onclick="tr()">Track</button><div id="r"></div>
-<script>function tr(){fetch(`https://quickbite-ymqk.onrender.com/api/orders/track/`+document.getElementById('t').value).then(res=>res.json()).then(o=>{document.getElementById('r').innerHTML=`<h3>Status: ${o.status}</h3><p>Total: ₹${o.total}</p>`})}</script>
-</body></html>
