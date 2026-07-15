@@ -1,77 +1,16 @@
-<!DOCTYPE html><html><head><title>QuickBite Menu</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-*{margin:0;font-family:Arial} 
-nav{background:#ff6600;color:white;padding:15px;display:flex;justify-content:space-between;position:sticky;top:0;z-index:100}
-nav a{color:white;text-decoration:none;margin:0 10px;font-weight:bold}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px;padding:20px;background:#f8f8f8}
-.card{background:white;border-radius:10px;padding:15px;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
-.card img{width:100%;height:180px;object-fit:cover;border-radius:8px} .price{color:#ff6600;font-size:20px;font-weight:bold}
-button{background:#ff6600;color:white;border:none;padding:10px 15px;border-radius:5px;cursor:pointer}
-#cart{position:fixed;right:0;top:0;width:380px;height:100%;background:white;box-shadow:-2px 0 10px rgba(0,0,0,0.2);padding:20px;display:none;overflow-y:auto;z-index:999}
-input{width:95%;padding:10px;margin:8px 0;border:1px solid #ddd;border-radius:5px}
-.back-btn{background:#666;margin:10px}
-@media(max-width:600px){#cart{width:100%}}
-</style></head><body>
-<nav>
-    <div><a href="/">🏠 Home</a> <a href="/track">📦 Track</a> <a href="/admin">🔒 Admin</a></div>
-    <button onclick="showCart()">Cart (<span id="count">0</span>)</button>
-</nav>
-
+<!DOCTYPE html><html><head><title>QuickBite Menu</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>*{margin:0;font-family:Arial} nav{background:#ff6600;color:white;padding:15px;display:flex;justify-content:space-between;position:sticky;top:0;z-index:100} nav a{color:white;text-decoration:none;margin:0 10px;font-weight:bold} .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px;padding:20px;background:#f8f8f8} .card{background:white;border-radius:10px;padding:15px;box-shadow:0 2px 8px rgba(0,0,0,0.1)} .card img{width:100%;height:180px;object-fit:cover;border-radius:8px} .price{color:#ff6600;font-size:20px;font-weight:bold} button{background:#ff6600;color:white;border:none;padding:10px 15px;border-radius:5px;cursor:pointer} #cart{position:fixed;right:0;top:0;width:380px;height:100%;background:white;box-shadow:-2px 0 10px rgba(0,0,0,0.2);padding:20px;display:none;overflow-y:auto;z-index:999} input{width:95%;padding:10px;margin:8px 0;border:1px solid #ddd;border-radius:5px} .back-btn{background:#666;margin:10px} @media(max-width:600px){#cart{width:100%}}</style></head><body>
+<nav><div><a href="/">🏠 Home</a> <a href="/track">📦 Track</a> <a href="/admin">🔒 Admin</a></div><button onclick="showCart()">Cart (<span id="count">0</span>)</button></nav>
 <div class="grid" id="menu"><p style="text-align:center">Loading...</p></div>
-
-<div id="cart">
-<h2>Your Cart <button onclick="showCart()" style="float:right">X</button></h2>
-<div id="cartItems"></div><h3>Total: ₹<span id="total">0</span></h3>
-<h3>Delivery Details</h3>
-<input id="name" placeholder="Full Name" required>
-<input id="phone" placeholder="Phone Number" required>
-<input id="address" placeholder="Full Address" required>
-<button onclick="goToPayment()" style="width:100%;padding:12px;background:#28a745">Proceed to Payment</button>
-<button class="back-btn" onclick="window.location='/'">⬅ Back to Home</button>
-</div>
-
+<div id="cart"><h2>Your Cart <button onclick="showCart()" style="float:right">X</button></h2><div id="cartItems"></div><h3>Total: ₹<span id="total">0</span></h3><h3>Delivery Details</h3>
+<input id="name" placeholder="Full Name" required><input id="phone" placeholder="Phone Number" required><input id="address" placeholder="Full Address" required>
+<button onclick="goToPayment()" style="width:100%;padding:12px;background:#28a745">Proceed to Payment</button><button class="back-btn" onclick="window.location='/'">⬅ Back to Home</button></div>
 <script>
-const API = 'https://quickbite-ymqk.onrender.com/api';
-let cart = JSON.parse(localStorage.getItem('cart')) || [];
-
-fetch(`${API}/menu`).then(res=>res.json()).then(items=>{
-    if(items.length==0) document.getElementById('menu').innerHTML="<h3 style='text-align:center;width:100%;padding:50px'>No items yet. Add from Admin Panel</h3>"
-    else document.getElementById('menu').innerHTML = items.map(item=>`
-        <div class="card">
-            <img src="${item.img}">
-            <h3>${item.name} ${item.offer?`<span style="color:red;background:#ffe0e0;padding:2px 6px;border-radius:4px">-${item.offer}%</span>`:''}</h3>
-            <p style="color:#666">${item.desc}</p>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
-                <span class="price">₹${item.offer? Math.round(item.price*(1-item.offer/100)) : item.price}</span>
-                <button onclick='addToCart(${JSON.stringify(item)})'>Add +</button>
-            </div>
-        </div>`).join('')
-}).catch(()=>{document.getElementById('menu').innerHTML="<h3>Server Error</h3>"})
-
-function addToCart(item){
-    const price = item.offer? Math.round(item.price*(1-item.offer/100)) : item.price;
-    const ex = cart.find(i=>i._id==item._id); if(ex) ex.qty++; else cart.push({...item, price, qty:1});
-    localStorage.setItem('cart', JSON.stringify(cart)); updateCart();
-}
-function updateCart(){
-    let total = cart.reduce((s,i)=>s+i.price*i.qty,0);
-    document.getElementById('count').innerText = cart.reduce((s,i)=>s+i.qty,0);
-    document.getElementById('total').innerText = total;
-    document.getElementById('cartItems').innerHTML = cart.map((i,idx)=>`
-        <div style="display:flex;justify-content:space-between;margin:10px 0;border-bottom:1px solid #eee;padding-bottom:5px">${i.name} x${i.qty} ₹${i.price*i.qty} <button onclick="cart.splice(${idx},1);updateCart()">X</button></div>
-    `).join('');
-}
+const API = 'https://quickbite-ymqk.onrender.com/api'; let cart = JSON.parse(localStorage.getItem('cart')) || [];
+fetch(`${API}/menu`).then(res=>res.json()).then(items=>{ if(items.length==0) document.getElementById('menu').innerHTML="<h3 style='text-align:center;width:100%;padding:50px'>No items yet. Add from Admin Panel</h3>"
+else document.getElementById('menu').innerHTML = items.map(item=>`<div class="card"><img src="${item.img}"><h3>${item.name} ${item.offer?`<span style="color:red;background:#ffe0e0;padding:2px 6px;border-radius:4px">-${item.offer}%</span>`:''}</h3><p style="color:#666">${item.desc}</p><div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px"><span class="price">₹${item.offer? Math.round(item.price*(1-item.offer/100)) : item.price}</span><button onclick='addToCart(${JSON.stringify(item)})'>Add +</button></div></div>`).join('')}).catch(()=>{document.getElementById('menu').innerHTML="<h3>Server Error</h3>"})
+function addToCart(item){ const price = item.offer? Math.round(item.price*(1-item.offer/100)) : item.price; const ex = cart.find(i=>i._id==item._id); if(ex) ex.qty++; else cart.push({...item, price, qty:1}); localStorage.setItem('cart', JSON.stringify(cart)); updateCart(); }
+function updateCart(){ let total = cart.reduce((s,i)=>s+i.price*i.qty,0); document.getElementById('count').innerText = cart.reduce((s,i)=>s+i.qty,0); document.getElementById('total').innerText = total; document.getElementById('cartItems').innerHTML = cart.map((i,idx)=>`<div style="display:flex;justify-content:space-between;margin:10px 0;border-bottom:1px solid #eee;padding-bottom:5px">${i.name} x${i.qty} ₹${i.price*i.qty} <button onclick="cart.splice(${idx},1);updateCart()">X</button></div>`).join(''); }
 function showCart(){document.getElementById('cart').style.display = document.getElementById('cart').style.display=='none'?'block':'none'}
-
-function goToPayment(){
-    if(cart.length==0) return alert("Cart khali hai");
-    const name = document.getElementById('name').value;
-    const phone = document.getElementById('phone').value;
-    const address = document.getElementById('address').value;
-    if(!name || !phone || !address) return alert("Saare details bharo");
-    localStorage.setItem('orderData', JSON.stringify({name, phone, address, items:cart, total:cart.reduce((s,i)=>s+i.price*i.qty,0)}));
-    window.location = '/payment';
-}
-updateCart();
+function goToPayment(){ if(cart.length==0) return alert("Cart khali hai"); const name = document.getElementById('name').value; const phone = document.getElementById('phone').value; const address = document.getElementById('address').value; if(!name || !phone || !address) return alert("Saare details bharo"); localStorage.setItem('orderData', JSON.stringify({name, phone, address, items:cart, total:cart.reduce((s,i)=>s+i.price*i.qty,0)})); window.location = '/payment'; } updateCart();
 </script></body></html>
