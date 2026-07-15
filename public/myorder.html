@@ -2,7 +2,9 @@
 <h2>Track Your Order</h2><input id="t" placeholder="Enter Track ID"><button onclick="tr()">Track</button><div id="r"></div>
 <hr><h2>Order History</h2><input id="ph" placeholder="Enter Phone to see history"><button onclick="history()">View History</button><div id="h"></div>
 <script>
-const API = 'https://mqk.onrender.com/api';
-function tr(){fetch(`${API}/orders/track/`+document.getElementById('t').value).then(res=>res.json()).then(o=>{document.getElementById('r').innerHTML=`<h3>Status: <span style="color:green">${o.status}</span></h3><p>Total: ₹${o.total}</p>`})}
+const API = 'https://quickbite-ymqk.onrender.com/api';
+const urlParams = new URLSearchParams(window.location.search);
+if(urlParams.get('id')) document.getElementById('t').value = urlParams.get('id');
+function tr(){fetch(`${API}/orders/track/`+document.getElementById('t').value).then(res=>res.json()).then(o=>{if(o)document.getElementById('r').innerHTML=`<h3>Status: <span style="color:green">${o.status}</span></h3><p>Total: ₹${o.total}</p><p>${o.items.map(i=>`${i.name} x${i.qty}`).join(', ')}</p>`})}
 function history(){fetch(`${API}/orders/history/`+document.getElementById('ph').value).then(res=>res.json()).then(orders=>{document.getElementById('h').innerHTML=orders.map(o=>`<div style="border:1px solid #ddd;padding:10px;margin:5px"><b>${o.trackId}</b> - ₹${o.total} - ${o.status}</div>`).join('')})}
 </script></body></html>
