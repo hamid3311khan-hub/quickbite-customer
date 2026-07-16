@@ -1,0 +1,50 @@
+<!DOCTYPE html><html><head><title>Order Details - QuickBite</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>*{margin:0;font-family:Arial} nav{background:#333;color:white;padding:15px} .container{max-width:700px;margin:30px auto;padding:20px}
+.card{border:2px solid #ff6600;padding:20px;border-radius:10px} .btn{padding:15px;margin:8px;width:100%;border:none;border-radius:8px;font-size:16px;cursor:pointer;color:white}
+.btn1{background:#ffc107} .btn2{background:#17a2b8} .btn3{background:#28a745} .btn4{background:red}</style></head><body>
+<nav><a href="/admin" style="color:white">⬅ Back to Admin</a></nav>
+
+<div class="container">
+<div id="orderBox" class="card">Loading...</div>
+
+<h3>Update Status</h3>
+<button class="btn btn1" onclick="update('Preparing')">👨‍🍳 Preparing</button>
+<button class="btn btn2" onclick="update('Out for Delivery')">🚚 Out for Delivery</button>
+<button class="btn btn3" onclick="update('Delivered')">✅ Delivered</button>
+<button class="btn btn4" onclick="delOrder()">🗑️ Delete Order</button>
+</div>
+
+<script>
+const API = 'https://quickbite-ymqk.onrender.com/api';
+const urlParams = new URLSearchParams(window.location.search);
+const id = urlParams.get('id');
+let orderData;
+
+async function loadOrder(){
+    const res = await fetch(`${API}/orders`);
+    const orders = await res.json();
+    orderData = orders.find(o=>o._id==id);
+    if(!orderData) return document.getElementById('orderBox').innerHTML="Order not found";
+    
+    document.getElementById('orderBox').innerHTML = `
+        <h2>${orderData.trackId}</h2>
+        <p><b>Name:</b> ${orderData.name}</p>
+        <p><b>Phone:</b> ${orderData.phone}</p>
+        <p><b>Address:</b> ${orderData.address}</p>
+        <p><b>Total:</b> ₹${orderData.total}</p>
+        <p><b>Current Status:</b> <span style="color:green">${orderData.status}</span></p>
+        <p><b>Items:</b> ${orderData.items.map(i=>i.name+' x'+i.qty).join(', ')}</p>
+    `;
+}
+
+async function update(status){
+    const res = await fetch(`${API}/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})});
+    const data = await res.json();
+    alert("Status Updated: " + status + "\n\nCustomer WhatsApp Link:\n" + data.customerWaLink);
+    loadOrder();
+}
+
+async function delOrder(){if(confirm("Delete this order?")){await fetch(`${API}/orders/${id}`, {method:'DELETE'}); window.location='/admin';}}
+
+loadOrder();
+</script></body></html>
