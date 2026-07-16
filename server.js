@@ -20,6 +20,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 app.get('/', (req,res)=> res.sendFile(path.join(__dirname, 'public/index1.html')));
 app.get('/admin', (req,res)=> res.sendFile(path.join(__dirname, 'public/admin.html')));
 app.get('/index', (req,res)=> res.sendFile(path.join(__dirname, 'public/index.html')));
+app.get('/cart', (req,res)=> res.sendFile(path.join(__dirname, 'public/cart.html'))); // NAYA ROUTE
 app.get('/track', (req,res)=> res.sendFile(path.join(__dirname, 'public/myorder.html')));
 app.get('/payment', (req,res)=> res.sendFile(path.join(__dirname, 'public/payment.html')));
 
@@ -58,7 +59,7 @@ app.post('/api/orders', async (req,res)=>{
     await new Order({...req.body, trackId}).save(); 
     
     // WHATSAPP LINK - APNA NUMBER YAHAN DAAL
-    const adminNumber = "919876543210"; 
+    const adminNumber = "919876543210"; // <-- YE APNA NUMBER DAAL DE 91 ke sath
     const items = req.body.items.map(i=>`${i.name} x${i.qty}`).join(', ');
     const msg = `New Order: ${trackId}%0AName: ${req.body.name}%0APhone: ${req.body.phone}%0AAddress: ${req.body.address}%0ATotal: ₹${req.body.total}%0AItems: ${items}`;
     const waLink = `https://wa.me/${adminNumber}?text=${msg}`;
@@ -74,5 +75,10 @@ app.delete('/api/orders/:id', async (req,res)=>{ await Order.findByIdAndDelete(r
 
 // ADMIN LOGIN
 app.post('/api/admin/login', (req,res)=>{ res.json({success: req.body.password === 'admin123'}); });
+
+// AUTO PING - RENDER SLEEP NA HO
+setInterval(() => {
+    fetch(`https://quickbite-ymqk.onrender.com/api/menu`).catch(()=>{});
+}, 600000); // 10 min me 1 baar
 
 app.listen(PORT, ()=>console.log(`🚀 Server on ${PORT}`));
