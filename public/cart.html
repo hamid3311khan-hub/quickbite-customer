@@ -1,0 +1,12 @@
+<!DOCTYPE html><html><head><title>Your Cart - QuickBite</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>*{margin:0;font-family:Arial} nav{background:#ff6600;color:white;padding:15px} nav a{color:white;text-decoration:none;margin:0 10px} .container{max-width:700px;margin:20px auto;padding:20px} .item{display:flex;justify-content:space-between;border-bottom:1px solid #ddd;padding:15px 0}</style></head><body>
+<nav><a href="/">🏠 Home</a> <a href="/index">🍔 Menu</a></nav>
+<div class="container"><h2>🛒 Your Cart</h2><div id="cartItems"></div><h3>Total: ₹<span id="total">0</span></h3>
+<input id="name" placeholder="Full Name"><input id="phone" placeholder="Phone"><input id="address" placeholder="Address">
+<button onclick="goToPayment()" style="width:100%;padding:15px;background:#28a745;color:white;border:none">Proceed to Payment</button></div>
+<script>
+let cart = JSON.parse(localStorage.getItem('cart')) || [];
+function loadCart(){let total=0;document.getElementById('cartItems').innerHTML=cart.map((i,idx)=>{total+=i.price*i.qty;return `<div class="item">${i.name} x${i.qty} ₹${i.price*i.qty} <button onclick="cart.splice(${idx},1);localStorage.setItem('cart',JSON.stringify(cart));loadCart()">Remove</button></div>`}).join('');document.getElementById('total').innerText=total;}
+function goToPayment(){localStorage.setItem('orderData',JSON.stringify({name:document.getElementById('name').value,phone:document.getElementById('phone').value,address:document.getElementById('address').value,items:cart,total:cart.reduce((s,i)=>s+i.price*i.qty,0)}));window.location='/payment';}
+loadCart();
+</script></body></html>
