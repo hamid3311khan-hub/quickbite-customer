@@ -59,6 +59,18 @@ app.get('/api/orders/history/:phone', async (req,res)=> res.json(await Order.fin
 app.get('/api/orders/track/:id', async (req,res)=> { const order = await Order.findOne({trackId:req.params.id}); res.json(order); });
 app.put('/api/orders/:id/status', async (req,res)=>{ await Order.findByIdAndUpdate(req.params.id, {status:req.body.status}); res.json({success:true}); });
 app.delete('/api/orders/:id', async (req,res)=>{ await Order.findByIdAndDelete(req.params.id); res.json({success:true}); });
+app.post('/api/orders', async (req,res)=>{ 
+    const trackId = 'QB' + Date.now(); 
+    await new Order({...req.body, trackId}).save(); 
+    
+    // WHATSAPP LINK
+    const adminNumber = "91XXXXXXXXXX"; // Yaha apna number daal
+    const items = req.body.items.map(i=>`${i.name} x${i.qty}`).join(', ');
+    const msg = `New Order: ${trackId}%0AName: ${req.body.name}%0APhone: ${req.body.phone}%0ATotal: ₹${req.body.total}%0AItems: ${items}`;
+    const waLink = `https://wa.me/${adminNumber}?text=${msg}`;
+    
+    res.json({success:true, trackId, waLink}); 
+});
 
 // ADMIN LOGIN
 app.post('/api/admin/login', (req,res)=>{ res.json({success: req.body.password === 'admin123'}); });
