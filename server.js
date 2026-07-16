@@ -97,3 +97,5 @@ setInterval(() => {
 }, 600000); // 10 min me 1 baar
 
 app.listen(PORT, ()=>console.log(`🚀 Server on ${PORT}`));
+
+app.get('/order-details', (req,res)=> res.sendFile(path.join(__dirname, 'public/order-details.html')));
