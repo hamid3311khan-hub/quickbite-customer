@@ -1,14 +1,87 @@
-<!DOCTYPE html><html><head><title>Admin Panel</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>body{font-family:Arial;background:#f4f4f4;padding:20px} nav{background:#333;color:white;padding:15px;margin:-20px -20px 20px -20px} nav a{color:white;text-decoration:none;margin:0 10px;font-weight:bold} .login,.panel{max-width:1100px;margin:auto;background:white;padding:20px;border-radius:8px} input,button,select{padding:10px;margin:5px;border:1px solid #ddd;border-radius:5px} button{background:#ff6600;color:white;border:none;cursor:pointer} .order{border:1px solid #ddd;padding:15px;margin:10px 0;border-radius:5px} .Pending{background:orange;color:white;padding:3px 8px;border-radius:10px} .Preparing{background:blue;color:white;padding:3px 8px;border-radius:10px} .Delivered{background:green;color:white;padding:3px 8px;border-radius:10px}</style></head><body>
-<nav><a href="/">🏠 Home</a> <a href="/index">🍔 Customer View</a> <a href="/track">📦 Track</a></nav>
-<div class="login" id="login"><h2>Admin Login</h2><input type="password" id="pass" placeholder="Password: admin123"><button onclick="login()">Login</button></div>
-<div class="panel" id="panel" style="display:none"><h2>Manage Menu - Add New Item</h2>
-<form id="f"><input name="name" placeholder="Item Name" required><input name="price" type="number" placeholder="Price" required><input name="desc" placeholder="Description"><input name="offer" type="number" placeholder="Offer %"><input name="img" type="file" required><button>Add Item</button></form>
-<button onclick="window.location='/'" style="background:#666">⬅ Back to Home</button><h3>All Menu Items</h3><div id="menu"></div><hr><h2>All Orders</h2><div id="orders"></div></div>
+<!DOCTYPE html><html><head><title>Admin - QuickBite</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>*{margin:0;font-family:Arial} nav{background:#333;color:white;padding:15px} .container{max-width:1200px;margin:20px auto;padding:20px} 
+input,textarea,select{padding:10px;margin:5px;border:1px solid #ddd;border-radius:5px} button{background:#ff6600;color:white;border:none;padding:10px 15px;border-radius:5px;cursor:pointer}
+table{width:100%;border-collapse:collapse;margin-top:20px} th,td{border:1px solid #ddd;padding:10px;text-align:left} th{background:#f2f2f2}
+.card{border:1px solid #ddd;padding:15px;margin:10px 0;border-radius:8px}
+#loginBox{max-width:400px;margin:100px auto;text-align:center}</style></head><body>
+
+<nav><h2>🔒 QuickBite Admin</h2></nav>
+
+<div id="loginBox">
+    <h2>Admin Login</h2>
+    <input id="pass" type="password" placeholder="Password: admin123"><br>
+    <button onclick="login()">Login</button>
+</div>
+
+<div id="adminPanel" style="display:none">
+    <div class="container">
+        <h2>Add New Menu Item</h2>
+        <input id="name" placeholder="Item Name">
+        <input id="price" type="number" placeholder="Price">
+        <input id="category" placeholder="Category: Pizza, Burger">
+        <input id="offer" type="number" placeholder="Offer %">
+        <textarea id="desc" placeholder="Description"></textarea>
+        <input id="img" type="file"><br>
+        <button onclick="addItem()">Add Item</button>
+        <hr>
+        <h2>Orders</h2>
+        <div id="orders"></div>
+        <hr>
+        <h2>Menu Items</h2>
+        <div id="menu"></div>
+    </div>
+</div>
+
 <script>
-const API = 'https://quickbite-ymqk.onrender.com/api'; function login(){ fetch(`${API}/admin/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:document.getElementById('pass').value})}).then(res=>res.json()).then(d=>{if(d.success){document.getElementById('login').style.display='none';document.getElementById('panel').style.display='block';loadMenu();loadOrders()}else alert('Wrong Password')})}
-function loadMenu(){fetch(`${API}/menu`).then(res=>res.json()).then(items=>{ document.getElementById('menu').innerHTML = items.map(i=>`<div style="border:1px solid #eee;padding:10px;margin:5px;display:flex;justify-content:space-between;align-items:center"><img src="${i.img}" width="50"><b>${i.name}</b> - ₹${i.price} - ${i.offer}% <button onclick="del('${i._id}')">Delete</button></div>`).join('')})}
-function del(id){if(confirm('Delete?'))fetch(`${API}/menu/${id}`,{method:'DELETE'}).then(loadMenu)} document.getElementById('f').onsubmit=e=>{e.preventDefault();fetch(`${API}/menu`,{method:'POST',body:new FormData(e.target)}).then(()=>{e.target.reset();loadMenu()})}
-function loadOrders(){fetch(`${API}/orders`).then(res=>res.json()).then(orders=>{ document.getElementById('orders').innerHTML = orders.map(o=>`<div class="order"><b>${o.trackId}</b> - ${o.name} - ${o.phone} - ₹${o.total} - <span class="${o.status}">${o.status}</span><br><b>Payment:</b> ${o.payment}<br>${o.items.map(i=>`${i.name} x${i.qty}`).join(', ')}<br><select onchange="up('${o._id}',this.value)"><option ${o.status=='Pending'?'selected':''}>Pending</option><option ${o.status=='Preparing'?'selected':''}>Preparing</option><option ${o.status=='Delivered'?'selected':''}>Delivered</option></select><button onclick="delOrder('${o._id}')" style="background:red">Delete</button></div>`).join('')})}
-function up(id,s){fetch(`${API}/orders/${id}/status`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:s})}).then(loadOrders)} function delOrder(id){if(confirm('Delete Order?'))fetch(`${API}/orders/${id}`,{method:'DELETE'}).then(loadOrders)}
+const API = 'https://quickbite-ymqk.onrender.com/api';
+async function login(){
+    const res = await fetch(`${API}/admin/login`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:document.getElementById('pass').value})});
+    const data = await res.json();
+    if(data.success){document.getElementById('loginBox').style.display='none';document.getElementById('adminPanel').style.display='block';loadOrders();loadMenu();}
+    else alert("Wrong Password");
+}
+
+async function loadOrders(){
+    const res = await fetch(`${API}/orders`);
+    const orders = await res.json();
+    document.getElementById('orders').innerHTML = orders.map(o=>`
+        <div class="card">
+            <b>${o.trackId}</b> - ${o.name} - ₹${o.total}<br>
+            ${o.phone} | ${o.address}<br>
+            Items: ${o.items.map(i=>i.name+'x'+i.qty).join(', ')}<br>
+            <b>Status:</b> 
+            <select onchange="updateStatus('${o._id}', this.value)">
+                <option ${o.status=='Pending'?'selected':''}>Pending</option>
+                <option ${o.status=='Preparing'?'selected':''}>Preparing</option>
+                <option ${o.status=='Out for Delivery'?'selected':''}>Out for Delivery</option>
+                <option ${o.status=='Delivered'?'selected':''}>Delivered</option>
+            </select>
+            <button onclick="delOrder('${o._id}')" style="background:red">Delete</button>
+        </div>`).join('');
+}
+
+async function updateStatus(id, status){
+    await fetch(`${API}/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})});
+    alert("Status: " + status);
+    loadOrders();
+}
+
+async function delOrder(id){if(confirm("Delete?")){await fetch(`${API}/orders/${id}`, {method:'DELETE'}); loadOrders();}}
+
+async function loadMenu(){
+    const res = await fetch(`${API}/menu`);
+    const items = await res.json();
+    document.getElementById('menu').innerHTML = items.map(i=>`
+        <div class="card">${i.name} - ₹${i.price} - ${i.category}
+        <button onclick="delItem('${i._id}')" style="background:red;float:right">Delete</button></div>`).join('');
+}
+
+async function addItem(){
+    const fd = new FormData();
+    fd.append('name', name.value); fd.append('price', price.value); fd.append('category', category.value);
+    fd.append('desc', desc.value); fd.append('offer', offer.value); fd.append('img', img.files[0]);
+    await fetch(`${API}/menu`, {method:'POST', body:fd});
+    alert("Added"); loadMenu();
+}
+async function delItem(id){await fetch(`${API}/menu/${id}`, {method:'DELETE'}); loadMenu();}
 </script></body></html>
