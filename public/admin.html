@@ -1,13 +1,22 @@
 <!DOCTYPE html><html><head><title>Admin - QuickBite</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>*{margin:0;font-family:Arial} nav{background:#333;color:white;padding:15px}.container{max-width:1200px;margin:20px auto;padding:20px}
-input,textarea,select{padding:10px;margin:5px;border:1px solid #ddd;border-radius:5px} button{background:#ff6600;color:white;border:none;padding:10px 15px;border-radius:5px;cursor:pointer}
-.card{border:1px solid #ddd;padding:15px;margin:10px 0;border-radius:8px}
-#loginBox{max-width:400px;margin:100px auto;text-align:center}
-body{background:#f5f5f5} 
-.card{background:white;box-shadow:0 2px 5px rgba(0,0,0,0.1)}
-button:hover{opacity:0.8}</style></head><body>
+<style>
+*{margin:0;font-family:'Segoe UI',Arial}
+body{background:#f8f9fa}
+nav{background:linear-gradient(90deg, #ff6600, #ff4500);color:white;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,0.2)}
+nav h2{font-size:22px}
+.container{max-width:1200px;margin:20px auto;padding:20px}
+input,textarea,select{padding:12px;margin:8px 5px;border:1px solid #ddd;border-radius:8px;width:200px;font-size:14px}
+textarea{width:95%;height:80px}
+button{background:#ff6600;color:white;border:none;padding:12px 18px;border-radius:8px;cursor:pointer;font-weight:bold;transition:0.2s;margin:5px}
+button:hover{transform:scale(1.05);background:#e65c00}
+.card{background:white;border:1px solid #e0e0e0;padding:18px;margin:15px 0;border-radius:12px;box-shadow:0 3px 8px rgba(0,0,0,0.08)}
+#loginBox{max-width:400px;margin:100px auto;text-align:center;background:white;padding:30px;border-radius:12px;box-shadow:0 5px 15px rgba(0,0,0,0.1)}
+h2{color:#333;margin-bottom:15px}
+hr{margin:25px 0;border:none;border-top:2px solid #ff6600}
+select{width:auto}
+</style></head><body>
 
-<nav><h2>🔒 QuickBite Admin</h2></nav>
+<nav><h2>🔒 QuickBite Admin Panel</h2></nav>
 
 <div id="loginBox">
     <h2>Admin Login</h2>
@@ -17,7 +26,7 @@ button:hover{opacity:0.8}</style></head><body>
 
 <div id="adminPanel" style="display:none">
     <div class="container">
-        <h2>Add New Menu Item</h2>
+        <h2>➕ Add New Menu Item</h2>
         <input id="name" placeholder="Item Name">
         <input id="price" type="number" placeholder="Price">
         <input id="category" placeholder="Category: Pizza, Burger">
@@ -26,10 +35,10 @@ button:hover{opacity:0.8}</style></head><body>
         <input id="img" type="file"><br><br>
         <button onclick="addItem()">Add Item</button>
         <hr>
-        <h2>Orders</h2>
+        <h2>📦 Orders</h2>
         <div id="orders">Loading...</div>
         <hr>
-        <h2>Menu Items</h2>
+        <h2>🍔 Menu Items</h2>
         <div id="menu"></div>
     </div>
 </div>
@@ -41,17 +50,18 @@ async function login(){
     const res = await fetch(`${API}/admin/login`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:document.getElementById('pass').value})});
     const data = await res.json();
     if(data.success){document.getElementById('loginBox').style.display='none';document.getElementById('adminPanel').style.display='block';loadOrders();loadMenu();}
-    else alert("Wrong Password");
+    else alert("❌ Wrong Password");
 }
 
 async function loadOrders(){
     const res = await fetch(`${API}/orders`);
     const orders = await res.json();
+    if(orders.length==0) return document.getElementById('orders').innerHTML="<p>No orders yet</p>";
     document.getElementById('orders').innerHTML = orders.map(o=>`
         <div class="card">
-            <b>${o.trackId}</b> - ${o.name} - ₹${o.total}<br>
-            ${o.phone} | ${o.address}<br>
-            Items: ${o.items.map(i=>i.name+'x'+i.qty).join(', ')}<br><br>
+            <h3>${o.trackId} - ${o.name} - ₹${o.total}</h3>
+            <p><b>Phone:</b> ${o.phone} | <b>Address:</b> ${o.address}</p>
+            <p><b>Items:</b> ${o.items.map(i=>i.name+' x'+i.qty).join(', ')}</p><br>
             <b>Status:</b>
             <select onchange="updateStatus('${o._id}', this.value)">
                 <option ${o.status=='Pending'?'selected':''}>Pending</option>
@@ -59,7 +69,7 @@ async function loadOrders(){
                 <option ${o.status=='Out for Delivery'?'selected':''}>Out for Delivery</option>
                 <option ${o.status=='Delivered'?'selected':''}>Delivered</option>
             </select>
-            <a href="/order-details?id=${o._id}"><button style="background:blue">Open</button></a>
+            <a href="/order-details?id=${o._id}"><button style="background:#007bff">Open</button></a>
             <button onclick="delOrder('${o._id}')" style="background:red">Delete</button>
         </div>`).join('');
 }
@@ -67,11 +77,11 @@ async function loadOrders(){
 async function updateStatus(id, status){
     const res = await fetch(`${API}/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})});
     const data = await res.json();
-    alert("Status: " + status + "\n\nCustomer WhatsApp Link:\n" + data.customerWaLink);
+    alert("✅ Status: " + status + "\n\n📱 Customer WhatsApp Link:\n" + data.customerWaLink);
     loadOrders();
 }
 
-async function delOrder(id){if(confirm("Delete?")){await fetch(`${API}/orders/${id}`, {method:'DELETE'}); loadOrders();}}
+async function delOrder(id){if(confirm("Delete this order?")){await fetch(`${API}/orders/${id}`, {method:'DELETE'}); loadOrders();}}
 
 async function loadMenu(){
     const res = await fetch(`${API}/menu`);
@@ -86,7 +96,7 @@ async function addItem(){
     fd.append('name', name.value); fd.append('price', price.value); fd.append('category', category.value);
     fd.append('desc', desc.value); fd.append('offer', offer.value); fd.append('img', img.files[0]);
     await fetch(`${API}/menu`, {method:'POST', body:fd});
-    alert("Added"); loadMenu();
+    alert("✅ Item Added"); loadMenu();
 }
 async function delItem(id){await fetch(`${API}/menu/${id}`, {method:'DELETE'}); loadMenu();}
 </script></body></html>
