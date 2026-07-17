@@ -1,13 +1,97 @@
-<!DOCTYPE html><html><head><title>Your Cart - QuickBite</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>*{margin:0;font-family:Arial} nav{background:#ff6600;color:white;padding:15px} nav a{color:white;text-decoration:none;margin:0 10px} .container{max-width:700px;margin:20px auto;padding:20px} .item{display:flex;justify-content:space-between;border-bottom:1px solid #ddd;padding:15px 0} input{width:95%;padding:10px;margin:8px 0;border:1px solid #ddd;border-radius:5px}</style></head><body>
-<nav><a href="/">🏠 Home</a> <a href="/index">🍔 Menu</a></nav>
-<div class="container"><h2>🛒 Your Cart</h2><div id="cartItems"></div><h3>Total: ₹<span id="total">0</span></h3>
-<h3>Delivery Details</h3>
-<input id="name" placeholder="Full Name"><input id="phone" placeholder="Phone"><input id="address" placeholder="Address">
-<button onclick="goToPayment()" style="width:100%;padding:15px;background:#28a745;color:white;border:none">Proceed to Payment</button></div>
+<!DOCTYPE html><html><head><title>Cart - QuickBite</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+*{margin:0;font-family:Arial}
+nav{background:#ff6600;color:white;padding:15px}
+.container{max-width:600px;margin:20px auto;padding:20px}
+.card{background:white;padding:15px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
+input{width:95%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:5px}
+button{background:#28a745;color:white;border:none;padding:15px;width:100%;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer}
+.coupon-box{display:flex;gap:10px;margin:15px 0}
+.coupon-box input{margin:0}
+.total{font-size:20px;font-weight:bold;color:#ff6600;margin:10px 0}
+</style></head><body>
+<nav><a href="/index" style="color:white;text-decoration:none">← Back to Menu</a></nav>
+
+<div class="container">
+    <div class="card">
+        <h2>🛒 Your Cart</h2>
+        <div id="cartItems"></div>
+        <hr>
+        
+        <!-- COUPON -->
+        <div class="coupon-box">
+            <input id="coupon" placeholder="Enter Coupon: FIRST30">
+            <button onclick="applyCoupon()" style="width:auto;background:#ff6600">Apply</button>
+        </div>
+        <p id="discountMsg" style="color:green"></p>
+
+        <p class="total">Total: ₹<span id="total">0</span></p>
+        
+        <h3>Delivery Details</h3>
+        <input id="name" placeholder="Full Name">
+        <input id="phone" placeholder="Phone">
+        <input id="address" placeholder="Address">
+        
+        <!-- BUTTON CHANGE -->
+        <button onclick="placeOrder()">Place Order - COD</button>
+    </div>
+</div>
+
 <script>
+const API = 'https://quickbite-ymqk.onrender.com/api';
 let cart = JSON.parse(localStorage.getItem('cart')) || [];
-function loadCart(){let total=0;document.getElementById('cartItems').innerHTML=cart.map((i,idx)=>{total+=i.price*i.qty;return `<div class="item">${i.name} x${i.qty} ₹${i.price*i.qty} <button onclick="cart.splice(${idx},1);localStorage.setItem('cart',JSON.stringify(cart));loadCart()">Remove</button></div>`}).join('');document.getElementById('total').innerText=total;}
-function goToPayment(){if(cart.length==0) return alert("Cart khali hai");localStorage.setItem('orderData',JSON.stringify({name:name.value,phone:phone.value,address:address.value,items:cart,total:cart.reduce((s,i)=>s+i.price*i.qty,0)}));window.location='/payment';}
+let discount = 0;
+
+function loadCart(){
+    if(cart.length==0){document.getElementById('cartItems').innerHTML="<p>Cart is empty</p>"; return;}
+    let total = cart.reduce((s,i)=>s+i.price*i.qty,0);
+    let finalTotal = total - discount;
+    document.getElementById('cartItems').innerHTML = cart.map(i=>`${i.name} x${i.qty} - ₹${i.price*i.qty} <button onclick="remove(${i._id})">Remove</button>`).join('<hr>');
+    document.getElementById('total').innerText = finalTotal;
+}
+
+function remove(id){
+    cart = cart.filter(i=>i._id!=id);
+    localStorage.setItem('cart', JSON.stringify(cart));
+    loadCart();
+}
+
+// COUPON VALIDATE
+async function applyCoupon(){
+    const code = document.getElementById('coupon').value;
+    const res = await fetch(`${API}/coupon/validate`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code})});
+    const data = await res.json();
+    if(data.success){
+        let total = cart.reduce((s,i)=>s+i.price*i.qty,0);
+        discount = data.type=='PERCENT' ? Math.round(total*data.discount/100) : data.discount;
+        document.getElementById('discountMsg').innerText = `✅ ${data.discount}${data.type=='PERCENT'?'%':'₹'} Off Applied`;
+        loadCart();
+    } else alert("Invalid Coupon");
+}
+
+// ORDER PLACE - COD
+async function placeOrder(){
+    const order = {
+        name:document.getElementById('name').value,
+        phone:document.getElementById('phone').value,
+        address:document.getElementById('address').value,
+        items:cart,
+        total:document.getElementById('total').innerText,
+        payment:'COD',
+        coupon:document.getElementById('coupon').value,
+        discount:discount
+    }
+    if(!order.name || !order.phone || !order.address) return alert("Please fill all details");
+    
+    const res = await fetch(`${API}/orders`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(order)});
+    const data = await res.json();
+    
+    if(data.success){
+        localStorage.setItem('lastOrder', JSON.stringify(cart)); // Reorder ke liye save
+        localStorage.removeItem('cart');
+        alert("✅ Order Placed! Order ID: " + data.trackId + "\n\nAdmin ko WhatsApp mil gaya.");
+        window.location = '/track?id=' + data.trackId;
+    }
+}
 loadCart();
 </script></body></html>
