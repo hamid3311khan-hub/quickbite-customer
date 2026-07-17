@@ -59,7 +59,8 @@ async function loadOrders(){
             <button onclick="delOrder('${o._id}')" style="background:red">Delete</button>
         </div>`).join('');
 }
-
+<a href="/order-details?id=${o._id}"><button style="background:blue">Open</button></a>
+<button onclick="delOrder('${o._id}')" style="background:red">Delete</button>
 async function updateStatus(id, status){
     await fetch(`${API}/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})});
     alert("Status: " + status);
