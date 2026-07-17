@@ -93,10 +93,22 @@ async function loadMenu(){
 
 async function addItem(){
     const fd = new FormData();
-    fd.append('name', name.value); fd.append('price', price.value); fd.append('category', category.value);
-    fd.append('desc', desc.value); fd.append('offer', offer.value); fd.append('img', img.files[0]);
+    fd.append('name', document.getElementById('name').value);
+    fd.append('price', document.getElementById('price').value);
+    fd.append('category', document.getElementById('category').value);
+    fd.append('desc', document.getElementById('desc').value);
+    fd.append('offer', document.getElementById('offer').value);
+    fd.append('img', document.getElementById('img').files[0]);
     await fetch(`${API}/menu`, {method:'POST', body:fd});
-    alert("✅ Item Added"); loadMenu();
+    alert("✅ Item Added");
+    // form clear
+    document.getElementById('name').value = '';
+    document.getElementById('price').value = '';
+    document.getElementById('category').value = '';
+    document.getElementById('desc').value = '';
+    document.getElementById('offer').value = '';
+    document.getElementById('img').value = '';
+    loadMenu();
 }
 async function delItem(id){await fetch(`${API}/menu/${id}`, {method:'DELETE'}); loadMenu();}
 </script></body></html>
