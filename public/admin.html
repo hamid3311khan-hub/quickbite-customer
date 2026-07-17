@@ -1,7 +1,6 @@
 <!DOCTYPE html><html><head><title>Admin - QuickBite</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>*{margin:0;font-family:Arial} nav{background:#333;color:white;padding:15px} .container{max-width:1200px;margin:20px auto;padding:20px} 
+<style>*{margin:0;font-family:Arial} nav{background:#333;color:white;padding:15px}.container{max-width:1200px;margin:20px auto;padding:20px}
 input,textarea,select{padding:10px;margin:5px;border:1px solid #ddd;border-radius:5px} button{background:#ff6600;color:white;border:none;padding:10px 15px;border-radius:5px;cursor:pointer}
-table{width:100%;border-collapse:collapse;margin-top:20px} th,td{border:1px solid #ddd;padding:10px;text-align:left} th{background:#f2f2f2}
 .card{border:1px solid #ddd;padding:15px;margin:10px 0;border-radius:8px}
 #loginBox{max-width:400px;margin:100px auto;text-align:center}</style></head><body>
 
@@ -9,7 +8,7 @@ table{width:100%;border-collapse:collapse;margin-top:20px} th,td{border:1px soli
 
 <div id="loginBox">
     <h2>Admin Login</h2>
-    <input id="pass" type="password" placeholder="Password: admin123"><br>
+    <input id="pass" type="password" placeholder="Password: admin123"><br><br>
     <button onclick="login()">Login</button>
 </div>
 
@@ -21,11 +20,11 @@ table{width:100%;border-collapse:collapse;margin-top:20px} th,td{border:1px soli
         <input id="category" placeholder="Category: Pizza, Burger">
         <input id="offer" type="number" placeholder="Offer %">
         <textarea id="desc" placeholder="Description"></textarea>
-        <input id="img" type="file"><br>
+        <input id="img" type="file"><br><br>
         <button onclick="addItem()">Add Item</button>
         <hr>
         <h2>Orders</h2>
-        <div id="orders"></div>
+        <div id="orders">Loading...</div>
         <hr>
         <h2>Menu Items</h2>
         <div id="menu"></div>
@@ -34,6 +33,7 @@ table{width:100%;border-collapse:collapse;margin-top:20px} th,td{border:1px soli
 
 <script>
 const API = 'https://quickbite-ymqk.onrender.com/api';
+
 async function login(){
     const res = await fetch(`${API}/admin/login`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:document.getElementById('pass').value})});
     const data = await res.json();
@@ -48,22 +48,23 @@ async function loadOrders(){
         <div class="card">
             <b>${o.trackId}</b> - ${o.name} - ₹${o.total}<br>
             ${o.phone} | ${o.address}<br>
-            Items: ${o.items.map(i=>i.name+'x'+i.qty).join(', ')}<br>
-            <b>Status:</b> 
+            Items: ${o.items.map(i=>i.name+'x'+i.qty).join(', ')}<br><br>
+            <b>Status:</b>
             <select onchange="updateStatus('${o._id}', this.value)">
                 <option ${o.status=='Pending'?'selected':''}>Pending</option>
                 <option ${o.status=='Preparing'?'selected':''}>Preparing</option>
                 <option ${o.status=='Out for Delivery'?'selected':''}>Out for Delivery</option>
                 <option ${o.status=='Delivered'?'selected':''}>Delivered</option>
             </select>
+            <a href="/order-details?id=${o._id}"><button style="background:blue">Open</button></a>
             <button onclick="delOrder('${o._id}')" style="background:red">Delete</button>
         </div>`).join('');
 }
-<a href="/order-details?id=${o._id}"><button style="background:blue">Open</button></a>
-<button onclick="delOrder('${o._id}')" style="background:red">Delete</button>
+
 async function updateStatus(id, status){
-    await fetch(`${API}/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})});
-    alert("Status: " + status);
+    const res = await fetch(`${API}/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})});
+    const data = await res.json();
+    alert("Status: " + status + "\n\nCustomer WhatsApp Link:\n" + data.customerWaLink);
     loadOrders();
 }
 
