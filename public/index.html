@@ -34,10 +34,8 @@ input{width:95%;padding:10px;margin:8px 0;border:1px solid #ddd;border-radius:5p
     </div>
 </nav>
 
-<!-- BANNER -->
 <div class="banner">🔥 50% OFF on First Order - CODE: FIRST50 🔥</div>
 
-<!-- SEARCH + CATEGORIES -->
 <div class="search-bar">
     <input id="search" placeholder="🔍 Search Pizza, Burger..." onkeyup="filterItems()">
     <div class="categories" id="categories"></div>
@@ -51,7 +49,6 @@ let cart = JSON.parse(localStorage.getItem('cart')) || [];
 let allItems = []; 
 let currentCat = 'All';
 
-// DARK MODE
 if(localStorage.getItem('dark')=='true') document.body.classList.add('dark');
 function toggleDark(){
     document.body.classList.toggle('dark');
@@ -62,7 +59,7 @@ fetch(`${API}/menu`).then(res=>res.json()).then(items=>{
     allItems = items;
     loadCategories();
     displayItems(items);
-    checkReorder(); // Reorder check
+    checkReorder();
 }).catch(()=>{document.getElementById('menu').innerHTML="<h3>Server Error</h3>"})
 
 function loadCategories(){
@@ -120,7 +117,6 @@ function showCart(){
     window.location = '/cart';
 } 
 
-// REORDER BUTTON - NAYA
 function checkReorder(){
     const lastOrder = JSON.parse(localStorage.getItem('lastOrder') || '[]');
     if(lastOrder.length>0){
@@ -131,10 +127,12 @@ function checkReorder(){
 }
 function reorder(){
     const lastOrder = JSON.parse(localStorage.getItem('lastOrder') || '[]');
-    cart = lastOrder;
+    if(lastOrder.length==0) return alert('No previous order');
+    cart = [...lastOrder]; // purana hata ke naya
     localStorage.setItem('cart', JSON.stringify(cart));
     updateCart();
-    alert("Previous order added to cart!");
+    alert("✅ Previous order added to cart!");
+    window.location = '/cart';
 }
 updateCart();
 </script></body></html>
