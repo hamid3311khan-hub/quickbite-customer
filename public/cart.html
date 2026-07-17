@@ -5,10 +5,15 @@ nav{background:#ff6600;color:white;padding:15px}
 .container{max-width:600px;margin:20px auto;padding:20px}
 .card{background:white;padding:15px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
 input{width:95%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:5px}
-button{background:#28a745;color:white;border:none;padding:15px;width:100%;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer}
+button{background:#28a745;color:white;border:none;padding:15px;width:100%;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:10px}
 .coupon-box{display:flex;gap:10px;margin:15px 0}
 .coupon-box input{margin:0}
 .total{font-size:20px;font-weight:bold;color:#ff6600;margin:10px 0}
+.payment-option{border:2px solid #ddd;padding:12px;border-radius:8px;margin:10px 0;cursor:pointer}
+.payment-option.active{border-color:#ff6600;background:#fff5f0}
+#qrBox{text-align:center;display:none}
+.cart-item{display:flex;justify-content:space-between;align-items:center;margin:10px 0}
+.remove-btn{width:auto;padding:5px 10px;background:red;font-size:12px}
 </style></head><body>
 <nav><a href="/index" style="color:white;text-decoration:none">← Back to Menu</a></nav>
 
@@ -18,7 +23,6 @@ button{background:#28a745;color:white;border:none;padding:15px;width:100%;border
         <div id="cartItems"></div>
         <hr>
         
-        <!-- COUPON -->
         <div class="coupon-box">
             <input id="coupon" placeholder="Enter Coupon: FIRST30">
             <button onclick="applyCoupon()" style="width:auto;background:#ff6600">Apply</button>
@@ -27,13 +31,25 @@ button{background:#28a745;color:white;border:none;padding:15px;width:100%;border
 
         <p class="total">Total: ₹<span id="total">0</span></p>
         
+        <h3>Payment Method</h3>
+        <div class="payment-option active" onclick="selectPay('COD')">
+            <b>💵 Cash on Delivery</b><br><small>Order ke time cash dena</small>
+        </div>
+        <div class="payment-option" onclick="selectPay('UPI')">
+            <b>📱 Pay Online - UPI</b><br><small>Scan karke pay karo</small>
+        </div>
+        
+        <div id="qrBox">
+            <p>Scan karke ₹<span id="qrAmount">0</span> pay kare</p>
+            <img id="qr" src="" style="width:220px">
+        </div>
+
         <h3>Delivery Details</h3>
         <input id="name" placeholder="Full Name">
         <input id="phone" placeholder="Phone">
         <input id="address" placeholder="Address">
         
-        <!-- BUTTON CHANGE -->
-        <button onclick="placeOrder()">Place Order - COD</button>
+        <button onclick="placeOrder()">Place Order</button>
     </div>
 </div>
 
@@ -41,22 +57,42 @@ button{background:#28a745;color:white;border:none;padding:15px;width:100%;border
 const API = 'https://quickbite-ymqk.onrender.com/api';
 let cart = JSON.parse(localStorage.getItem('cart')) || [];
 let discount = 0;
+let paymentMode = 'COD';
+let finalTotal = 0;
 
 function loadCart(){
     if(cart.length==0){document.getElementById('cartItems').innerHTML="<p>Cart is empty</p>"; return;}
     let total = cart.reduce((s,i)=>s+i.price*i.qty,0);
-    let finalTotal = total - discount;
-    document.getElementById('cartItems').innerHTML = cart.map(i=>`${i.name} x${i.qty} - ₹${i.price*i.qty} <button onclick="remove(${i._id})">Remove</button>`).join('<hr>');
+    finalTotal = total - discount;
+    document.getElementById('cartItems').innerHTML = cart.map((i,index)=>`
+        <div class="cart-item">
+            <span>${i.name} x${i.qty} - ₹${i.price*i.qty}</span>
+            <button onclick="remove(${index})" class="remove-btn">X</button>
+        </div>
+    `).join('');
     document.getElementById('total').innerText = finalTotal;
+    updateQR();
 }
 
-function remove(id){
-    cart = cart.filter(i=>i._id!=id);
+function remove(index){
+    cart.splice(index,1);
     localStorage.setItem('cart', JSON.stringify(cart));
     loadCart();
 }
 
-// COUPON VALIDATE
+function selectPay(mode){
+    paymentMode = mode;
+    document.querySelectorAll('.payment-option').forEach(el=>el.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    document.getElementById('qrBox').style.display = mode=='UPI' ? 'block' : 'none';
+}
+
+function updateQR(){
+    let upiID = "yourupi@oksbi"; // Yaha apna UPI ID daal
+    document.getElementById('qr').src = `https://upiqr.in/api/qr?name=QuickBite&vpa=${upiID}&amount=${finalTotal}`;
+    document.getElementById('qrAmount').innerText = finalTotal;
+}
+
 async function applyCoupon(){
     const code = document.getElementById('coupon').value;
     const res = await fetch(`${API}/coupon/validate`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code})});
@@ -69,15 +105,14 @@ async function applyCoupon(){
     } else alert("Invalid Coupon");
 }
 
-// ORDER PLACE - COD
 async function placeOrder(){
     const order = {
         name:document.getElementById('name').value,
         phone:document.getElementById('phone').value,
         address:document.getElementById('address').value,
         items:cart,
-        total:document.getElementById('total').innerText,
-        payment:'COD',
+        total:finalTotal,
+        payment:paymentMode,
         coupon:document.getElementById('coupon').value,
         discount:discount
     }
@@ -87,9 +122,9 @@ async function placeOrder(){
     const data = await res.json();
     
     if(data.success){
-        localStorage.setItem('lastOrder', JSON.stringify(cart)); // Reorder ke liye save
+        localStorage.setItem('lastOrder', JSON.stringify(cart));
         localStorage.removeItem('cart');
-        alert("✅ Order Placed! Order ID: " + data.trackId + "\n\nAdmin ko WhatsApp mil gaya.");
+        alert(`✅ Order Placed! Order ID: ${data.trackId}\nPayment: ${paymentMode}`);
         window.location = '/track?id=' + data.trackId;
     }
 }
