@@ -14,6 +14,8 @@ button:hover{transform:scale(1.05);background:#e65c00}
 h2{color:#333;margin-bottom:15px}
 hr{margin:25px 0;border:none;border-top:2px solid #ff6600}
 select{width:auto}
+.badge{background:#28a745;color:white;padding:5px 10px;border-radius:20px;font-size:12px}
+.badge.off{background:red}
 </style></head><body>
 
 <nav><h2>🔒 QuickBite Admin Panel</h2></nav>
@@ -26,6 +28,21 @@ select{width:auto}
 
 <div id="adminPanel" style="display:none">
     <div class="container">
+
+        <!-- WHATSAPP BROADCAST -->
+        <h2>📢 WhatsApp Broadcast</h2>
+        <textarea id="broadcastMsg" placeholder="Sab customer ko bhejna hai: Aaj 20% OFF!"></textarea><br>
+        <button onclick="sendBroadcast()" style="background:#25D366">Send to All Customers</button>
+        <hr>
+
+        <!-- COUPON -->
+        <h2>🎟️ Add Coupon</h2>
+        <input id="couponCode" placeholder="CODE: FIRST50">
+        <input id="couponDiscount" type="number" placeholder="Discount: 50">
+        <select id="couponType"><option>FLAT</option><option>PERCENT</option></select>
+        <button onclick="addCoupon()">Add Coupon</button>
+        <hr>
+
         <h2>➕ Add New Menu Item</h2>
         <input id="name" placeholder="Item Name">
         <input id="price" type="number" placeholder="Price">
@@ -51,6 +68,28 @@ async function login(){
     const data = await res.json();
     if(data.success){document.getElementById('loginBox').style.display='none';document.getElementById('adminPanel').style.display='block';loadOrders();loadMenu();}
     else alert("❌ Wrong Password");
+}
+
+// WHATSAPP BROADCAST - NAYA
+async function sendBroadcast(){
+    const msg = document.getElementById('broadcastMsg').value;
+    if(!msg) return alert("Message likho");
+    if(!confirm("Sabko msg bhejna hai?")) return;
+    const res = await fetch(`${API}/broadcast`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:msg})});
+    const data = await res.json();
+    alert(`✅ ${data.count} customers ko link ban gaye. Alag tab me khul jayenge`);
+    data.links.forEach(link => window.open(link, '_blank'));
+}
+
+// COUPON ADD - NAYA
+async function addCoupon(){
+    const body = {
+        code: document.getElementById('couponCode').value,
+        discount: document.getElementById('couponDiscount').value,
+        type: document.getElementById('couponType').value
+    }
+    await fetch(`${API}/coupon`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    alert("✅ Coupon Added");
 }
 
 async function loadOrders(){
@@ -83,12 +122,23 @@ async function updateStatus(id, status){
 
 async function delOrder(id){if(confirm("Delete this order?")){await fetch(`${API}/orders/${id}`, {method:'DELETE'}); loadOrders();}}
 
+// STOCK TOGGLE ADD KIYA
+async function toggleStock(id){
+    const res = await fetch(`${API}/menu/${id}/stock`, {method:'PUT'});
+    const data = await res.json();
+    loadMenu();
+}
+
 async function loadMenu(){
     const res = await fetch(`${API}/menu`);
     const items = await res.json();
     document.getElementById('menu').innerHTML = items.map(i=>`
-        <div class="card">${i.name} - ₹${i.price} - ${i.category}
-        <button onclick="delItem('${i._id}')" style="background:red;float:right">Delete</button></div>`).join('');
+        <div class="card">
+            ${i.name} - ₹${i.price} - ${i.category}
+            <span class="badge ${i.inStock?'':'off'}">${i.inStock?'In Stock':'Out of Stock'}</span>
+            <button onclick="toggleStock('${i._id}')" style="background:#17a2b8">Stock ON/OFF</button>
+            <button onclick="delItem('${i._id}')" style="background:red;float:right">Delete</button>
+        </div>`).join('');
 }
 
 async function addItem(){
@@ -101,7 +151,6 @@ async function addItem(){
     fd.append('img', document.getElementById('img').files[0]);
     await fetch(`${API}/menu`, {method:'POST', body:fd});
     alert("✅ Item Added");
-    // form clear
     document.getElementById('name').value = '';
     document.getElementById('price').value = '';
     document.getElementById('category').value = '';
