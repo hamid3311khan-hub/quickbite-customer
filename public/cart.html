@@ -11,7 +11,7 @@ button{background:#28a745;color:white;border:none;padding:15px;width:100%;border
 .total{font-size:20px;font-weight:bold;color:#ff6600;margin:10px 0}
 .payment-option{border:2px solid #ddd;padding:12px;border-radius:8px;margin:10px 0;cursor:pointer}
 .payment-option.active{border-color:#ff6600;background:#fff5f0}
-#qrBox{text-align:center;display:none}
+#qrBox{text-align:center;display:none;padding:15px;border:1px dashed #ff6600;border-radius:8px;margin:10px 0}
 .cart-item{display:flex;justify-content:space-between;align-items:center;margin:10px 0}
 .remove-btn{width:auto;padding:5px 10px;background:red;font-size:12px}
 </style></head><body>
@@ -32,16 +32,16 @@ button{background:#28a745;color:white;border:none;padding:15px;width:100%;border
         <p class="total">Total: ₹<span id="total">0</span></p>
         
         <h3>Payment Method</h3>
-        <div class="payment-option active" onclick="selectPay('COD')">
+        <div class="payment-option active" onclick="selectPay('COD', this)">
             <b>💵 Cash on Delivery</b><br><small>Order ke time cash dena</small>
         </div>
-        <div class="payment-option" onclick="selectPay('UPI')">
+        <div class="payment-option" onclick="selectPay('UPI', this)">
             <b>📱 Pay Online - UPI</b><br><small>Scan karke pay karo</small>
         </div>
         
         <div id="qrBox">
-            <p>Scan karke ₹<span id="qrAmount">0</span> pay kare</p>
-            <img id="qr" src="" style="width:220px">
+            <p><b>Scan karke ₹<span id="qrAmount">0</span> pay kare</b></p>
+            <img id="qr" src="" style="width:220px;margin:10px 0">
         </div>
 
         <h3>Delivery Details</h3>
@@ -61,7 +61,7 @@ let paymentMode = 'COD';
 let finalTotal = 0;
 
 function loadCart(){
-    if(cart.length==0){document.getElementById('cartItems').innerHTML="<p>Cart is empty</p>"; return;}
+    if(cart.length==0){document.getElementById('cartItems').innerHTML="<p>Cart is empty</p>"; document.getElementById('total').innerText=0; return;}
     let total = cart.reduce((s,i)=>s+i.price*i.qty,0);
     finalTotal = total - discount;
     document.getElementById('cartItems').innerHTML = cart.map((i,index)=>`
@@ -80,17 +80,20 @@ function remove(index){
     loadCart();
 }
 
-function selectPay(mode){
+function selectPay(mode, el){
     paymentMode = mode;
-    document.querySelectorAll('.payment-option').forEach(el=>el.classList.remove('active'));
-    event.currentTarget.classList.add('active');
+    document.querySelectorAll('.payment-option').forEach(b=>b.classList.remove('active'));
+    el.classList.add('active');
     document.getElementById('qrBox').style.display = mode=='UPI' ? 'block' : 'none';
+    updateQR();
 }
 
 function updateQR(){
-    let upiID = "yourupi@oksbi"; // <-- Yaha apna UPI ID daal de
-    document.getElementById('qr').src = `https://upiqr.in/api/qr?name=QuickBite&vpa=${upiID}&amount=${finalTotal}`;
-    document.getElementById('qrAmount').innerText = finalTotal;
+    let upiID = "tanbalkhi2014-3@okhdfcbank"; // <-- Tera UPI ID
+    if(finalTotal > 0){
+        document.getElementById('qr').src = `https://upiqr.in/api/qr?name=QuickBite&vpa=${upiID}&amount=${finalTotal}`;
+        document.getElementById('qrAmount').innerText = finalTotal;
+    }
 }
 
 async function applyCoupon(){
