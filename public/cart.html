@@ -88,7 +88,7 @@ function selectPay(mode){
 }
 
 function updateQR(){
-    let upiID = "yourupi@oksbi"; // Yaha apna UPI ID daal
+    let upiID = "yourupi@oksbi"; // <-- Yaha apna UPI ID daal de
     document.getElementById('qr').src = `https://upiqr.in/api/qr?name=QuickBite&vpa=${upiID}&amount=${finalTotal}`;
     document.getElementById('qrAmount').innerText = finalTotal;
 }
