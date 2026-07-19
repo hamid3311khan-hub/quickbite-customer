@@ -1,7 +1,20 @@
-<!DOCTYPE html><html><head><title>Order Details - QuickBite</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>*{margin:0;font-family:Arial} nav{background:#333;color:white;padding:15px} .container{max-width:700px;margin:30px auto;padding:20px}
-.card{border:2px solid #ff6600;padding:20px;border-radius:10px} .btn{padding:15px;margin:8px;width:100%;border:none;border-radius:8px;font-size:16px;cursor:pointer;color:white}
-.btn1{background:#ffc107} .btn2{background:#17a2b8} .btn3{background:#28a745} .btn4{background:red}</style></head><body>
+<!DOCTYPE html>
+<html>
+<head>
+<title>Track Order - QuickBite</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+*{margin:0;font-family:Arial} 
+nav{background:#333;color:white;padding:15px} 
+.container{max-width:700px;margin:30px auto;padding:20px}
+.card{border:2px solid #ff6600;padding:20px;border-radius:10px;margin-bottom:20px} 
+.btn{padding:15px;margin:8px;width:100%;border:none;border-radius:8px;font-size:16px;cursor:pointer;color:white}
+.btn1{background:#ffc107} .btn2{background:#17a2b8} .btn3{background:#28a745} .btn4{background:red}
+#map{height:350px;border-radius:10px;margin-top:20px;border:2px solid #ddd}
+</style>
+</head>
+<body>
 <nav><a href="/admin" style="color:white">⬅ Back to Admin</a></nav>
 
 <div class="container">
@@ -12,19 +25,23 @@
 <button class="btn btn2" onclick="update('Out for Delivery')">🚚 Out for Delivery</button>
 <button class="btn btn3" onclick="update('Delivered')">✅ Delivered</button>
 <button class="btn btn4" onclick="delOrder()">🗑️ Delete Order</button>
+
+<div id="map"></div>
 </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const API = 'https://quickbite-ymqk.onrender.com/api'; // FIX: Hardcode kar diya
+const API = ''; // Render pe khali rakho, khud le lega
 const urlParams = new URLSearchParams(window.location.search);
 const trackId = urlParams.get('id'); 
 let orderData;
+let map, riderMarker;
 
 async function loadOrder(){
     if(!trackId) return document.getElementById('orderBox').innerHTML="Order ID missing in URL";
     
     try{
-        const res = await fetch(`${API}/orders`);
+        const res = await fetch(`${API}/api/orders`);
         const orders = await res.json();
         orderData = orders.find(o=>o.trackId==trackId); 
         
@@ -40,13 +57,28 @@ async function loadOrder(){
             <p><b>Current Status:</b> <span style="color:green">${orderData.status}</span></p>
             <p><b>Items:</b> ${orderData.items.map(i=>i.name+' x'+i.qty).join(', ')}</p>
         `;
+        
+        // MAP LOAD - DEFAULT PATNA
+        const lat = orderData.riderLat || 25.5941;
+        const lng = orderData.riderLng || 85.1376;
+        
+        if(!map){
+            map = L.map('map').setView([lat, lng], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            L.marker([25.5941, 85.1376]).addTo(map).bindPopup("Customer: Patna");
+        }
+        
+        if(riderMarker) map.removeLayer(riderMarker);
+        riderMarker = L.marker([lat, lng]).addTo(map).bindPopup("Rider: " + orderData.status).openPopup();
+        map.setView([lat, lng], 13);
+        
     } catch(e){
         document.getElementById('orderBox').innerHTML="Server Error. Refresh karo";
     }
 }
 
 async function update(status){
-    const res = await fetch(`${API}/orders/${orderData._id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})});
+    const res = await fetch(`${API}/api/orders/${orderData._id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})});
     const data = await res.json();
     if(data.customerWaLink) window.open(data.customerWaLink, '_blank');
     alert("Status Updated: " + status);
@@ -55,10 +87,11 @@ async function update(status){
 
 async function delOrder(){
     if(confirm("Delete this order?")){
-        await fetch(`${API}/orders/${orderData._id}`, {method:'DELETE'});
-        window.location='https://quickbite-ymqk.onrender.com/admin'; // FIX: Full link
+        await fetch(`${API}/api/orders/${orderData._id}`, {method:'DELETE'});
+        window.location='/admin';
     }
 }
 
 loadOrder();
+setInterval(loadOrder, 5000); // 5 sec me live update
 </script></body></html>
