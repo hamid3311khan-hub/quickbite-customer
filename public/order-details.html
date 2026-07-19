@@ -15,35 +15,37 @@
 </div>
 
 <script>
-const API = '/api'; // FIX 1: Relative path kar diya
+const API = 'https://quickbite-ymqk.onrender.com/api'; // FIX: Hardcode kar diya
 const urlParams = new URLSearchParams(window.location.search);
-const trackId = urlParams.get('id'); // FIX 2: trackId naam diya
+const trackId = urlParams.get('id'); 
 let orderData;
 
 async function loadOrder(){
     if(!trackId) return document.getElementById('orderBox').innerHTML="Order ID missing in URL";
     
-    const res = await fetch(`${API}/orders`);
-    const orders = await res.json();
-    // FIX 3: trackId se search karo, _id se nahi
-    orderData = orders.find(o=>o.trackId==trackId); 
-    
-    if(!orderData) return document.getElementById('orderBox').innerHTML="Order not found";
-    
-    document.getElementById('orderBox').innerHTML = `
-        <h2>${orderData.trackId}</h2>
-        <p><b>Name:</b> ${orderData.name}</p>
-        <p><b>Phone:</b> ${orderData.phone}</p>
-        <p><b>Address:</b> ${orderData.address}</p>
-        <p><b>Total:</b> ₹${orderData.total}</p>
-        <p><b>Payment:</b> ${orderData.payment}</p>
-        <p><b>Current Status:</b> <span style="color:green">${orderData.status}</span></p>
-        <p><b>Items:</b> ${orderData.items.map(i=>i.name+' x'+i.qty).join(', ')}</p>
-    `;
+    try{
+        const res = await fetch(`${API}/orders`);
+        const orders = await res.json();
+        orderData = orders.find(o=>o.trackId==trackId); 
+        
+        if(!orderData) return document.getElementById('orderBox').innerHTML="Order not found";
+        
+        document.getElementById('orderBox').innerHTML = `
+            <h2>${orderData.trackId}</h2>
+            <p><b>Name:</b> ${orderData.name}</p>
+            <p><b>Phone:</b> ${orderData.phone}</p>
+            <p><b>Address:</b> ${orderData.address}</p>
+            <p><b>Total:</b> ₹${orderData.total}</p>
+            <p><b>Payment:</b> ${orderData.payment}</p>
+            <p><b>Current Status:</b> <span style="color:green">${orderData.status}</span></p>
+            <p><b>Items:</b> ${orderData.items.map(i=>i.name+' x'+i.qty).join(', ')}</p>
+        `;
+    } catch(e){
+        document.getElementById('orderBox').innerHTML="Server Error. Refresh karo";
+    }
 }
 
 async function update(status){
-    // FIX 4: Status update me _id bhejna hai, trackId nahi
     const res = await fetch(`${API}/orders/${orderData._id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})});
     const data = await res.json();
     if(data.customerWaLink) window.open(data.customerWaLink, '_blank');
@@ -54,7 +56,7 @@ async function update(status){
 async function delOrder(){
     if(confirm("Delete this order?")){
         await fetch(`${API}/orders/${orderData._id}`, {method:'DELETE'});
-        window.location='/admin';
+        window.location='https://quickbite-ymqk.onrender.com/admin'; // FIX: Full link
     }
 }
 
