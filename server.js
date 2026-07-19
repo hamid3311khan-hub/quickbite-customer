@@ -40,14 +40,14 @@ const MenuItem = mongoose.model('MenuItem', new mongoose.Schema({
     inStock:{type:Boolean, default:true}
 }, {timestamps:true}));
 
-// DEFAULT PATNA KIYA
+// DEFAULT PATNA
 const Order = mongoose.model('Order', new mongoose.Schema({
     name:String, phone:String, address:String, items:Array, total:Number, 
     payment:{type:String, default:'COD'}, status:{type:String, default:'Pending'}, 
     trackId:String, coupon:{type:String, default:''}, discount:{type:Number, default:0},
     pointsEarned: {type:Number, default:0},
-    riderLat: {type:Number, default: 25.5941}, // Patna
-    riderLng: {type:Number, default: 85.1376}  // Patna
+    riderLat: {type:Number, default: 25.5941},
+    riderLng: {type:Number, default: 85.1376}
 }, {timestamps:true}));
 
 const Coupon = mongoose.model('Coupon', new mongoose.Schema({
@@ -66,11 +66,10 @@ app.post('/api/menu', upload.single('img'), async (req,res)=>{
     const data = {...req.body, img: req.file ? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/400'};
     await new MenuItem(data).save();
     res.json({success:true});
-}); // <-- YE BRACKET ADD KIYA THA
 app.put('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndUpdate(req.params.id, req.body); res.json({success:true}); });
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
 
-// COUPON API
+// COUPON API - YAHAN BRACKET THEEK KIYA
 app.post('/api/coupon/validate', async (req,res)=>{
     const coupon = await Coupon.findOne({code:req.body.code.toUpperCase()});
     if(!coupon) return res.json({success:false, msg:"Invalid Coupon"});
