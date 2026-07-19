@@ -1,163 +1,161 @@
-<!DOCTYPE html><html><head><title>Admin - QuickBite</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuickBite Admin</title>
 <style>
-*{margin:0;font-family:'Segoe UI',Arial}
-body{background:#f8f9fa}
-nav{background:linear-gradient(90deg, #ff6600, #ff4500);color:white;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,0.2)}
-nav h2{font-size:22px}
-.container{max-width:1200px;margin:20px auto;padding:20px}
-input,textarea,select{padding:12px;margin:8px 5px;border:1px solid #ddd;border-radius:8px;width:200px;font-size:14px}
-textarea{width:95%;height:80px}
-button{background:#ff6600;color:white;border:none;padding:12px 18px;border-radius:8px;cursor:pointer;font-weight:bold;transition:0.2s;margin:5px}
-button:hover{transform:scale(1.05);background:#e65c00}
-.card{background:white;border:1px solid #e0e0e0;padding:18px;margin:15px 0;border-radius:12px;box-shadow:0 3px 8px rgba(0,0,0,0.08)}
-#loginBox{max-width:400px;margin:100px auto;text-align:center;background:white;padding:30px;border-radius:12px;box-shadow:0 5px 15px rgba(0,0,0,0.1)}
-h2{color:#333;margin-bottom:15px}
-hr{margin:25px 0;border:none;border-top:2px solid #ff6600}
-select{width:auto}
-.badge{background:#28a745;color:white;padding:5px 10px;border-radius:20px;font-size:12px}
-.badge.off{background:red}
-</style></head><body>
+    body{font-family:Arial; background:#f4f4f4; padding:20px;}
+    .card{background:white; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 5px #ccc;}
+    input, select, button, textarea{padding:10px; margin:5px; border-radius:5px; border:1px solid #ccc; width:calc(100% - 22px);}
+    button{background:#ff5722; color:white; border:none; cursor:pointer;}
+    button:hover{opacity:0.9;}
+    .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;}
+    .stat-card{background:#ff5722; color:white; text-align:center; padding:20px;}
+    .stat-card h2{margin:0; font-size:30px;}
+    .order, .menu-item{border:1px solid #ddd; padding:10px; margin:10px 0; border-radius:5px;}
+    .btn-green{background:#25D366;} .btn-red{background:#dc3545;} .btn-blue{background:#007bff;}
+</style>
+</head>
+<body>
 
-<nav><h2>🔒 QuickBite Admin Panel</h2></nav>
+<h1>🔥 QuickBite Admin Panel</h1>
 
-<div id="loginBox">
-    <h2>Admin Login</h2>
-    <input id="pass" type="password" placeholder="Password: admin123"><br><br>
-    <button onclick="login()">Login</button>
-</div>
-
-<div id="adminPanel" style="display:none">
-    <div class="container">
-
-        <!-- WHATSAPP BROADCAST -->
-        <h2>📢 WhatsApp Broadcast</h2>
-        <textarea id="broadcastMsg" placeholder="Sab customer ko bhejna hai: Aaj 20% OFF!"></textarea><br>
-        <button onclick="sendBroadcast()" style="background:#25D366">Send to All Customers</button>
-        <hr>
-
-        <!-- COUPON -->
-        <h2>🎟️ Add Coupon</h2>
-        <input id="couponCode" placeholder="CODE: FIRST50">
-        <input id="couponDiscount" type="number" placeholder="Discount: 50">
-        <select id="couponType"><option>FLAT</option><option>PERCENT</option></select>
-        <button onclick="addCoupon()">Add Coupon</button>
-        <hr>
-
-        <h2>➕ Add New Menu Item</h2>
-        <input id="name" placeholder="Item Name">
-        <input id="price" type="number" placeholder="Price">
-        <input id="category" placeholder="Category: Pizza, Burger">
-        <input id="offer" type="number" placeholder="Offer %">
-        <textarea id="desc" placeholder="Description"></textarea>
-        <input id="img" type="file"><br><br>
-        <button onclick="addItem()">Add Item</button>
-        <hr>
-        <h2>📦 Orders</h2>
-        <div id="orders">Loading...</div>
-        <hr>
-        <h2>🍔 Menu Items</h2>
-        <div id="menu"></div>
+<!-- 1. STATS -->
+<div class="grid">
+    <div class="card stat-card">
+        <h3>Total Orders</h3>
+        <h2 id="totalOrders">0</h2>
+    </div>
+    <div class="card stat-card" style="background:#007bff;">
+        <h3>Total Customers</h3>
+        <h2 id="totalCustomers">0</h2>
     </div>
 </div>
 
-<script>
-const API = 'https://quickbite-ymqk.onrender.com/api';
+<!-- 2. BROADCAST -->
+<div class="card">
+    <h2>📢 WhatsApp Broadcast</h2>
+    <textarea id="broadcastMsg" placeholder="Message likho..." rows="3"></textarea>
+    <button class="btn-green" onclick="sendAllBroadcast()">Send to All Customers</button>
+    
+    <div style="margin-top:15px; padding-top:15px; border-top:1px dashed #ddd;">
+        <h4>Send to Specific Numbers</h4>
+        <input type="text" id="manualNumbers" placeholder="7061840674, 8507317931">
+        <small>Comma se alag alag number likho. 91 lagane ki zarurat nahi</small>
+        <button class="btn-green" onclick="sendManualBroadcast()">Send to Selected</button>
+    </div>
+</div>
 
-async function login(){
-    const res = await fetch(`${API}/admin/login`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:document.getElementById('pass').value})});
-    const data = await res.json();
-    if(data.success){document.getElementById('loginBox').style.display='none';document.getElementById('adminPanel').style.display='block';loadOrders();loadMenu();}
-    else alert("❌ Wrong Password");
+<!-- 3. COUPON -->
+<div class="card">
+    <h2>🎟️ Add Coupon</h2>
+    <input type="text" id="couponCode" placeholder="Code: FIRST50">
+    <input type="number" id="couponDiscount" placeholder="Discount: 50">
+    <select id="couponType"><option value="FLAT">FLAT</option><option value="PERCENT">PERCENT</option></select>
+    <button onclick="addCoupon()">Add Coupon</button>
+</div>
+
+<!-- 4. MENU -->
+<div class="card">
+    <h2>🍔 Add New Menu Item</h2>
+    <input type="text" id="itemName" placeholder="Item Name">
+    <input type="number" id="itemPrice" placeholder="Price">
+    <input type="text" id="itemDesc" placeholder="Description">
+    <input type="text" id="itemCategory" placeholder="Category: Pizza, Burger">
+    <input type="number" id="itemOffer" placeholder="Offer %">
+    <input type="file" id="itemImg">
+    <button onclick="addItem()">Add Item</button>
+    <div id="menuList"></div>
+</div>
+
+<!-- 5. ORDERS -->
+<div class="card">
+    <h2>📦 Orders</h2>
+    <div id="ordersList">Loading...</div>
+</div>
+
+<script>
+const API = '';
+let token = 'admin123'; // simple login
+
+async function loadData(){
+    // Stats
+    const stats = await fetch(API+'/api/stats').then(r=>r.json());
+    document.getElementById('totalOrders').innerText = stats.orders;
+    document.getElementById('totalCustomers').innerText = stats.customers;
+
+    // Menu
+    const menu = await fetch(API+'/api/menu').then(r=>r.json());
+    document.getElementById('menuList').innerHTML = menu.map(i=>`
+        <div class="menu-item">
+            <b>${i.name}</b> - ₹${i.price} - ${i.inStock ? 'In Stock' : 'Out of Stock'}
+            <button onclick="toggleStock('${i._id}')">${i.inStock ? 'OFF' : 'ON'}</button>
+            <button class="btn-red" onclick="delItem('${i._id}')">Delete</button>
+        </div>
+    `).join('');
+
+    // Orders
+    const orders = await fetch(API+'/api/orders').then(r=>r.json());
+    document.getElementById('ordersList').innerHTML = orders.map(o=>`
+        <div class="order">
+            <b>${o.trackId}</b> - ${o.name} - ₹${o.total} <br>
+            <b>Payment:</b> ${o.payment} | <b>Status:</b> ${o.status} <br>
+            <small>${o.phone} | ${o.address}</small> <br>
+            <select onchange="updateStatus('${o._id}', this.value)">
+                <option ${o.status=='Pending'?'selected':''}>Pending</option>
+                <option ${o.status=='Paid'?'selected':''}>Paid</option>
+                <option ${o.status=='Delivered'?'selected':''}>Delivered</option>
+            </select>
+            <button class="btn-blue" onclick="openWA('${o.customerWaLink}')">Open</button>
+            <button class="btn-red" onclick="delOrder('${o._id}')">Delete</button>
+        </div>
+    `).join('');
 }
 
-// WHATSAPP BROADCAST - NAYA
-async function sendBroadcast(){
-    const msg = document.getElementById('broadcastMsg').value;
-    if(!msg) return alert("Message likho");
-    if(!confirm("Sabko msg bhejna hai?")) return;
-    const res = await fetch(`${API}/broadcast`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:msg})});
+async function sendAllBroadcast(){
+    const message = document.getElementById('broadcastMsg').value;
+    if(!message) return alert('Message likho');
+    const res = await fetch(API+'/api/broadcast', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message, type:'all'})});
     const data = await res.json();
-    alert(`✅ ${data.count} customers ko link ban gaye. Alag tab me khul jayenge`);
+    alert(`${data.count} customers ko link ban gaye`);
     data.links.forEach(link => window.open(link, '_blank'));
 }
 
-// COUPON ADD - NAYA
+async function sendManualBroadcast(){
+    const message = document.getElementById('broadcastMsg').value;
+    const numbers = document.getElementById('manualNumbers').value;
+    if(!message || !numbers) return alert('Message aur Number dono bharo');
+    const res = await fetch(API+'/api/broadcast', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message, type:'manual', numbers})});
+    const data = await res.json();
+    alert(`${data.count} logo ko link ban gaye`);
+    data.links.forEach(link => window.open(link, '_blank'));
+}
+
 async function addCoupon(){
-    const body = {
-        code: document.getElementById('couponCode').value,
-        discount: document.getElementById('couponDiscount').value,
-        type: document.getElementById('couponType').value
-    }
-    await fetch(`${API}/coupon`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
-    alert("✅ Coupon Added");
+    const body = {code:couponCode.value, discount:+couponDiscount.value, type:couponType.value};
+    await fetch(API+'/api/coupon', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    alert('Coupon Added'); couponCode.value='';
 }
-
-async function loadOrders(){
-    const res = await fetch(`${API}/orders`);
-    const orders = await res.json();
-    if(orders.length==0) return document.getElementById('orders').innerHTML="<p>No orders yet</p>";
-    document.getElementById('orders').innerHTML = orders.map(o=>`
-        <div class="card">
-            <h3>${o.trackId} - ${o.name} - ₹${o.total}</h3>
-            <p><b>Phone:</b> ${o.phone} | <b>Address:</b> ${o.address}</p>
-            <p><b>Items:</b> ${o.items.map(i=>i.name+' x'+i.qty).join(', ')}</p><br>
-            <b>Status:</b>
-            <select onchange="updateStatus('${o._id}', this.value)">
-                <option ${o.status=='Pending'?'selected':''}>Pending</option>
-                <option ${o.status=='Preparing'?'selected':''}>Preparing</option>
-                <option ${o.status=='Out for Delivery'?'selected':''}>Out for Delivery</option>
-                <option ${o.status=='Delivered'?'selected':''}>Delivered</option>
-            </select>
-            <a href="/order-details?id=${o._id}"><button style="background:#007bff">Open</button></a>
-            <button onclick="delOrder('${o._id}')" style="background:red">Delete</button>
-        </div>`).join('');
-}
-
-async function updateStatus(id, status){
-    const res = await fetch(`${API}/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})});
-    const data = await res.json();
-    alert("✅ Status: " + status + "\n\n📱 Customer WhatsApp Link:\n" + data.customerWaLink);
-    loadOrders();
-}
-
-async function delOrder(id){if(confirm("Delete this order?")){await fetch(`${API}/orders/${id}`, {method:'DELETE'}); loadOrders();}}
-
-// STOCK TOGGLE ADD KIYA
-async function toggleStock(id){
-    const res = await fetch(`${API}/menu/${id}/stock`, {method:'PUT'});
-    const data = await res.json();
-    loadMenu();
-}
-
-async function loadMenu(){
-    const res = await fetch(`${API}/menu`);
-    const items = await res.json();
-    document.getElementById('menu').innerHTML = items.map(i=>`
-        <div class="card">
-            ${i.name} - ₹${i.price} - ${i.category}
-            <span class="badge ${i.inStock?'':'off'}">${i.inStock?'In Stock':'Out of Stock'}</span>
-            <button onclick="toggleStock('${i._id}')" style="background:#17a2b8">Stock ON/OFF</button>
-            <button onclick="delItem('${i._id}')" style="background:red;float:right">Delete</button>
-        </div>`).join('');
-}
-
 async function addItem(){
     const fd = new FormData();
-    fd.append('name', document.getElementById('name').value);
-    fd.append('price', document.getElementById('price').value);
-    fd.append('category', document.getElementById('category').value);
-    fd.append('desc', document.getElementById('desc').value);
-    fd.append('offer', document.getElementById('offer').value);
-    fd.append('img', document.getElementById('img').files[0]);
-    await fetch(`${API}/menu`, {method:'POST', body:fd});
-    alert("✅ Item Added");
-    document.getElementById('name').value = '';
-    document.getElementById('price').value = '';
-    document.getElementById('category').value = '';
-    document.getElementById('desc').value = '';
-    document.getElementById('offer').value = '';
-    document.getElementById('img').value = '';
-    loadMenu();
+    fd.append('name', itemName.value); fd.append('price', itemPrice.value); fd.append('desc', itemDesc.value);
+    fd.append('category', itemCategory.value); fd.append('offer', itemOffer.value); fd.append('img', itemImg.files[0]);
+    await fetch(API+'/api/menu', {method:'POST', body:fd}); alert('Item Added'); loadData();
 }
-async function delItem(id){await fetch(`${API}/menu/${id}`, {method:'DELETE'}); loadMenu();}
-</script></body></html>
+async function toggleStock(id){ await fetch(API+`/api/menu/${id}/stock`, {method:'PUT'}); loadData(); }
+async function delItem(id){ if(confirm('Delete?')){ await fetch(API+`/api/menu/${id}`, {method:'DELETE'}); loadData(); }}
+async function updateStatus(id, status){ 
+    const res = await fetch(API+`/api/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})});
+    const data = await res.json();
+    if(data.customerWaLink) window.open(data.customerWaLink, '_blank');
+    loadData();
+}
+async function delOrder(id){ if(confirm('Delete?')){ await fetch(API+`/api/orders/${id}`, {method:'DELETE'}); loadData(); }}
+function openWA(link){ if(link) window.open(link, '_blank'); }
+
+loadData();
+setInterval(loadData, 10000); // 10 sec me auto refresh
+</script>
+</body>
+</html>
