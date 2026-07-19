@@ -58,7 +58,7 @@ button:disabled{background:#ccc;cursor:not-allowed}
 </div>
 
 <script>
-const API = '/api'; // FIX 1: Ab relative path hai. Domain change hoga to bhi chalega
+const API = 'https://quickbite-ymqk.onrender.com/api'; // FIX: Hardcode kar diya
 let cart = JSON.parse(localStorage.getItem('cart')) || [];
 let discount = 0;
 let paymentMode = 'COD';
@@ -155,8 +155,7 @@ async function placeOrder(){
         if(data.success){
             localStorage.setItem('lastOrder', JSON.stringify(cart));
             localStorage.removeItem('cart');
-            // FIX 2: Alert hataya, direct track page pe bhej diya
-            window.location = '/track?id=' + data.trackId;
+            window.location = 'https://quickbite-ymqk.onrender.com/track?id=' + data.trackId; // FIX: Full link
         } else {
             alert("Order failed: " + data.message);
             document.getElementById('placeBtn').innerText = "Place Order";
