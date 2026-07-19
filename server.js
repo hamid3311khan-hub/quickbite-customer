@@ -21,7 +21,7 @@ app.get('/', (req,res)=> res.sendFile(path.join(__dirname, 'public/index1.html')
 app.get('/admin', (req,res)=> res.sendFile(path.join(__dirname, 'public/admin.html')));
 app.get('/index', (req,res)=> res.sendFile(path.join(__dirname, 'public/index.html')));
 app.get('/cart', (req,res)=> res.sendFile(path.join(__dirname, 'public/cart.html')));
-app.get('/track', (req,res)=> res.sendFile(path.join(__dirname, 'public/myorder.html')));
+app.get('/track', (req,res)=> res.sendFile(path.join(__dirname, 'public/track.html'))); // <-- YE CHANGE KIYA
 app.get('/order-details', (req,res)=> res.sendFile(path.join(__dirname, 'public/order-details.html')));
 
 const storage = multer.diskStorage({
@@ -122,7 +122,6 @@ app.get('/api/report/download', async (req,res)=>{
     res.send(csv);
 });
 
-
 // ORDER API
 app.post('/api/orders', async (req,res)=>{ 
     const trackId = 'QB' + Date.now(); 
@@ -150,7 +149,7 @@ app.put('/api/orders/:id/status', async (req,res)=>{
     if(req.body.riderLat) { order.riderLat = req.body.riderLat; order.riderLng = req.body.riderLng; }
     await order.save(); 
     
-    const trackLink = `https://quickbite-ymqk.onrender.com/order-details?id=${order.trackId}`;
+    const trackLink = `https://quickbite-ymqk.onrender.com/track?id=${order.trackId}`; // <-- YE LINK AB TRACK PE JAYEGA
     const customerMsg = `QuickBite Update 🛵%0AOrder: ${order.trackId}%0AStatus: ${order.status}%0APayment: ${order.payment}%0A%0ALive Track: ${trackLink}`;
     const customerWaLink = `https://wa.me/91${order.phone}?text=${customerMsg}`;
     res.json({success:true, customerWaLink, trackLink}); 
