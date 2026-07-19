@@ -40,14 +40,14 @@ const MenuItem = mongoose.model('MenuItem', new mongoose.Schema({
     inStock:{type:Boolean, default:true}
 }, {timestamps:true}));
 
-// 2.TRACKING + 5.LOYALTY KE LIYE 2 FIELD ADD KIYE - DEFAULT PATNA KIYA
+// DEFAULT PATNA KIYA
 const Order = mongoose.model('Order', new mongoose.Schema({
     name:String, phone:String, address:String, items:Array, total:Number, 
     payment:{type:String, default:'COD'}, status:{type:String, default:'Pending'}, 
     trackId:String, coupon:{type:String, default:''}, discount:{type:Number, default:0},
-    pointsEarned: {type:Number, default:0}, // 5. LOYALTY
-    riderLat: {type:Number, default: 25.5941}, // 2. TRACKING - Patna, Bihar
-    riderLng: {type:Number, default: 85.1376}  // 2. TRACKING
+    pointsEarned: {type:Number, default:0},
+    riderLat: {type:Number, default: 25.5941}, // Patna
+    riderLng: {type:Number, default: 85.1376}  // Patna
 }, {timestamps:true}));
 
 const Coupon = mongoose.model('Coupon', new mongoose.Schema({
@@ -66,6 +66,7 @@ app.post('/api/menu', upload.single('img'), async (req,res)=>{
     const data = {...req.body, img: req.file ? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/400'};
     await new MenuItem(data).save();
     res.json({success:true});
+}); // <-- YE BRACKET ADD KIYA THA
 app.put('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndUpdate(req.params.id, req.body); res.json({success:true}); });
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
 
@@ -74,17 +75,15 @@ app.post('/api/coupon/validate', async (req,res)=>{
     const coupon = await Coupon.findOne({code:req.body.code.toUpperCase()});
     if(!coupon) return res.json({success:false, msg:"Invalid Coupon"});
     res.json({success:true, discount:coupon.discount, type:coupon.type});
-});
 app.post('/api/coupon', async (req,res)=>{ await new Coupon(req.body).save(); res.json({success:true}); });
 
-// 3. STATS + REPORT API
+// STATS + REPORT API
 app.get('/api/stats', async (req,res)=>{
     const totalOrders = await Order.countDocuments();
     const totalCustomers = await Order.distinct("phone");
     res.json({orders: totalOrders, customers: totalCustomers.length});
 });
 
-// 3. SALES REPORT API - Date filter ke sath
 app.get('/api/report', async (req,res)=>{
     const {start, end} = req.query;
     const filter = {};
@@ -104,7 +103,7 @@ app.get('/api/report', async (req,res)=>{
     res.json({totalRevenue, totalOrders, topItems, orders});
 });
 
-// 3. CSV DOWNLOAD
+// CSV DOWNLOAD
 app.get('/api/report/download', async (req,res)=>{
     const {start, end} = req.query;
     const filter = {};
@@ -124,11 +123,10 @@ app.get('/api/report/download', async (req,res)=>{
 // ORDER API
 app.post('/api/orders', async (req,res)=>{ 
     const trackId = 'QB' + Date.now(); 
-    // 5. LOYALTY: ₹100 = 5 Points
     const points = Math.floor(req.body.total / 100) * 5;
     await new Order({...req.body, trackId, pointsEarned: points}).save(); 
     
-    const adminNumber = "918207836370"; // TERA NUMBER
+    const adminNumber = "918207836370";
     const items = req.body.items.map(i=>`${i.name} x${i.qty}`).join(', ');
     const msg = `New Order: ${trackId}%0AName: ${req.body.name}%0APhone: ${req.body.phone}%0AAddress: ${req.body.address}%0ATotal: ₹${req.body.total}%0APayment: ${req.body.payment}%0APoints Earned: ${points}%0AItems: ${items}`;
     const waLink = `https://wa.me/${adminNumber}?text=${msg}`;
@@ -140,21 +138,20 @@ app.get('/api/orders', async (req,res)=> res.json(await Order.find().sort({creat
 app.get('/api/orders/history/:phone', async (req,res)=> res.json(await Order.find({phone:req.params.phone}).sort({createdAt:-1})));
 app.get('/api/orders/track/:id', async (req,res)=> { const order = await Order.findOne({trackId:req.params.id}); res.json(order); });
 
-// 2. STATUS UPDATE + 4. NOTIFICATION UPDATE
+// STATUS UPDATE
 app.put('/api/orders/:id/status', async (req,res)=>{ 
     const order = await Order.findById(req.params.id);
     order.status = req.body.status;
-    // Rider location update
     if(req.body.riderLat) { order.riderLat = req.body.riderLat; order.riderLng = req.body.riderLng; }
     await order.save(); 
     
-    const trackLink = `https://quickbite-ymqk.onrender.com/order-details?id=${order.trackId}`; // <-- ORDER-DETAILS PE BHEJA
+    const trackLink = `https://quickbite-ymqk.onrender.com/order-details?id=${order.trackId}`;
     const customerMsg = `QuickBite Update 🛵%0AOrder: ${order.trackId}%0AStatus: ${order.status}%0APayment: ${order.payment}%0A%0ALive Track: ${trackLink}`;
     const customerWaLink = `https://wa.me/91${order.phone}?text=${customerMsg}`;
     res.json({success:true, customerWaLink, trackLink}); 
 });
 
-// 4. BROADCAST - TEMPLATE BETTER KIYA
+// BROADCAST
 app.post('/api/broadcast', async (req,res)=>{
     const {message, type, numbers} = req.body;
     let users = [];
