@@ -1,19 +1,22 @@
 <!DOCTYPE html><html><head><title>Cart - QuickBite</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-*{margin:0;font-family:Arial}
-nav{background:#ff6600;color:white;padding:15px}
+*{margin:0;font-family:Arial;background:#f5f5f5}
+nav{background:#ff6600;color:white;padding:15px;font-weight:bold}
 .container{max-width:600px;margin:20px auto;padding:20px}
 .card{background:white;padding:15px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
 input{width:95%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:5px}
 button{background:#28a745;color:white;border:none;padding:15px;width:100%;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:10px}
+button:disabled{background:#ccc;cursor:not-allowed}
 .coupon-box{display:flex;gap:10px;margin:15px 0}
 .coupon-box input{margin:0}
-.total{font-size:20px;font-weight:bold;color:#ff6600;margin:10px 0}
-.payment-option{border:2px solid #ddd;padding:12px;border-radius:8px;margin:10px 0;cursor:pointer}
+.coupon-box button{width:auto;padding:12px 20px;background:#ff6600;margin:0}
+.total{font-size:22px;font-weight:bold;color:#ff6600;margin:10px 0}
+.payment-option{border:2px solid #ddd;padding:12px;border-radius:8px;margin:10px 0;cursor:pointer;transition:0.2s}
 .payment-option.active{border-color:#ff6600;background:#fff5f0}
-#qrBox{text-align:center;display:none;padding:15px;border:1px dashed #ff6600;border-radius:8px;margin:10px 0}
-.cart-item{display:flex;justify-content:space-between;align-items:center;margin:10px 0}
-.remove-btn{width:auto;padding:5px 10px;background:red;font-size:12px}
+#qrBox{text-align:center;display:none;padding:15px;border:1px dashed #ff6600;border-radius:8px;margin:10px 0;background:#fff}
+.cart-item{display:flex;justify-content:space-between;align-items:center;margin:10px 0;padding:8px 0;border-bottom:1px solid #eee}
+.remove-btn{width:auto;padding:5px 10px;background:red;font-size:12px;border-radius:5px}
+.empty{text-align:center;color:#888;padding:20px}
 </style></head><body>
 <nav><a href="/index" style="color:white;text-decoration:none">← Back to Menu</a></nav>
 
@@ -25,9 +28,9 @@ button{background:#28a745;color:white;border:none;padding:15px;width:100%;border
         
         <div class="coupon-box">
             <input id="coupon" placeholder="Enter Coupon: FIRST30">
-            <button onclick="applyCoupon()" style="width:auto;background:#ff6600">Apply</button>
+            <button onclick="applyCoupon()">Apply</button>
         </div>
-        <p id="discountMsg" style="color:green"></p>
+        <p id="discountMsg" style="color:green;font-weight:bold"></p>
 
         <p class="total">Total: ₹<span id="total">0</span></p>
         
@@ -42,14 +45,15 @@ button{background:#28a745;color:white;border:none;padding:15px;width:100%;border
         <div id="qrBox">
             <p><b>Scan karke ₹<span id="qrAmount">0</span> pay kare</b></p>
             <img id="qr" src="" style="width:220px;margin:10px 0">
+            <p style="font-size:12px;color:#666">UPI ID: tanbalkhi2014-3@okhdfcbank</p>
         </div>
 
         <h3>Delivery Details</h3>
-        <input id="name" placeholder="Full Name">
-        <input id="phone" placeholder="Phone">
-        <input id="address" placeholder="Address">
+        <input id="name" placeholder="Full Name" required>
+        <input id="phone" placeholder="Phone - 10 digit" maxlength="10" required>
+        <input id="address" placeholder="Complete Address" required>
         
-        <button onclick="placeOrder()">Place Order</button>
+        <button id="placeBtn" onclick="placeOrder()">Place Order</button>
     </div>
 </div>
 
@@ -61,13 +65,22 @@ let paymentMode = 'COD';
 let finalTotal = 0;
 
 function loadCart(){
-    if(cart.length==0){document.getElementById('cartItems').innerHTML="<p>Cart is empty</p>"; document.getElementById('total').innerText=0; finalTotal=0; return;}
+    if(cart.length==0){
+        document.getElementById('cartItems').innerHTML="<p class='empty'>Cart is empty</p>"; 
+        document.getElementById('total').innerText=0; 
+        finalTotal=0;
+        document.getElementById('placeBtn').disabled = true;
+        updateQR();
+        return;
+    }
+    document.getElementById('placeBtn').disabled = false;
     let total = cart.reduce((s,i)=>s+i.price*i.qty,0);
     finalTotal = total - discount;
     if(finalTotal<0) finalTotal=0;
+    
     document.getElementById('cartItems').innerHTML = cart.map((i,index)=>`
         <div class="cart-item">
-            <span>${i.name} x${i.qty} - ₹${i.price*i.qty}</span>
+            <span><b>${i.name}</b> x${i.qty} - ₹${i.price*i.qty}</span>
             <button onclick="remove(${index})" class="remove-btn">X</button>
         </div>
     `).join('');
@@ -90,17 +103,19 @@ function selectPay(mode, el){
 }
 
 function updateQR(){
-    let upiID = "tanbalkhi2014-3@okhdfcbank"; // <-- Tera UPI ID
+    let upiID = "tanbalkhi2014-3@okhdfcbank"; // <-- APNA UPI ID YAHI CHANGE KAR
     if(paymentMode=='UPI' && finalTotal > 0){
         document.getElementById('qr').src = `https://upiqr.in/api/qr?name=QuickBite&vpa=${upiID}&amount=${finalTotal}`;
         document.getElementById('qrAmount').innerText = finalTotal;
     } else {
         document.getElementById('qr').src = "";
+        document.getElementById('qrAmount').innerText = 0;
     }
 }
 
 async function applyCoupon(){
-    const code = document.getElementById('coupon').value;
+    const code = document.getElementById('coupon').value.trim();
+    if(!code) return alert("Coupon code dalo");
     const res = await fetch(`${API}/coupon/validate`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code})});
     const data = await res.json();
     if(data.success){
@@ -108,14 +123,19 @@ async function applyCoupon(){
         discount = data.type=='PERCENT' ? Math.round(total*data.discount/100) : data.discount;
         document.getElementById('discountMsg').innerText = `✅ ${data.discount}${data.type=='PERCENT'?'%':'₹'} Off Applied`;
         loadCart();
-    } else alert("Invalid Coupon");
+    } else {
+        discount = 0;
+        document.getElementById('discountMsg').innerText = "";
+        alert("Invalid Coupon");
+        loadCart();
+    }
 }
 
 async function placeOrder(){
     const order = {
-        name:document.getElementById('name').value,
-        phone:document.getElementById('phone').value,
-        address:document.getElementById('address').value,
+        name:document.getElementById('name').value.trim(),
+        phone:document.getElementById('phone').value.trim(),
+        address:document.getElementById('address').value.trim(),
         items:cart,
         total:finalTotal,
         payment:paymentMode,
@@ -123,6 +143,10 @@ async function placeOrder(){
         discount:discount
     }
     if(!order.name || !order.phone || !order.address) return alert("Please fill all details");
+    if(order.phone.length != 10) return alert("Valid 10 digit phone number dalo");
+    
+    document.getElementById('placeBtn').innerText = "Placing...";
+    document.getElementById('placeBtn').disabled = true;
     
     const res = await fetch(`${API}/orders`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(order)});
     const data = await res.json();
@@ -130,8 +154,12 @@ async function placeOrder(){
     if(data.success){
         localStorage.setItem('lastOrder', JSON.stringify(cart));
         localStorage.removeItem('cart');
-        alert(`✅ Order Placed! Order ID: ${data.trackId}\nPayment: ${paymentMode}`);
+        alert(`✅ Order Placed! \nOrder ID: ${data.trackId}\nPayment: ${paymentMode}`);
         window.location = '/track?id=' + data.trackId;
+    } else {
+        alert("Order failed. Try again");
+        document.getElementById('placeBtn').innerText = "Place Order";
+        document.getElementById('placeBtn').disabled = false;
     }
 }
 loadCart();
