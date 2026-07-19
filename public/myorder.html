@@ -1,9 +1,87 @@
-<!DOCTYPE html><html><head><title>Track Order</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>*{margin:0;padding:0;box-sizing:border-box;font-family:Arial} nav{background:#ff6600;color:white;padding:15px} nav a{color:white;text-decoration:none;margin:0 10px;font-weight:bold} .container{max-width:600px;margin:20px auto;background:white;padding:25px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1)} h2{color:#ff6600;margin-bottom:15px} input{width:70%;padding:12px;border:1px solid #ddd;border-radius:5px} button{background:#ff6600;color:white;border:none;padding:12px 20px;border-radius:5px;cursor:pointer;font-weight:bold} .order-box{border:1px solid #ddd;padding:15px;margin:10px 0;border-radius:8px}</style></head><body>
+<!DOCTYPE html><html><head><title>Track Order - QuickBite</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial} 
+body{background:#f5f5f5}
+nav{background:#ff6600;color:white;padding:15px} 
+nav a{color:white;text-decoration:none;margin:0 10px;font-weight:bold} 
+.container{max-width:600px;margin:20px auto;background:white;padding:25px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1)} 
+h2{color:#ff6600;margin-bottom:15px} 
+input{width:70%;padding:12px;border:1px solid #ddd;border-radius:5px} 
+button{background:#ff6600;color:white;border:none;padding:12px 20px;border-radius:5px;cursor:pointer;font-weight:bold} 
+.order-box{border:1px solid #ddd;padding:15px;margin:10px 0;border-radius:8px;background:#fff}
+.status{padding:4px 10px;border-radius:20px;font-size:12px;font-weight:bold;color:white}
+.status-Pending{background:#ffc107}
+.status-Paid{background:#17a2b8}
+.status-Delivered{background:#28a745}
+</style></head><body>
 <nav><a href="/">🏠 Home</a> <a href="/index">🍔 Order Food</a> <a href="/admin">🔒 Admin</a></nav>
-<div class="container"><h2>🔍 Track Your Order</h2><input id="t" placeholder="Enter Track ID"><button onclick="tr()">Track</button><div id="r" style="margin-top:15px"></div><hr style="margin:25px 0"><h2>📦 Order History</h2><input id="ph" placeholder="Enter Phone Number"><button onclick="history()">View History</button><div id="h" style="margin-top:15px"></div><button onclick="window.location='/'" style="background:#666;margin-top:20px">⬅ Back to Home</button></div>
+
+<div class="container">
+    <h2>🔍 Track Your Order</h2>
+    <input id="t" placeholder="Enter Track ID">
+    <button onclick="tr()">Track</button>
+    <div id="r" style="margin-top:15px"></div>
+
+    <hr style="margin:25px 0">
+    
+    <h2>📦 Order History</h2>
+    <input id="ph" placeholder="Enter Phone Number">
+    <button onclick="history()">View History</button>
+    <div id="h" style="margin-top:15px"></div>
+
+    <button onclick="window.location='/'" style="background:#666;margin-top:20px">⬅ Back to Home</button>
+</div>
+
 <script>
-const API = 'https://quickbite-ymqk.onrender.com/api'; const urlParams = new URLSearchParams(window.location.search); if(urlParams.get('id')) document.getElementById('t').value = urlParams.get('id');
-function tr(){const id = document.getElementById('t').value; if(!id) return alert("Track ID daalo"); fetch(`${API}/orders/track/`+id).then(res=>res.json()).then(o=>{ if(o){document.getElementById('r').innerHTML=`<div class="order-box"><h3>${o.trackId}</h3><p>Status: <b>${o.status}</b></p><p><b>Total:</b> ₹${o.total}</p><p>${o.items.map(i=>`${i.name} x${i.qty}`).join(', ')}</p></div>`} else{document.getElementById('r').innerHTML="<p style='color:red'>Order nahi mila</p>"}})}
-function history(){const phone = document.getElementById('ph').value; if(!phone) return alert("Phone daalo"); fetch(`${API}/orders/history/`+phone).then(res=>res.json()).then(orders=>{ if(orders.length==0){document.getElementById('h').innerHTML="<p style='color:red'>Koi order nahi</p>"} else{document.getElementById('h').innerHTML=orders.map(o=>`<div class="order-box"><b>${o.trackId}</b> - ₹${o.total} - ${o.status}</div>`).join('')}})}
+const API = 'https://quickbite-ymqk.onrender.com/api'; 
+const urlParams = new URLSearchParams(window.location.search); 
+if(urlParams.get('id')) document.getElementById('t').value = urlParams.get('id');
+
+function getStatusBadge(status){
+    return `<span class="status status-${status}">${status}</span>`;
+}
+
+function tr(){
+    const id = document.getElementById('t').value; 
+    if(!id) return alert("Track ID daalo"); 
+    
+    fetch(`${API}/orders/track/`+id)
+    .then(res=>res.json())
+    .then(o=>{ 
+        if(o){
+            document.getElementById('r').innerHTML=`
+            <div class="order-box">
+                <h3>Order: ${o.trackId}</h3>
+                <p><b>Status:</b> ${getStatusBadge(o.status)}</p>
+                <p><b>Payment:</b> ${o.payment} ${o.payment=='COD' ? '(Delivery pe dena)' : '(UPI se kiya)'}</p>
+                <p><b>Total:</b> ₹${o.total}</p>
+                <p><b>Name:</b> ${o.name}</p>
+                <p><b>Address:</b> ${o.address}</p>
+                <hr style="margin:10px 0">
+                <b>Items:</b><br>${o.items.map(i=>`${i.name} x${i.qty} - ₹${i.price*i.qty}`).join('<br>')}
+            </div>`
+        } else{
+            document.getElementById('r').innerHTML="<p style='color:red'>Order nahi mila</p>"
+        }
+    })
+}
+
+function history(){
+    const phone = document.getElementById('ph').value; 
+    if(!phone) return alert("Phone daalo"); 
+    
+    fetch(`${API}/orders/history/`+phone)
+    .then(res=>res.json())
+    .then(orders=>{ 
+        if(orders.length==0){
+            document.getElementById('h').innerHTML="<p style='color:red'>Koi order nahi</p>"
+        } else{
+            document.getElementById('h').innerHTML=orders.map(o=>`
+            <div class="order-box">
+                <b>${o.trackId}</b> - ₹${o.total} - ${getStatusBadge(o.status)}<br>
+                <small>Payment: ${o.payment}</small>
+            </div>`).join('')
+        }
+    })
+}
 </script></body></html>
