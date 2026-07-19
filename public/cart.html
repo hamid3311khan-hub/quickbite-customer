@@ -58,7 +58,7 @@ button:disabled{background:#ccc;cursor:not-allowed}
 </div>
 
 <script>
-const API = 'https://quickbite-ymqk.onrender.com/api';
+const API = '/api'; // FIX 1: Ab relative path hai. Domain change hoga to bhi chalega
 let cart = JSON.parse(localStorage.getItem('cart')) || [];
 let discount = 0;
 let paymentMode = 'COD';
@@ -103,7 +103,7 @@ function selectPay(mode, el){
 }
 
 function updateQR(){
-    let upiID = "tanbalkhi2014-3@okhdfcbank"; // <-- APNA UPI ID YAHI CHANGE KAR
+    let upiID = "tanbalkhi2014-3@okhdfcbank";
     if(paymentMode=='UPI' && finalTotal > 0){
         document.getElementById('qr').src = `https://upiqr.in/api/qr?name=QuickBite&vpa=${upiID}&amount=${finalTotal}`;
         document.getElementById('qrAmount').innerText = finalTotal;
@@ -148,16 +148,22 @@ async function placeOrder(){
     document.getElementById('placeBtn').innerText = "Placing...";
     document.getElementById('placeBtn').disabled = true;
     
-    const res = await fetch(`${API}/orders`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(order)});
-    const data = await res.json();
-    
-    if(data.success){
-        localStorage.setItem('lastOrder', JSON.stringify(cart));
-        localStorage.removeItem('cart');
-        alert(`✅ Order Placed! \nOrder ID: ${data.trackId}\nPayment: ${paymentMode}`);
-        window.location = '/track?id=' + data.trackId;
-    } else {
-        alert("Order failed. Try again");
+    try{
+        const res = await fetch(`${API}/orders`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(order)});
+        const data = await res.json();
+        
+        if(data.success){
+            localStorage.setItem('lastOrder', JSON.stringify(cart));
+            localStorage.removeItem('cart');
+            // FIX 2: Alert hataya, direct track page pe bhej diya
+            window.location = '/track?id=' + data.trackId;
+        } else {
+            alert("Order failed: " + data.message);
+            document.getElementById('placeBtn').innerText = "Place Order";
+            document.getElementById('placeBtn').disabled = false;
+        }
+    } catch(e){
+        alert("Server error. Please try again");
         document.getElementById('placeBtn').innerText = "Place Order";
         document.getElementById('placeBtn').disabled = false;
     }
