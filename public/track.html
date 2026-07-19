@@ -36,35 +36,39 @@ nav{background:#ff5722;color:white;padding:15px;text-align:center;font-size:20px
 </div>
 
 <script>
-const API = '';
+const API = 'https://quickbite-ymqk.onrender.com/api'; // FIX: Domain hardcode kar diya
 const urlParams = new URLSearchParams(window.location.search);
 const trackId = urlParams.get('id');
 
 async function loadOrder(){
     if(!trackId) return document.getElementById('orderBox').innerHTML="<h3>Invalid Order ID</h3>";
     
-    const res = await fetch(`${API}/orders/track/${trackId}`);
-    const orderData = await res.json();
-    if(!orderData) return document.getElementById('orderBox').innerHTML="<h3>Order not found</h3>";
-    
-    document.getElementById('orderBox').innerHTML = `
-        <h2>Order: ${orderData.trackId}</h2>
-        <p><b>Name:</b> ${orderData.name}</p>
-        <p><b>Phone:</b> ${orderData.phone}</p>
-        <p><b>Address:</b> ${orderData.address}</p>
-        <p><b>Total Paid:</b> ₹${orderData.total} | <b>Payment:</b> ${orderData.payment}</p>
-        <p><b>Points Earned:</b> ${orderData.pointsEarned || 0} ⭐</p>
-        <hr style="margin:10px 0">
-        <p><b>Items:</b><br> ${orderData.items.map(i=>`• ${i.name} x${i.qty} - ₹${i.price}`).join('<br>')}</p>
-    `;
-    
-    document.getElementById('currentStatus').innerText = orderData.status;
-    const steps = ['Pending', 'Preparing', 'Out for Delivery', 'Delivered'];
-    const index = steps.indexOf(orderData.status);
-    for(let i=1; i<=index+1; i++) document.getElementById('s'+i).classList.add('active');
-    
-    initMap(orderData.riderLat, orderData.riderLng);
-    document.getElementById('waBtn').href = `https://wa.me/918207836370?text=Help for order ${orderData.trackId}`;
+    try{
+        const res = await fetch(`${API}/orders/track/${trackId}`);
+        const orderData = await res.json();
+        if(!orderData || !orderData.trackId) return document.getElementById('orderBox').innerHTML="<h3>Order not found</h3>";
+        
+        document.getElementById('orderBox').innerHTML = `
+            <h2>Order: ${orderData.trackId}</h2>
+            <p><b>Name:</b> ${orderData.name}</p>
+            <p><b>Phone:</b> ${orderData.phone}</p>
+            <p><b>Address:</b> ${orderData.address}</p>
+            <p><b>Total Paid:</b> ₹${orderData.total} | <b>Payment:</b> ${orderData.payment}</p>
+            <p><b>Points Earned:</b> ${orderData.pointsEarned || 0} ⭐</p>
+            <hr style="margin:10px 0">
+            <p><b>Items:</b><br> ${orderData.items.map(i=>`• ${i.name} x${i.qty} - ₹${i.price}`).join('<br>')}</p>
+        `;
+        
+        document.getElementById('currentStatus').innerText = orderData.status;
+        const steps = ['Pending', 'Preparing', 'Out for Delivery', 'Delivered'];
+        const index = steps.indexOf(orderData.status);
+        for(let i=1; i<=index+1; i++) document.getElementById('s'+i).classList.add('active');
+        
+        initMap(orderData.riderLat, orderData.riderLng);
+        document.getElementById('waBtn').href = `https://wa.me/918207836370?text=Help for order ${orderData.trackId}`;
+    } catch(e){
+        document.getElementById('orderBox').innerHTML="<h3>Server Error. Refresh karo</h3>";
+    }
 }
 
 function initMap(lat, lng) {
