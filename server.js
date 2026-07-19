@@ -64,7 +64,7 @@ app.post('/api/menu', upload.single('img'), async (req,res)=>{
     const data = {...req.body, img: req.file ? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/400'};
     await new MenuItem(data).save();
     res.json({success:true});
-}); // <-- YAHI BRACKET MISS THA
+});
 
 app.put('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndUpdate(req.params.id, req.body); res.json({success:true}); });
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
@@ -74,6 +74,8 @@ app.post('/api/coupon/validate', async (req,res)=>{
     const coupon = await Coupon.findOne({code:req.body.code.toUpperCase()});
     if(!coupon) return res.json({success:false, msg:"Invalid Coupon"});
     res.json({success:true, discount:coupon.discount, type:coupon.type});
+}); // <-- YE BRACKET BHI MISS THA
+
 app.post('/api/coupon', async (req,res)=>{ await new Coupon(req.body).save(); res.json({success:true}); });
 
 // STATS API
@@ -81,7 +83,7 @@ app.get('/api/stats', async (req,res)=>{
     const totalOrders = await Order.countDocuments();
     const totalCustomers = await Order.distinct("phone");
     res.json({orders: totalOrders, customers: totalCustomers.length});
-})
+});
 
 // ORDER API
 app.post('/api/orders', async (req,res)=>{ 
