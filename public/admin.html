@@ -152,6 +152,7 @@ async function loadData(){
                 <option ${o.status=='Out for Delivery'?'selected':''}>Out for Delivery</option>
                 <option ${o.status=='Delivered'?'selected':''}>Delivered</option>
             </select>
+            <button class="btn-blue" onclick="updateLocation('${o._id}')">📍 Location Save</button>
             <a href="/order-details?id=${o.trackId}" target="_blank"><button class="btn-blue">Track</button></a>
             <button class="btn-red" onclick="delOrder('${o._id}')">Delete</button>
         </div>
@@ -210,6 +211,15 @@ async function addItem(){
 async function toggleStock(id){ await fetch(API+`/api/menu/${id}/stock`, {method:'PUT'}); loadData(); }
 async function delItem(id){ if(confirm('Delete?')){ await fetch(API+`/api/menu/${id}`, {method:'DELETE'}); loadData(); }}
 
+// NEW: LOCATION SAVE FUNCTION
+async function updateLocation(id){ 
+    const riderLat = document.getElementById(`lat-${id}`).value;
+    const riderLng = document.getElementById(`lng-${id}`).value;
+    await fetch(API+`/api/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status: 'Out for Delivery', riderLat, riderLng})});
+    alert('📍 Location Save ho gayi');
+    loadData();
+}
+
 // 2. STATUS UPDATE ME LOCATION BHI BHEJ RAHE
 async function updateStatus(id, status){ 
     const riderLat = document.getElementById(`lat-${id}`).value;
@@ -223,7 +233,7 @@ async function delOrder(id){ if(confirm('Delete?')){ await fetch(API+`/api/order
 function openWA(link){ if(link) window.open(link, '_blank'); }
 
 loadData();
-setInterval(loadData, 10000); // 10 sec me auto refresh
+// setInterval(loadData, 10000); // 10 sec me auto refresh BAND kar diya
 </script>
 </body>
 </html>
