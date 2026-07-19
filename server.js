@@ -52,16 +52,20 @@ const Coupon = mongoose.model('Coupon', new mongoose.Schema({
 
 // MENU API
 app.get('/api/menu', async (req,res)=> res.json(await MenuItem.find().sort({createdAt:-1})));
+
 app.put('/api/menu/:id/stock', async (req,res)=>{ 
     const item = await MenuItem.findById(req.params.id);
     item.inStock = !item.inStock;
     await item.save();
     res.json({success:true, inStock: item.inStock}); 
 });
+
 app.post('/api/menu', upload.single('img'), async (req,res)=>{
     const data = {...req.body, img: req.file ? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/400'};
     await new MenuItem(data).save();
     res.json({success:true});
+});
+
 app.put('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndUpdate(req.params.id, req.body); res.json({success:true}); });
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
 
@@ -70,6 +74,8 @@ app.post('/api/coupon/validate', async (req,res)=>{
     const coupon = await Coupon.findOne({code:req.body.code.toUpperCase()});
     if(!coupon) return res.json({success:false, msg:"Invalid Coupon"});
     res.json({success:true, discount:coupon.discount, type:coupon.type});
+});
+
 app.post('/api/coupon', async (req,res)=>{ await new Coupon(req.body).save(); res.json({success:true}); });
 
 // STATS API
@@ -84,7 +90,7 @@ app.post('/api/orders', async (req,res)=>{
     const trackId = 'QB' + Date.now(); 
     await new Order({...req.body, trackId}).save(); 
     
-    const adminNumber = "918207836370"; // <-- TERA NUMBER
+    const adminNumber = "918207836370"; // TERA NUMBER
     const items = req.body.items.map(i=>`${i.name} x${i.qty}`).join(', ');
     const msg = `New Order: ${trackId}%0AName: ${req.body.name}%0APhone: ${req.body.phone}%0AAddress: ${req.body.address}%0ATotal: ₹${req.body.total}%0APayment: ${req.body.payment}%0AItems: ${items}`;
     const waLink = `https://wa.me/${adminNumber}?text=${msg}`;
