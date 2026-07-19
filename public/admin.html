@@ -16,10 +16,13 @@
     .order, .menu-item{border:1px solid #ddd; padding:10px; margin:10px 0; border-radius:5px;}
     .btn-green{background:#25D366;} .btn-red{background:#dc3545;} .btn-blue{background:#007bff;}
     .report-result p{margin:5px 0; font-size:16px;}
+    .logout-btn{background:#6c757d; float:right; padding:8px 15px; width:auto;}
 </style>
 </head>
 <body>
 
+<!-- LOGOUT BUTTON -->
+<button class="logout-btn" onclick="logout()">🚪 Logout</button>
 <h1>🔥 QuickBite Admin Panel</h1>
 
 <!-- 1. STATS -->
@@ -90,7 +93,28 @@
 
 <script>
 const API = '';
-let token = 'admin123'; 
+const ADMIN_PASSWORD = 'admin123'; // <-- Password yaha change kar sakta hai
+
+// LOGIN CHECK
+function checkLogin(){
+    if(sessionStorage.getItem('adminLoggedIn') !== 'true'){
+        let pass = prompt("🔒 Admin Login\n\nPassword daalo:");
+        if(pass === ADMIN_PASSWORD){
+            sessionStorage.setItem('adminLoggedIn', 'true');
+        } else {
+            alert("Galat Password!");
+            window.location = '/'; // Home pe bhej dega
+        }
+    }
+}
+
+function logout(){
+    sessionStorage.removeItem('adminLoggedIn');
+    alert("Logout ho gaye");
+    window.location = '/';
+}
+
+checkLogin(); // Page load hote hi check hoga
 
 async function loadData(){
     // Stats
