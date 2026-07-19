@@ -66,14 +66,16 @@ app.post('/api/menu', upload.single('img'), async (req,res)=>{
     const data = {...req.body, img: req.file ? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/400'};
     await new MenuItem(data).save();
     res.json({success:true});
+}); // FIX 1
 app.put('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndUpdate(req.params.id, req.body); res.json({success:true}); });
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
 
-// COUPON API - YAHAN BRACKET THEEK KIYA
+// COUPON API
 app.post('/api/coupon/validate', async (req,res)=>{
     const coupon = await Coupon.findOne({code:req.body.code.toUpperCase()});
     if(!coupon) return res.json({success:false, msg:"Invalid Coupon"});
     res.json({success:true, discount:coupon.discount, type:coupon.type});
+}); // FIX 2
 app.post('/api/coupon', async (req,res)=>{ await new Coupon(req.body).save(); res.json({success:true}); });
 
 // STATS + REPORT API
