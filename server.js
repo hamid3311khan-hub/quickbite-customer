@@ -21,7 +21,7 @@ app.get('/', (req,res)=> res.sendFile(path.join(__dirname, 'public/index1.html')
 app.get('/admin', (req,res)=> res.sendFile(path.join(__dirname, 'public/admin.html')));
 app.get('/index', (req,res)=> res.sendFile(path.join(__dirname, 'public/index.html')));
 app.get('/cart', (req,res)=> res.sendFile(path.join(__dirname, 'public/cart.html')));
-app.get('/track', (req,res)=> res.sendFile(path.join(__dirname, 'public/track.html'))); // <-- YE CHANGE KIYA
+app.get('/track', (req,res)=> res.sendFile(path.join(__dirname, 'public/track.html')));
 app.get('/order-details', (req,res)=> res.sendFile(path.join(__dirname, 'public/order-details.html')));
 
 const storage = multer.diskStorage({
@@ -40,14 +40,14 @@ const MenuItem = mongoose.model('MenuItem', new mongoose.Schema({
     inStock:{type:Boolean, default:true}
 }, {timestamps:true}));
 
-// 2.TRACKING + 5.LOYALTY KE LIYE 2 FIELD ADD KIYE
+// 2.TRACKING + 5.LOYALTY KE LIYE 2 FIELD ADD KIYE - DEFAULT PATNA KIYA
 const Order = mongoose.model('Order', new mongoose.Schema({
     name:String, phone:String, address:String, items:Array, total:Number, 
     payment:{type:String, default:'COD'}, status:{type:String, default:'Pending'}, 
     trackId:String, coupon:{type:String, default:''}, discount:{type:Number, default:0},
     pointsEarned: {type:Number, default:0}, // 5. LOYALTY
-    riderLat: {type:Number, default: 23.6102}, // 2. TRACKING - Ramna, Jharkhand
-    riderLng: {type:Number, default: 85.2799}  // 2. TRACKING
+    riderLat: {type:Number, default: 25.5941}, // 2. TRACKING - Patna, Bihar
+    riderLng: {type:Number, default: 85.1376}  // 2. TRACKING
 }, {timestamps:true}));
 
 const Coupon = mongoose.model('Coupon', new mongoose.Schema({
@@ -66,7 +66,6 @@ app.post('/api/menu', upload.single('img'), async (req,res)=>{
     const data = {...req.body, img: req.file ? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/400'};
     await new MenuItem(data).save();
     res.json({success:true});
-});
 app.put('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndUpdate(req.params.id, req.body); res.json({success:true}); });
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
 
@@ -149,7 +148,7 @@ app.put('/api/orders/:id/status', async (req,res)=>{
     if(req.body.riderLat) { order.riderLat = req.body.riderLat; order.riderLng = req.body.riderLng; }
     await order.save(); 
     
-    const trackLink = `https://quickbite-ymqk.onrender.com/track?id=${order.trackId}`; // <-- YE LINK AB TRACK PE JAYEGA
+    const trackLink = `https://quickbite-ymqk.onrender.com/order-details?id=${order.trackId}`; // <-- ORDER-DETAILS PE BHEJA
     const customerMsg = `QuickBite Update 🛵%0AOrder: ${order.trackId}%0AStatus: ${order.status}%0APayment: ${order.payment}%0A%0ALive Track: ${trackLink}`;
     const customerWaLink = `https://wa.me/91${order.phone}?text=${customerMsg}`;
     res.json({success:true, customerWaLink, trackLink}); 
