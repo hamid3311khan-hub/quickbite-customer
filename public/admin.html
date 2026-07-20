@@ -6,17 +6,18 @@
 <title>QuickBite Admin</title>
 <style>
     body{font-family:Arial; background:#f4f4f4; padding:20px;}
-  .card{background:white; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 5px #ccc;}
+ .card{background:white; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 5px #ccc;}
     input, select, button, textarea{padding:10px; margin:5px; border-radius:5px; border:1px solid #ccc; width:calc(100% - 22px);}
     button{background:#ff5722; color:white; border:none; cursor:pointer;}
     button:hover{opacity:0.9;}
-  .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;}
-  .stat-card{background:#ff5722; color:white; text-align:center; padding:20px;}
-  .stat-card h2{margin:0; font-size:30px;}
-  .order,.menu-item{border:1px solid #ddd; padding:10px; margin:10px 0; border-radius:5px;}
-  .btn-green{background:#25D366;}.btn-red{background:#dc3545;}.btn-blue{background:#007bff;}
-  .report-result p{margin:5px 0; font-size:16px;}
-  .logout-btn{background:#6c757d; float:right; padding:8px 15px; width:auto;}
+ .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;}
+ .stat-card{background:#ff5722; color:white; text-align:center; padding:20px;}
+ .stat-card h2{margin:0; font-size:30px;}
+ .order,.menu-item{border:1px solid #ddd; padding:10px; margin:10px 0; border-radius:5px;}
+ .btn-green{background:#25D366;}.btn-red{background:#dc3545;}.btn-blue{background:#007bff;}
+ .report-result p{margin:5px 0; font-size:16px;}
+ .logout-btn{background:#6c757d; float:right; padding:8px 15px; width:auto;}
+  small{color:#666; font-size:12px;}
 </style>
 </head>
 <body>
@@ -47,8 +48,19 @@
 
 <div class="card">
     <h2>📢 WhatsApp Broadcast</h2>
-    <textarea id="broadcastMsg" placeholder="Message likho..." rows="3"></textarea>
-    <button class="btn-green" onclick="sendAllBroadcast()">Send to All Customers</button>
+    <textarea id="broadcastMsg" placeholder="Offer: 50% OFF on First Order" rows="3"></textarea>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn-green" onclick="sendBroadcast('all')">Send to All Customers</button>
+        <button class="btn-blue" onclick="sendBroadcast('new')">Send to New Customers</button>
+    </div>
+
+    <div style="margin-top:15px; padding-top:15px; border-top:1px dashed #ddd;">
+        <h4>Send to Selected Numbers</h4>
+        <input type="text" id="manualNumbers" placeholder="7061840674, 8507317931, 9876543210">
+        <small>Comma se alag karo. 91 lagane ki zarurat nahi</small>
+        <button class="btn-green" onclick="sendBroadcast('manual')">Send to Selected</button>
+    </div>
 </div>
 
 <div class="card">
@@ -146,13 +158,26 @@ async function getReport(){
   `
 }
 
-async function sendAllBroadcast(){
+// PURANE sendAllBroadcast KO HATA KE YE NAYA RAKH
+async function sendBroadcast(type){
     const message = document.getElementById('broadcastMsg').value;
     if(!message) return alert('Message likho');
-    const res = await fetch(API+'/api/broadcast', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message, type:'all'})});
+
+    let body = {message, type};
+    if(type === 'manual'){
+        const numbers = document.getElementById('manualNumbers').value;
+        if(!numbers) return alert('Number bhi daalo');
+        body.numbers = numbers;
+    }
+
+    const res = await fetch(API+'/api/broadcast', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(body)
+    });
     const data = await res.json();
-    alert(`${data.count} customers ko link ban gaye`);
-    data.links.forEach(link => window.open(link, '_blank'));
+    alert(`${data.count} logo ko link ban gaye`);
+    if(data.links) data.links.forEach(link => window.open(link, '_blank'));
 }
 
 async function addCoupon(){
