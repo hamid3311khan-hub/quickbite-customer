@@ -1,39 +1,33 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Track Order - QuickBite</title>
+<title>QuickBite Order Tracking</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 *{margin:0;font-family:Arial} 
-nav{background:#333;color:white;padding:15px} 
-.container{max-width:700px;margin:30px auto;padding:20px}
-.card{border:2px solid #ff6600;padding:20px;border-radius:10px;margin-bottom:20px} 
-.btn{padding:15px;margin:8px;width:100%;border:none;border-radius:8px;font-size:16px;cursor:pointer;color:white}
-.btn1{background:#ffc107} .btn2{background:#17a2b8} .btn3{background:#28a745} .btn4{background:red}
-.wabtn{background:#25D366} /* NAYA BUTTON */
-#map{height:350px;border-radius:10px;margin-top:20px;border:2px solid #ddd}
+nav{background:#ff5722;color:white;padding:15px;text-align:center;font-size:18px;font-weight:bold}
+.container{max-width:700px;margin:20px auto;padding:15px}
+.card{border:2px solid #ff6600;padding:20px;border-radius:10px;margin-bottom:20px;background:white} 
+.wabtn{background:#25D366;color:white;padding:15px;width:100%;border:none;border-radius:8px;font-size:16px;cursor:pointer;margin-top:10px;font-weight:bold}
+#map{height:300px;border-radius:10px;margin-top:15px;border:2px solid #ddd}
+.steps{display:flex;justify-content:space-between;margin:20px 0}
+.step{text-align:center;flex:1}
+.step .circle{width:30px;height:30px;border-radius:50%;background:#ddd;margin:0 auto 5px;line-height:30px;color:white}
+.step.active .circle{background:#ff5722}
+.error{border:2px solid red;padding:15px;border-radius:10px;background:#ffe6e6;font-weight:bold}
 </style>
 </head>
 <body>
-<nav><a href="/admin" style="color:white">⬅ Back to Admin</a></nav>
+<nav>🔥 QuickBite Order Tracking</nav>
 
 <div class="container">
-<div id="orderBox" class="card">Loading...</div>
+<div id="orderBox">Loading...</div>
 
-<!-- ADMIN CONTROLS -->
-<div id="adminPanel">
-<h3>Update Status</h3>
-<button class="btn btn1" onclick="update('Preparing')">👨‍🍳 Preparing</button>
-<button class="btn btn2" onclick="update('Out for Delivery')">🚚 Out for Delivery</button>
-<button class="btn btn3" onclick="update('Delivered')">✅ Delivered</button>
-<button class="btn btn4" onclick="delOrder()">🗑️ Delete Order</button>
-</div>
-
-<!-- CUSTOMER WHATSAPP BUTTON -->
-<button id="waBtn" class="btn wabtn" style="display:none">📱 WhatsApp pe Details Le</button>
+<button id="waBtn" class="wabtn" style="display:none">📞 Contact Us on WhatsApp</button>
 
 <div id="map"></div>
+<p style="font-size:12px;color:#666;margin-top:5px">* Rider location admin update karega</p>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -43,33 +37,50 @@ const urlParams = new URLSearchParams(window.location.search);
 const trackId = urlParams.get('id'); 
 let orderData;
 let map, riderMarker;
-let lastStatus = ""; // POPUP KE LIYE
+let lastStatus = "";
 
 async function loadOrder(){
-    if(!trackId) return document.getElementById('orderBox').innerHTML="Order ID missing in URL";
+    if(!trackId) {
+        document.getElementById('orderBox').innerHTML = `<div class="error">Invalid Order ID</div>`;
+        return;
+    }
     
     try{
-        const res = await fetch(`${API}/api/orders`);
-        const orders = await res.json();
-        orderData = orders.find(o=>o.trackId==trackId); 
+        const res = await fetch(`${API}/api/orders/track/${trackId}`);
+        orderData = await res.json();
         
-        if(!orderData) return document.getElementById('orderBox').innerHTML="Order not found";
+        if(!orderData) {
+            document.getElementById('orderBox').innerHTML = `<div class="error">Invalid Order ID</div>`;
+            return;
+        }
         
-        // 1. POPUP LOGIC - STATUS CHANGE HOTE HI
+        // POPUP AGAR STATUS CHANGE HUA
         if(lastStatus && lastStatus !== orderData.status){
             alert(`🔔 Update: Aapka order ab "${orderData.status}" hai`);
         }
         lastStatus = orderData.status;
         
+        // STEPS
+        const steps = ['Pending','Preparing','Out for Delivery','Delivered'];
+        const currentStep = steps.indexOf(orderData.status);
+        
         document.getElementById('orderBox').innerHTML = `
-            <h2>${orderData.trackId}</h2>
-            <p><b>Name:</b> ${orderData.name}</p>
-            <p><b>Phone:</b> ${orderData.phone}</p>
-            <p><b>Address:</b> ${orderData.address}</p>
-            <p><b>Total:</b> ₹${orderData.total}</p>
-            <p><b>Payment:</b> ${orderData.payment}</p>
-            <p><b>Current Status:</b> <span style="color:green;font-size:18px">${orderData.status}</span></p>
-            <p><b>Items:</b> ${orderData.items.map(i=>i.name+' x'+i.qty).join(', ')}</p>
+            <div class="card">
+                <h2>Order: ${orderData.trackId}</h2>
+                <p><b>Name:</b> ${orderData.name}</p>
+                <p><b>Address:</b> ${orderData.address}</p>
+                <p><b>Total:</b> ₹${orderData.total} | <b>Payment:</b> ${orderData.payment}</p>
+                <p><b>Current Status:</b> <span style="color:green;font-size:18px">${orderData.status}</span></p>
+                
+                <div class="steps">
+                    ${steps.map((s,i)=>`
+                        <div class="step ${i<=currentStep?'active':''}">
+                            <div class="circle">${i+1}</div>
+                            <div>${s}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
         `;
         
         // MAP
@@ -79,38 +90,22 @@ async function loadOrder(){
         if(!map){
             map = L.map('map').setView([lat, lng], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-            L.marker([25.5941, 85.1376]).addTo(map).bindPopup("Customer: Patna");
         }
         
         if(riderMarker) map.removeLayer(riderMarker);
         riderMarker = L.marker([lat, lng]).addTo(map).bindPopup("Rider: " + orderData.status).openPopup();
         map.setView([lat, lng], 13);
         
-        // 2. WHATSAPP BUTTON LOGIC
+        // WHATSAPP BUTTON
         const waLink = `https://wa.me/91${orderData.phone}?text=Order ${orderData.trackId} Status: ${orderData.status}`;
         document.getElementById('waBtn').style.display = 'block';
         document.getElementById('waBtn').onclick = ()=> window.open(waLink, '_blank');
         
     } catch(e){
-        document.getElementById('orderBox').innerHTML="Server Error. Refresh karo";
-    }
-}
-
-async function update(status){
-    const res = await fetch(`${API}/api/orders/${orderData._id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})});
-    const data = await res.json();
-    if(data.customerWaLink) window.open(data.customerWaLink, '_blank');
-    alert("Status Updated: " + status);
-    loadOrder();
-}
-
-async function delOrder(){
-    if(confirm("Delete this order?")){
-        await fetch(`${API}/api/orders/${orderData._id}`, {method:'DELETE'});
-        window.location='/admin';
+        document.getElementById('orderBox').innerHTML = `<div class="error">Server Error. Refresh karo</div>`;
     }
 }
 
 loadOrder();
-setInterval(loadOrder, 3000); // 3 sec kar diya taaki jaldi update ho
+setInterval(loadOrder, 3000); // 3 sec me auto refresh
 </script></body></html>
