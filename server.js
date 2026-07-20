@@ -32,11 +32,12 @@ const MenuItem = mongoose.model('MenuItem', {
     img: String, veg: Boolean, inStock: {type:Boolean, default:true}, offer: Number
 });
 
+// FIX 1: timestamps add kiya taaki report me date filter chale
 const Order = mongoose.model('Order', {
     trackId: String, name:String, phone:String, address:String, 
     items:[], total:Number, payment:String, status:{type:String, default:'Pending'},
     riderLat:Number, riderLng:Number, pointsEarned:Number, coupon:String, discount:Number
-});
+}, {timestamps: true}); // YE NAYA HAI
 
 const Coupon = mongoose.model('Coupon', {code:String, discount:Number, type:String});
 
@@ -83,13 +84,11 @@ app.put('/api/orders/:id/status', async (req,res)=>{
     res.json({success:true, customerWaLink: waLink}) 
 });
 
-// YEH NAYA DALA - DELETE ORDER
 app.delete('/api/orders/:id', async (req,res)=>{ 
     await Order.findByIdAndDelete(req.params.id); 
     res.json({success:true}) 
 });
 
-// YEH NAYA DALA - ADD COUPON
 app.post('/api/coupon', async (req,res)=>{ 
     await new Coupon(req.body).save(); 
     res.json({success:true}) 
@@ -110,34 +109,39 @@ app.get('/api/stats', async (req,res)=>{
     res.json({orders, customers}) 
 });
 
-// YEH NAYA DALA - REPORT
 app.get('/api/report', async (req,res)=>{ 
     const {start, end} = req.query;
-    const orders = await Order.find({createdAt: {$gte: new Date(start), $lte: new Date(end)}});
+    // FIX 2: end date me 23:59 add kiya taaki us din ke order bhi aaye
+    const endDate = new Date(end);
+    endDate.setHours(23,59,59);
+    const orders = await Order.find({createdAt: {$gte: new Date(start), $lte: endDate}});
     const totalRevenue = orders.reduce((a,b)=>a+b.total,0);
     res.json({totalRevenue, totalOrders:orders.length, topItems:[]}) 
 });
 
-// YEH NAYA DALA - BROADCAST
+// FIX 3: Broadcast me 'new' aur 'manual' add kiya
 app.post('/api/broadcast', async (req,res)=>{
     const {message, type, numbers} = req.body;
     let phones = [];
     if(type === 'all'){
-        phones = await Order.distinct('phone');
+        phones = await Order.distinct('phone'); // Purane customer
+    } else if(type === 'new'){
+        phones = []; // Naye customer ke liye abhi khali. Baad me DB banayenge
+        return res.json({count: 0, links: [], msg: "New customer DB nahi hai abhi"})
     } else {
-        phones = numbers.split(',').map(n=>n.trim());
+        phones = numbers.split(',').map(n=>n.trim()); // Selected
     }
     const links = phones.map(p => `https://wa.me/91${p}?text=${encodeURIComponent(message)}`);
     res.json({count: phones.length, links});
 });
 
-// ===== PAGE ROUTES - public folder se =====
+// ===== PAGE ROUTES =====
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
 app.get('/index', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('/cart', (req, res) => res.sendFile(path.join(__dirname, 'public', 'cart.html')));
 app.get('/track', (req, res) => res.sendFile(path.join(__dirname, 'public', 'track.html')));
 app.get('/payment', (req, res) => res.sendFile(path.join(__dirname, 'public', 'payment.html')));
-app.get('/order-details', (req, res) => res.sendFile(path.join(__dirname, 'public', 'track.html'))); // Track page hi use hoga
+app.get('/order-details', (req, res) => res.sendFile(path.join(__dirname, 'public', 'track.html')));
 
 app.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
