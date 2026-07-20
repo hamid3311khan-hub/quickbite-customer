@@ -6,26 +6,24 @@
 <title>QuickBite Admin</title>
 <style>
     body{font-family:Arial; background:#f4f4f4; padding:20px;}
-    .card{background:white; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 5px #ccc;}
+   .card{background:white; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 5px #ccc;}
     input, select, button, textarea{padding:10px; margin:5px; border-radius:5px; border:1px solid #ccc; width:calc(100% - 22px);}
     button{background:#ff5722; color:white; border:none; cursor:pointer;}
     button:hover{opacity:0.9;}
-    .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;}
-    .stat-card{background:#ff5722; color:white; text-align:center; padding:20px;}
-    .stat-card h2{margin:0; font-size:30px;}
-    .order, .menu-item{border:1px solid #ddd; padding:10px; margin:10px 0; border-radius:5px;}
-    .btn-green{background:#25D366;} .btn-red{background:#dc3545;} .btn-blue{background:#007bff;}
-    .report-result p{margin:5px 0; font-size:16px;}
-    .logout-btn{background:#6c757d; float:right; padding:8px 15px; width:auto;}
+   .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;}
+   .stat-card{background:#ff5722; color:white; text-align:center; padding:20px;}
+   .stat-card h2{margin:0; font-size:30px;}
+   .order,.menu-item{border:1px solid #ddd; padding:10px; margin:10px 0; border-radius:5px;}
+   .btn-green{background:#25D366;}.btn-red{background:#dc3545;}.btn-blue{background:#007bff;}
+   .report-result p{margin:5px 0; font-size:16px;}
+   .logout-btn{background:#6c757d; float:right; padding:8px 15px; width:auto;}
 </style>
 </head>
 <body>
 
-<!-- LOGOUT BUTTON -->
 <button class="logout-btn" onclick="logout()">🚪 Logout</button>
 <h1>🔥 QuickBite Admin Panel</h1>
 
-<!-- 1. STATS -->
 <div class="grid">
     <div class="card stat-card">
         <h3>Total Orders</h3>
@@ -37,7 +35,6 @@
     </div>
 </div>
 
-<!-- 2. 3. SALES REPORT NEW -->
 <div class="card">
     <h2>📊 Sales Report</h2>
     <div style="display:flex; gap:10px;">
@@ -49,12 +46,10 @@
     <div id="reportResult" class="report-result"></div>
 </div>
 
-<!-- 3. BROADCAST -->
 <div class="card">
     <h2>📢 WhatsApp Broadcast</h2>
     <textarea id="broadcastMsg" placeholder="Message likho..." rows="3"></textarea>
     <button class="btn-green" onclick="sendAllBroadcast()">Send to All Customers</button>
-    
     <div style="margin-top:15px; padding-top:15px; border-top:1px dashed #ddd;">
         <h4>Send to Specific Numbers</h4>
         <input type="text" id="manualNumbers" placeholder="7061840674, 8507317931">
@@ -63,7 +58,6 @@
     </div>
 </div>
 
-<!-- 4. COUPON -->
 <div class="card">
     <h2>🎟️ Add Coupon</h2>
     <input type="text" id="couponCode" placeholder="Code: FIRST50">
@@ -72,7 +66,6 @@
     <button onclick="addCoupon()">Add Coupon</button>
 </div>
 
-<!-- 5. MENU -->
 <div class="card">
     <h2>🍔 Add New Menu Item</h2>
     <input type="text" id="itemName" placeholder="Item Name">
@@ -85,7 +78,6 @@
     <div id="menuList"></div>
 </div>
 
-<!-- 6. ORDERS -->
 <div class="card">
     <h2>📦 Orders</h2>
     <div id="ordersList">Loading...</div>
@@ -93,59 +85,50 @@
 
 <script>
 const API = '';
-const ADMIN_PASSWORD = 'admin123'; // <-- Password yaha change kar sakta hai
+const ADMIN_PASSWORD = 'admin123';
 
-// LOGIN CHECK
 function checkLogin(){
-    if(sessionStorage.getItem('adminLoggedIn') !== 'true'){
-        let pass = prompt("🔒 Admin Login\n\nPassword daalo:");
+    if(sessionStorage.getItem('adminLoggedIn')!== 'true'){
+        let pass = prompt("🔒 Admin Login\nPassword daalo:");
         if(pass === ADMIN_PASSWORD){
             sessionStorage.setItem('adminLoggedIn', 'true');
         } else {
             alert("Galat Password!");
-            window.location = '/'; // Home pe bhej dega
+            window.location = '/';
         }
     }
 }
-
 function logout(){
     sessionStorage.removeItem('adminLoggedIn');
     alert("Logout ho gaye");
     window.location = '/';
 }
-
-checkLogin(); // Page load hote hi check hoga
+checkLogin();
 
 async function loadData(){
-    // Stats
     const stats = await fetch(API+'/api/stats').then(r=>r.json());
     document.getElementById('totalOrders').innerText = stats.orders;
     document.getElementById('totalCustomers').innerText = stats.customers;
 
-    // Menu
     const menu = await fetch(API+'/api/menu').then(r=>r.json());
     document.getElementById('menuList').innerHTML = menu.map(i=>`
         <div class="menu-item">
-            <b>${i.name}</b> - ₹${i.price} - ${i.inStock ? 'In Stock' : 'Out of Stock'}
-            <button onclick="toggleStock('${i._id}')">${i.inStock ? 'OFF' : 'ON'}</button>
+            <b>${i.name}</b> - ₹${i.price} - ${i.inStock? 'In Stock' : 'Out of Stock'}
+            <button onclick="toggleStock('${i._id}')">${i.inStock? 'OFF' : 'ON'}</button>
             <button class="btn-red" onclick="delItem('${i._id}')">Delete</button>
         </div>
     `).join('');
 
-    // Orders
     const orders = await fetch(API+'/api/orders').then(r=>r.json());
     document.getElementById('ordersList').innerHTML = orders.map(o=>`
         <div class="order">
             <b>${o.trackId}</b> - ${o.name} - ₹${o.total} <br>
             <b>Payment:</b> ${o.payment} | <b>Status:</b> ${o.status} | <b>Points:</b> ${o.pointsEarned || 0} <br>
             <small>${o.phone} | ${o.address}</small> <br>
-            
-            <!-- 2. TRACKING: Rider Location -->
             <div style="display:flex; gap:5px; margin-top:5px;">
                 <input type="text" id="lat-${o._id}" placeholder="Rider Lat" value="${o.riderLat}" style="width:45%">
                 <input type="text" id="lng-${o._id}" placeholder="Rider Lng" value="${o.riderLng}" style="width:45%">
             </div>
-
             <select onchange="updateStatus('${o._id}', this.value)">
                 <option ${o.status=='Pending'?'selected':''}>Pending</option>
                 <option ${o.status=='Preparing'?'selected':''}>Preparing</option>
@@ -159,11 +142,10 @@ async function loadData(){
     `).join('');
 }
 
-// 3. REPORT FUNCTIONS
 async function getReport(){
   let s = document.getElementById('startDate').value;
   let e = document.getElementById('endDate').value;
-  if(!s || !e) return alert('Start aur End date select karo');
+  if(!s ||!e) return alert('Start aur End date select karo');
   const d = await fetch(`${API}/api/report?start=${s}&end=${e}`).then(r=>r.json());
   document.getElementById('reportResult').innerHTML = `
     <p><b>Total Revenue:</b> ₹${d.totalRevenue}</p>
@@ -174,7 +156,7 @@ async function getReport(){
 function downloadCSV(){
   let s = document.getElementById('startDate').value;
   let e = document.getElementById('endDate').value;
-  if(!s || !e) return alert('Start aur End date select karo');
+  if(!s ||!e) return alert('Start aur End date select karo');
   window.open(`${API}/api/report/download?start=${s}&end=${e}`)
 }
 
@@ -186,11 +168,10 @@ async function sendAllBroadcast(){
     alert(`${data.count} customers ko link ban gaye`);
     data.links.forEach(link => window.open(link, '_blank'));
 }
-
 async function sendManualBroadcast(){
     const message = document.getElementById('broadcastMsg').value;
     const numbers = document.getElementById('manualNumbers').value;
-    if(!message || !numbers) return alert('Message aur Number dono bharo');
+    if(!message ||!numbers) return alert('Message aur Number dono bharo');
     const res = await fetch(API+'/api/broadcast', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message, type:'manual', numbers})});
     const data = await res.json();
     alert(`${data.count} logo ko link ban gaye`);
@@ -211,8 +192,7 @@ async function addItem(){
 async function toggleStock(id){ await fetch(API+`/api/menu/${id}/stock`, {method:'PUT'}); loadData(); }
 async function delItem(id){ if(confirm('Delete?')){ await fetch(API+`/api/menu/${id}`, {method:'DELETE'}); loadData(); }}
 
-// NEW: LOCATION SAVE FUNCTION
-async function updateLocation(id){ 
+async function updateLocation(id){
     const riderLat = document.getElementById(`lat-${id}`).value;
     const riderLng = document.getElementById(`lng-${id}`).value;
     await fetch(API+`/api/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status: 'Out for Delivery', riderLat, riderLng})});
@@ -220,20 +200,20 @@ async function updateLocation(id){
     loadData();
 }
 
-// 2. STATUS UPDATE ME LOCATION BHI BHEJ RAHE
-async function updateStatus(id, status){ 
+// YAHI MAIN FUNCTION HAI - STATUS + WHATSAPP DONO
+async function updateStatus(id, status){
     const riderLat = document.getElementById(`lat-${id}`).value;
     const riderLng = document.getElementById(`lng-${id}`).value;
     const res = await fetch(API+`/api/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status, riderLat, riderLng})});
     const data = await res.json();
-    if(data.customerWaLink) window.open(data.customerWaLink, '_blank');
+    if(data.customerWaLink) window.open(data.customerWaLink, '_blank'); // Admin click karte hi WA khul jayega
+    alert("Status Updated: " + status); // Confirmation
     loadData();
 }
 async function delOrder(id){ if(confirm('Delete?')){ await fetch(API+`/api/orders/${id}`, {method:'DELETE'}); loadData(); }}
 function openWA(link){ if(link) window.open(link, '_blank'); }
 
 loadData();
-// setInterval(loadData, 10000); // 10 sec me auto refresh BAND kar diya
 </script>
 </body>
 </html>
