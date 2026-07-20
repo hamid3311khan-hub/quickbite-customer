@@ -21,7 +21,10 @@ app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 // MongoDB
 mongoose.connect(process.env.MONGO_URL)
 .then(()=>console.log('✅ MongoDB Connected'))
-.catch(err => console.log('Mongo Error:', err));
+.catch(err => {
+    console.log('Mongo Error:', err);
+    process.exit(1)
+});
 
 // Schema
 const MenuItem = mongoose.model('MenuItem', {
@@ -46,20 +49,39 @@ const upload = multer({storage});
 
 // ===== API ROUTES =====
 app.get('/api/menu', async (req,res)=> { const items = await MenuItem.find(); res.json(items); });
+
 app.post('/api/menu', upload.single('img'), async (req,res)=>{ 
     const data = {...req.body, img: req.file ? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/400', veg: req.body.veg === 'true'};
     await new MenuItem(data).save(); res.json({success:true}); 
 });
+
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
 
 app.post('/api/orders', async (req,res)=>{ const trackId = 'QB' + Date.now(); await new Order({...req.body, trackId}).save(); res.json({success:true, trackId}) });
+
 app.get('/api/orders/track/:id', async (req,res)=>{ res.json(await Order.findOne({trackId:req.params.id})) });
+
 app.get('/api/orders', async (req,res)=>{ res.json(await Order.find().sort({_id:-1})) });
+
 app.get('/api/orders/history/:phone', async (req,res)=>{ res.json(await Order.find({phone:req.params.phone}).sort({_id:-1})) });
+
 app.put('/api/orders/:id/status', async (req,res)=>{ await Order.findByIdAndUpdate(req.params.id, req.body); res.json({success:true}) });
 
-app.post('/api/coupon/validate', async (req,res)=>{ const coupon = await Coupon.findOne({code:req.body.code}); if(coupon) res.json({success:true, ...coupon._doc}) else res.json({success:false}) });
-app.get('/api/stats', async (req,res)=>{ const orders = await Order.countDocuments(); const customers = await Order.distinct('phone').then(a=>a.length); res.json({orders, customers}) });
+// YAHI WALI LINE FIX KI HAI
+app.post('/api/coupon/validate', async (req,res)=>{ 
+    const coupon = await Coupon.findOne({code:req.body.code}); 
+    if(coupon) {
+        res.json({success:true, ...coupon._doc})
+    } else {
+        res.json({success:false})
+    }
+});
+
+app.get('/api/stats', async (req,res)=>{ 
+    const orders = await Order.countDocuments(); 
+    const customers = await Order.distinct('phone').then(a=>a.length); 
+    res.json({orders, customers}) 
+});
 
 // ===== PAGE ROUTES - public folder se =====
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
