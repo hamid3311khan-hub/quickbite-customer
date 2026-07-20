@@ -13,7 +13,6 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: {origin: "*"} });
 const PORT = process.env.PORT || 10000;
 
-// uploads folder
 const uploadDir = './public/uploads';
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -22,12 +21,10 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
-// MongoDB
 mongoose.connect(process.env.MONGO_URL)
 .then(()=>console.log('✅ MongoDB Connected'))
 .catch(err => { console.log('Mongo Error:', err); process.exit(1) });
 
-// SCHEMAS
 const MenuItem = mongoose.model('MenuItem', {
     name: String, price: Number, category: String, desc: String,
     img: String, veg: Boolean, inStock: {type:Boolean, default:true}, offer: Number
@@ -49,14 +46,12 @@ const OrderSchema = new mongoose.Schema({
 const Order = mongoose.model('Order', OrderSchema);
 const Coupon = mongoose.model('Coupon', {code:String, discount:Number, type:String});
 
-// Multer
 const storage = multer.diskStorage({
     destination: uploadDir,
     filename: (req,file,cb)=> cb(null, Date.now() + '-' + file.originalname)
 });
 const upload = multer({storage});
 
-// SOCKET LIVE
 io.on('connection', (socket) => {
     socket.on('riderLocation', async (data) => {
         await Rider.findOneAndUpdate({riderId: data.riderId}, {lat: data.lat, lng: data.lng, status: "Online"});
@@ -67,10 +62,14 @@ io.on('connection', (socket) => {
 
 // ===== API ROUTES =====
 app.get('/api/menu', async (req,res)=> { const items = await MenuItem.find(); res.json(items); });
+
 app.post('/api/menu', upload.single('img'), async (req,res)=>{
     const data = {...req.body, img: req.file? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/400', veg: req.body.veg === 'true'};
     await new MenuItem(data).save(); res.json({success:true});
+}); // YE } BAND THA
+
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
+
 app.put('/api/menu/:id/stock', async (req,res)=>{
     const item = await MenuItem.findById(req.params.id);
     item.inStock =!item.inStock;
