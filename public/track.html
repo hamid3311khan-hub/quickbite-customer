@@ -2,6 +2,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+<script src="/socket.io/socket.io.js"></script>
 <style>
 *{margin:0;font-family:Arial}
 nav{background:#ff5722;color:white;padding:15px;text-align:center;font-size:20px;font-weight:bold}
@@ -19,10 +20,8 @@ nav{background:#ff5722;color:white;padding:15px;text-align:center;font-size:20px
 </style>
 </head><body>
 <nav>🔥 QuickBite Live Tracking</nav>
-
 <div class="container">
 <div id="orderBox" class="card">Loading Order...</div>
-
 <div id="trackingBox" class="card">
     <h3>🚚 Live Tracking</h3>
     <p><b>Current Status:</b> <span id="currentStatus">Pending</span></p>
@@ -35,7 +34,6 @@ nav{background:#ff5722;color:white;padding:15px;text-align:center;font-size:20px
     <div id="map"></div>
     <small style="color:#666">* Orange line = Route, Bike = Rider</small>
 </div>
-
 <a id="waBtn" href="#" target="_blank"><button class="btn">📞 Contact Us on WhatsApp</button></a>
 </div>
 
@@ -49,28 +47,15 @@ let map, routingControl, riderMarker;
 
 async function loadOrder(){
     if(!trackId) return document.getElementById('orderBox').innerHTML="<div class='error'><h3>Invalid Order ID</h3></div>";
-
     try{
         const res = await fetch(`${API}/orders/track/${trackId}`);
         const o = await res.json();
         if(!o ||!o.trackId) return document.getElementById('orderBox').innerHTML="<div class='error'><h3>Order not found</h3></div>";
-
-        document.getElementById('orderBox').innerHTML = `
-            <h2>Order: ${o.trackId}</h2>
-            <p><b>Name:</b> ${o.name}</p>
-            <p><b>Phone:</b> ${o.phone}</p>
-            <p><b>Address:</b> ${o.address}</p>
-            <p><b>Total Paid:</b> ₹${o.total} | <b>Payment:</b> ${o.payment}</p>
-            <p><b>Points Earned:</b> ${o.pointsEarned || 0} ⭐</p>
-            <hr style="margin:10px 0">
-            <p><b>Items:</b><br> ${o.items.map(i=>`• ${i.name} x${i.qty} - ₹${i.price}`).join('<br>')}</p>
-        `;
-
+        document.getElementById('orderBox').innerHTML = `<h2>Order: ${o.trackId}</h2><p><b>Name:</b> ${o.name}</p><p><b>Phone:</b> ${o.phone}</p><p><b>Address:</b> ${o.address}</p><p><b>Total Paid:</b> ₹${o.total} | <b>Payment:</b> ${o.payment}</p><p><b>Points Earned:</b> ${o.pointsEarned || 0} ⭐</p><hr style="margin:10px 0"><p><b>Items:</b><br> ${o.items.map(i=>`• ${i.name} x${i.qty} - ₹${i.price}`).join('<br>')}</p>`;
         document.getElementById('currentStatus').innerText = o.status;
         const steps = ['Pending', 'Preparing', 'Out for Delivery', 'Delivered'];
         const index = steps.indexOf(o.status);
         for(let i=1; i<=index+1; i++) document.getElementById('s'+i).classList.add('active');
-
         initMap(o.shopLat, o.shopLng, o.custLat, o.custLng, o.riderLat, o.riderLng);
         document.getElementById('waBtn').href = `https://wa.me/918207836370?text=Help for order ${o.trackId} - Status: ${o.status}`;
     } catch(e){
@@ -79,10 +64,9 @@ async function loadOrder(){
 }
 
 function initMap(sLat, sLng, cLat, cLng, rLat, rLng) {
-    const s = [sLat || 25.5941, sLng || 85.1376]; // Shop Patna
-    const c = [cLat || 25.5941, cLng || 85.1376]; // Customer
-    const r = [rLat || s[0], rLng || s[1]]; // Rider
-
+    const s = [sLat || 25.5941, sLng || 85.1376];
+    const c = [cLat || 25.5941, cLng || 85.1376];
+    const r = [rLat || s[0], rLng || s[1]];
     if(!map){
         map = L.map('map').setView(s, 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
@@ -90,7 +74,7 @@ function initMap(sLat, sLng, cLat, cLng, rLat, rLng) {
         L.marker(c).addTo(map).bindPopup("📍 Customer House");
         routingControl = L.Routing.control({
             waypoints: [L.latLng(s), L.latLng(c)],
-            router: L.Routing.osrmv1({serviceUrl: 'https://router.project-osrm.org/route/v1'}), // FREE
+            router: L.Routing.osrmv1({serviceUrl: 'https://router.project-osrm.org/route/v1'}),
             lineOptions: {styles: [{color: '#ff5722', weight: 5}]},
             createMarker: function() { return null; }, addWaypoints: false
         }).addTo(map);
@@ -99,7 +83,10 @@ function initMap(sLat, sLng, cLat, cLng, rLat, rLng) {
     const bikeIcon = L.icon({iconUrl: 'https://cdn-icons-png.flaticon.com/512/1047/1047711.png', iconSize: [35,35]});
     riderMarker = L.marker(r, {icon: bikeIcon}).addTo(map).bindPopup("🚚 Rider").openPopup();
 }
+
 loadOrder();
-setInterval(loadOrder, 10000); // 10 sec me refresh
+setInterval(loadOrder, 10000);
+const socket = io('https://quickbite-ymqk.onrender.com');
+socket.on('locationUpdate', ()=> loadOrder());
 </script>
 </body></html>
