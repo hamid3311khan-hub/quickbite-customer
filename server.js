@@ -32,12 +32,14 @@ const MenuItem = mongoose.model('MenuItem', {
     img: String, veg: Boolean, inStock: {type:Boolean, default:true}, offer: Number
 });
 
-// FIX 1: timestamps add kiya taaki report me date filter chale
-const Order = mongoose.model('Order', {
+// FIX: Schema alag banaya taaki timestamps chale
+const OrderSchema = new mongoose.Schema({
     trackId: String, name:String, phone:String, address:String, 
     items:[], total:Number, payment:String, status:{type:String, default:'Pending'},
     riderLat:Number, riderLng:Number, pointsEarned:Number, coupon:String, discount:Number
-}, {timestamps: true}); // YE NAYA HAI
+}, {timestamps: true});
+
+const Order = mongoose.model('Order', OrderSchema);
 
 const Coupon = mongoose.model('Coupon', {code:String, discount:Number, type:String});
 
@@ -74,9 +76,9 @@ app.post('/api/orders', async (req,res)=>{
 
 app.get('/api/orders/track/:id', async (req,res)=>{ res.json(await Order.findOne({trackId:req.params.id})) });
 
-app.get('/api/orders', async (req,res)=>{ res.json(await Order.find().sort({_id:-1})) });
+app.get('/api/orders', async (req,res)=>{ res.json(await Order.find().sort({createdAt:-1})) }); // createdAt se sort
 
-app.get('/api/orders/history/:phone', async (req,res)=>{ res.json(await Order.find({phone:req.params.phone}).sort({_id:-1})) });
+app.get('/api/orders/history/:phone', async (req,res)=>{ res.json(await Order.find({phone:req.params.phone}).sort({createdAt:-1})) });
 
 app.put('/api/orders/:id/status', async (req,res)=>{ 
     const updated = await Order.findByIdAndUpdate(req.params.id, req.body, {new:true}); 
@@ -111,7 +113,6 @@ app.get('/api/stats', async (req,res)=>{
 
 app.get('/api/report', async (req,res)=>{ 
     const {start, end} = req.query;
-    // FIX 2: end date me 23:59 add kiya taaki us din ke order bhi aaye
     const endDate = new Date(end);
     endDate.setHours(23,59,59);
     const orders = await Order.find({createdAt: {$gte: new Date(start), $lte: endDate}});
@@ -119,17 +120,17 @@ app.get('/api/report', async (req,res)=>{
     res.json({totalRevenue, totalOrders:orders.length, topItems:[]}) 
 });
 
-// FIX 3: Broadcast me 'new' aur 'manual' add kiya
+// Broadcast: All, New, Manual
 app.post('/api/broadcast', async (req,res)=>{
     const {message, type, numbers} = req.body;
     let phones = [];
     if(type === 'all'){
-        phones = await Order.distinct('phone'); // Purane customer
+        phones = await Order.distinct('phone');
     } else if(type === 'new'){
-        phones = []; // Naye customer ke liye abhi khali. Baad me DB banayenge
+        phones = []; // New customer DB baad me banega
         return res.json({count: 0, links: [], msg: "New customer DB nahi hai abhi"})
     } else {
-        phones = numbers.split(',').map(n=>n.trim()); // Selected
+        phones = numbers.split(',').map(n=>n.trim());
     }
     const links = phones.map(p => `https://wa.me/91${p}?text=${encodeURIComponent(message)}`);
     res.json({count: phones.length, links});
