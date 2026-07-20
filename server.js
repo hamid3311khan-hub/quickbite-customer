@@ -66,7 +66,6 @@ app.post('/api/menu', upload.single('img'), async (req,res)=>{
     const data = {...req.body, img: req.file ? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/400'};
     await new MenuItem(data).save();
     res.json({success:true});
-}); // FIX 1
 app.put('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndUpdate(req.params.id, req.body); res.json({success:true}); });
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
 
@@ -75,7 +74,6 @@ app.post('/api/coupon/validate', async (req,res)=>{
     const coupon = await Coupon.findOne({code:req.body.code.toUpperCase()});
     if(!coupon) return res.json({success:false, msg:"Invalid Coupon"});
     res.json({success:true, discount:coupon.discount, type:coupon.type});
-}); // FIX 2
 app.post('/api/coupon', async (req,res)=>{ await new Coupon(req.body).save(); res.json({success:true}); });
 
 // STATS + REPORT API
@@ -139,7 +137,7 @@ app.get('/api/orders', async (req,res)=> res.json(await Order.find().sort({creat
 app.get('/api/orders/history/:phone', async (req,res)=> res.json(await Order.find({phone:req.params.phone}).sort({createdAt:-1})));
 app.get('/api/orders/track/:id', async (req,res)=> { const order = await Order.findOne({trackId:req.params.id}); res.json(order); });
 
-// STATUS UPDATE
+// STATUS UPDATE - YAHI CHANGE KIYA HAI
 app.put('/api/orders/:id/status', async (req,res)=>{ 
     const order = await Order.findById(req.params.id);
     order.status = req.body.status;
@@ -147,8 +145,14 @@ app.put('/api/orders/:id/status', async (req,res)=>{
     await order.save(); 
     
     const trackLink = `https://quickbite-ymqk.onrender.com/order-details?id=${order.trackId}`;
-    const customerMsg = `QuickBite Update 🛵%0AOrder: ${order.trackId}%0AStatus: ${order.status}%0APayment: ${order.payment}%0A%0ALive Track: ${trackLink}`;
-    const customerWaLink = `https://wa.me/91${order.phone}?text=${customerMsg}`;
+    
+    // BLINKIT STYLE MESSAGE
+    let msg = `QuickBite Update 🛵%0AOrder: ${order.trackId}%0AStatus: ${order.status}%0APayment: ${order.payment}%0A%0ALive Track: ${trackLink}`;
+    if(req.body.status === "Preparing") msg = `👨‍🍳 QuickBite\nOrder: ${order.trackId}\nStatus: Khana ban raha hai 🔥\nTrack: ${trackLink}`;
+    if(req.body.status === "Out for Delivery") msg = `🚚 QuickBite\nOrder: ${order.trackId}\nRider nikla hai!\nTrack: ${trackLink}`;
+    if(req.body.status === "Delivered") msg = `✅ Delivered\nOrder: ${order.trackId}\n${order.pointsEarned} Points mile!\nTrack: ${trackLink}`;
+
+    const customerWaLink = `https://wa.me/91${order.phone}?text=${encodeURIComponent(msg)}`;
     res.json({success:true, customerWaLink, trackLink}); 
 });
 
