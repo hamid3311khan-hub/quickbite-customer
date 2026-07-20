@@ -57,7 +57,19 @@ app.post('/api/menu', upload.single('img'), async (req,res)=>{
 
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
 
-app.post('/api/orders', async (req,res)=>{ const trackId = 'QB' + Date.now(); await new Order({...req.body, trackId}).save(); res.json({success:true, trackId}) });
+app.put('/api/menu/:id/stock', async (req,res)=>{ 
+    const item = await MenuItem.findById(req.params.id);
+    item.inStock = !item.inStock;
+    await item.save();
+    res.json({success:true});
+});
+
+app.post('/api/orders', async (req,res)=>{ 
+    const trackId = 'QB' + Date.now(); 
+    const points = Math.floor(req.body.total / 10); // 10rs = 1 point
+    await new Order({...req.body, trackId, pointsEarned: points}).save(); 
+    res.json({success:true, trackId}) 
+});
 
 app.get('/api/orders/track/:id', async (req,res)=>{ res.json(await Order.findOne({trackId:req.params.id})) });
 
@@ -65,9 +77,24 @@ app.get('/api/orders', async (req,res)=>{ res.json(await Order.find().sort({_id:
 
 app.get('/api/orders/history/:phone', async (req,res)=>{ res.json(await Order.find({phone:req.params.phone}).sort({_id:-1})) });
 
-app.put('/api/orders/:id/status', async (req,res)=>{ await Order.findByIdAndUpdate(req.params.id, req.body); res.json({success:true}) });
+app.put('/api/orders/:id/status', async (req,res)=>{ 
+    const updated = await Order.findByIdAndUpdate(req.params.id, req.body, {new:true}); 
+    const waLink = `https://wa.me/91${updated.phone}?text=QuickBite Update%0AOrder: ${updated.trackId}%0AStatus: ${updated.status}`;
+    res.json({success:true, customerWaLink: waLink}) 
+});
 
-// YAHI WALI LINE FIX KI HAI
+// YEH NAYA DALA - DELETE ORDER
+app.delete('/api/orders/:id', async (req,res)=>{ 
+    await Order.findByIdAndDelete(req.params.id); 
+    res.json({success:true}) 
+});
+
+// YEH NAYA DALA - ADD COUPON
+app.post('/api/coupon', async (req,res)=>{ 
+    await new Coupon(req.body).save(); 
+    res.json({success:true}) 
+});
+
 app.post('/api/coupon/validate', async (req,res)=>{ 
     const coupon = await Coupon.findOne({code:req.body.code}); 
     if(coupon) {
@@ -83,6 +110,27 @@ app.get('/api/stats', async (req,res)=>{
     res.json({orders, customers}) 
 });
 
+// YEH NAYA DALA - REPORT
+app.get('/api/report', async (req,res)=>{ 
+    const {start, end} = req.query;
+    const orders = await Order.find({createdAt: {$gte: new Date(start), $lte: new Date(end)}});
+    const totalRevenue = orders.reduce((a,b)=>a+b.total,0);
+    res.json({totalRevenue, totalOrders:orders.length, topItems:[]}) 
+});
+
+// YEH NAYA DALA - BROADCAST
+app.post('/api/broadcast', async (req,res)=>{
+    const {message, type, numbers} = req.body;
+    let phones = [];
+    if(type === 'all'){
+        phones = await Order.distinct('phone');
+    } else {
+        phones = numbers.split(',').map(n=>n.trim());
+    }
+    const links = phones.map(p => `https://wa.me/91${p}?text=${encodeURIComponent(message)}`);
+    res.json({count: phones.length, links});
+});
+
 // ===== PAGE ROUTES - public folder se =====
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
 app.get('/index', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
@@ -90,5 +138,6 @@ app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'adm
 app.get('/cart', (req, res) => res.sendFile(path.join(__dirname, 'public', 'cart.html')));
 app.get('/track', (req, res) => res.sendFile(path.join(__dirname, 'public', 'track.html')));
 app.get('/payment', (req, res) => res.sendFile(path.join(__dirname, 'public', 'payment.html')));
+app.get('/order-details', (req, res) => res.sendFile(path.join(__dirname, 'public', 'track.html'))); // Track page hi use hoga
 
 app.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
