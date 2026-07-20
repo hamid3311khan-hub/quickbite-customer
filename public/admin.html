@@ -6,17 +6,17 @@
 <title>QuickBite Admin</title>
 <style>
     body{font-family:Arial; background:#f4f4f4; padding:20px;}
-   .card{background:white; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 5px #ccc;}
+  .card{background:white; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 5px #ccc;}
     input, select, button, textarea{padding:10px; margin:5px; border-radius:5px; border:1px solid #ccc; width:calc(100% - 22px);}
     button{background:#ff5722; color:white; border:none; cursor:pointer;}
     button:hover{opacity:0.9;}
-   .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;}
-   .stat-card{background:#ff5722; color:white; text-align:center; padding:20px;}
-   .stat-card h2{margin:0; font-size:30px;}
-   .order,.menu-item{border:1px solid #ddd; padding:10px; margin:10px 0; border-radius:5px;}
-   .btn-green{background:#25D366;}.btn-red{background:#dc3545;}.btn-blue{background:#007bff;}
-   .report-result p{margin:5px 0; font-size:16px;}
-   .logout-btn{background:#6c757d; float:right; padding:8px 15px; width:auto;}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;}
+  .stat-card{background:#ff5722; color:white; text-align:center; padding:20px;}
+  .stat-card h2{margin:0; font-size:30px;}
+  .order,.menu-item{border:1px solid #ddd; padding:10px; margin:10px 0; border-radius:5px;}
+  .btn-green{background:#25D366;}.btn-red{background:#dc3545;}.btn-blue{background:#007bff;}
+  .report-result p{margin:5px 0; font-size:16px;}
+  .logout-btn{background:#6c757d; float:right; padding:8px 15px; width:auto;}
 </style>
 </head>
 <body>
@@ -42,7 +42,6 @@
         <input type="date" id="endDate">
     </div>
     <button class="btn-blue" onclick="getReport()">Get Report</button>
-    <button class="btn-green" onclick="downloadCSV()">Download CSV</button>
     <div id="reportResult" class="report-result"></div>
 </div>
 
@@ -50,12 +49,6 @@
     <h2>📢 WhatsApp Broadcast</h2>
     <textarea id="broadcastMsg" placeholder="Message likho..." rows="3"></textarea>
     <button class="btn-green" onclick="sendAllBroadcast()">Send to All Customers</button>
-    <div style="margin-top:15px; padding-top:15px; border-top:1px dashed #ddd;">
-        <h4>Send to Specific Numbers</h4>
-        <input type="text" id="manualNumbers" placeholder="7061840674, 8507317931">
-        <small>Comma se alag alag number likho. 91 lagane ki zarurat nahi</small>
-        <button class="btn-green" onclick="sendManualBroadcast()">Send to Selected</button>
-    </div>
 </div>
 
 <div class="card">
@@ -126,8 +119,8 @@ async function loadData(){
             <b>Payment:</b> ${o.payment} | <b>Status:</b> ${o.status} | <b>Points:</b> ${o.pointsEarned || 0} <br>
             <small>${o.phone} | ${o.address}</small> <br>
             <div style="display:flex; gap:5px; margin-top:5px;">
-                <input type="text" id="lat-${o._id}" placeholder="Rider Lat" value="${o.riderLat}" style="width:45%">
-                <input type="text" id="lng-${o._id}" placeholder="Rider Lng" value="${o.riderLng}" style="width:45%">
+                <input type="text" id="lat-${o._id}" placeholder="Rider Lat" value="${o.riderLat || ''}" style="width:45%">
+                <input type="text" id="lng-${o._id}" placeholder="Rider Lng" value="${o.riderLng || ''}" style="width:45%">
             </div>
             <select onchange="updateStatus('${o._id}', this.value)">
                 <option ${o.status=='Pending'?'selected':''}>Pending</option>
@@ -136,7 +129,7 @@ async function loadData(){
                 <option ${o.status=='Delivered'?'selected':''}>Delivered</option>
             </select>
             <button class="btn-blue" onclick="updateLocation('${o._id}')">📍 Location Save</button>
-            <a href="/order-details?id=${o.trackId}" target="_blank"><button class="btn-blue">Track</button></a>
+            <a href="/track?id=${o.trackId}" target="_blank"><button class="btn-blue">Track</button></a>
             <button class="btn-red" onclick="delOrder('${o._id}')">Delete</button>
         </div>
     `).join('');
@@ -150,14 +143,7 @@ async function getReport(){
   document.getElementById('reportResult').innerHTML = `
     <p><b>Total Revenue:</b> ₹${d.totalRevenue}</p>
     <p><b>Total Orders:</b> ${d.totalOrders}</p>
-    <p><b>Top Item:</b> ${d.topItems[0]?.[0] || 'N/A'} - ${d.topItems[0]?.[1] || 0} sold</p>
   `
-}
-function downloadCSV(){
-  let s = document.getElementById('startDate').value;
-  let e = document.getElementById('endDate').value;
-  if(!s ||!e) return alert('Start aur End date select karo');
-  window.open(`${API}/api/report/download?start=${s}&end=${e}`)
 }
 
 async function sendAllBroadcast(){
@@ -166,15 +152,6 @@ async function sendAllBroadcast(){
     const res = await fetch(API+'/api/broadcast', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message, type:'all'})});
     const data = await res.json();
     alert(`${data.count} customers ko link ban gaye`);
-    data.links.forEach(link => window.open(link, '_blank'));
-}
-async function sendManualBroadcast(){
-    const message = document.getElementById('broadcastMsg').value;
-    const numbers = document.getElementById('manualNumbers').value;
-    if(!message ||!numbers) return alert('Message aur Number dono bharo');
-    const res = await fetch(API+'/api/broadcast', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message, type:'manual', numbers})});
-    const data = await res.json();
-    alert(`${data.count} logo ko link ban gaye`);
     data.links.forEach(link => window.open(link, '_blank'));
 }
 
@@ -200,18 +177,23 @@ async function updateLocation(id){
     loadData();
 }
 
-// YAHI MAIN FUNCTION HAI - STATUS + WHATSAPP DONO
 async function updateStatus(id, status){
     const riderLat = document.getElementById(`lat-${id}`).value;
     const riderLng = document.getElementById(`lng-${id}`).value;
     const res = await fetch(API+`/api/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status, riderLat, riderLng})});
     const data = await res.json();
-    if(data.customerWaLink) window.open(data.customerWaLink, '_blank'); // Admin click karte hi WA khul jayega
-    alert("Status Updated: " + status); // Confirmation
+    if(data.customerWaLink) window.open(data.customerWaLink, '_blank');
+    alert("Status Updated: " + status);
     loadData();
 }
-async function delOrder(id){ if(confirm('Delete?')){ await fetch(API+`/api/orders/${id}`, {method:'DELETE'}); loadData(); }}
-function openWA(link){ if(link) window.open(link, '_blank'); }
+
+async function delOrder(id){
+    if(confirm('Pakka Delete karna hai?')){
+        await fetch(API+`/api/orders/${id}`, {method:'DELETE'});
+        alert("Order Delete ho gaya");
+        loadData();
+    }
+}
 
 loadData();
 </script>
