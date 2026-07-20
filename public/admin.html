@@ -6,18 +6,18 @@
 <title>QuickBite Admin</title>
 <style>
     body{font-family:Arial; background:#f4f4f4; padding:20px;}
- .card{background:white; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 5px #ccc;}
+   .card{background:white; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 5px #ccc;}
     input, select, button, textarea{padding:10px; margin:5px; border-radius:5px; border:1px solid #ccc; width:calc(100% - 22px);}
     button{background:#ff5722; color:white; border:none; cursor:pointer;}
     button:hover{opacity:0.9;}
- .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;}
- .stat-card{background:#ff5722; color:white; text-align:center; padding:20px;}
- .stat-card h2{margin:0; font-size:30px;}
- .order,.menu-item{border:1px solid #ddd; padding:10px; margin:10px 0; border-radius:5px;}
- .btn-green{background:#25D366;}.btn-red{background:#dc3545;}.btn-blue{background:#007bff;}
- .report-result p{margin:5px 0; font-size:16px;}
- .logout-btn{background:#6c757d; float:right; padding:8px 15px; width:auto;}
-  small{color:#666; font-size:12px;}
+   .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;}
+   .stat-card{background:#ff5722; color:white; text-align:center; padding:20px;}
+   .stat-card h2{margin:0; font-size:30px;}
+   .order,.menu-item{border:1px solid #ddd; padding:10px; margin:10px 0; border-radius:5px;}
+   .btn-green{background:#25D366;}.btn-red{background:#dc3545;}.btn-blue{background:#007bff;}
+   .report-result p{margin:5px 0; font-size:16px;}
+   .logout-btn{background:#6c757d; float:right; padding:8px 15px; width:auto;}
+    small{color:#666; font-size:12px;}
 </style>
 </head>
 <body>
@@ -49,12 +49,10 @@
 <div class="card">
     <h2>📢 WhatsApp Broadcast</h2>
     <textarea id="broadcastMsg" placeholder="Offer: 50% OFF on First Order" rows="3"></textarea>
-
     <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn-green" onclick="sendBroadcast('all')">Send to All Customers</button>
         <button class="btn-blue" onclick="sendBroadcast('new')">Send to New Customers</button>
     </div>
-
     <div style="margin-top:15px; padding-top:15px; border-top:1px dashed #ddd;">
         <h4>Send to Selected Numbers</h4>
         <input type="text" id="manualNumbers" placeholder="7061840674, 8507317931, 9876543210">
@@ -90,6 +88,8 @@
 
 <script>
 const API = '';
+let riders = []; // RIDER LIST KE LIYE
+
 const ADMIN_PASSWORD = 'admin123';
 
 function checkLogin(){
@@ -111,6 +111,10 @@ function logout(){
 checkLogin();
 
 async function loadData(){
+    // 1. PEHLE RIDER LOAD KARO
+    const riderRes = await fetch(API+'/api/riders');
+    riders = await riderRes.json();
+
     const stats = await fetch(API+'/api/stats').then(r=>r.json());
     document.getElementById('totalOrders').innerText = stats.orders;
     document.getElementById('totalCustomers').innerText = stats.customers;
@@ -130,6 +134,14 @@ async function loadData(){
             <b>${o.trackId}</b> - ${o.name} - ₹${o.total} <br>
             <b>Payment:</b> ${o.payment} | <b>Status:</b> ${o.status} | <b>Points:</b> ${o.pointsEarned || 0} <br>
             <small>${o.phone} | ${o.address}</small> <br>
+
+            <!-- RIDER ASSIGN BLOCK -->
+            <select id="rider-${o._id}" style="margin-top:8px;">
+                <option value="">-- Rider Select Karo --</option>
+                ${riders.map(r => `<option value="${r.riderId}" ${o.riderId==r.riderId?'selected':''}>${r.name} - ${r.riderId} - ${r.status}</option>`).join('')}
+            </select>
+            <button class="btn-green" onclick="assignRider('${o._id}')">Rider Assign</button>
+
             <div style="display:flex; gap:5px; margin-top:5px;">
                 <input type="text" id="lat-${o._id}" placeholder="Rider Lat" value="${o.riderLat || ''}" style="width:45%">
                 <input type="text" id="lng-${o._id}" placeholder="Rider Lng" value="${o.riderLng || ''}" style="width:45%">
@@ -158,18 +170,15 @@ async function getReport(){
   `
 }
 
-// PURANE sendAllBroadcast KO HATA KE YE NAYA RAKH
 async function sendBroadcast(type){
     const message = document.getElementById('broadcastMsg').value;
     if(!message) return alert('Message likho');
-
     let body = {message, type};
     if(type === 'manual'){
         const numbers = document.getElementById('manualNumbers').value;
         if(!numbers) return alert('Number bhi daalo');
         body.numbers = numbers;
     }
-
     const res = await fetch(API+'/api/broadcast', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
@@ -218,6 +227,20 @@ async function delOrder(id){
         alert("Order Delete ho gaya");
         loadData();
     }
+}
+
+// NAYA FUNCTION: RIDER ASSIGN
+async function assignRider(orderId){
+    const riderId = document.getElementById(`rider-${orderId}`).value;
+    if(!riderId) return alert('Pehle Rider select karo');
+
+    await fetch(API+`/api/order/assign`, {
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({orderId, riderId})
+    });
+    alert('Rider Assign ho gaya!');
+    loadData(); // list refresh
 }
 
 loadData();
