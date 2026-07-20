@@ -1,22 +1,24 @@
 <!DOCTYPE html><html><head><title>Track Order - QuickBite</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
 <style>
-*{margin:0;font-family:Arial} 
+*{margin:0;font-family:Arial}
 nav{background:#ff5722;color:white;padding:15px;text-align:center;font-size:20px;font-weight:bold}
 .container{max-width:700px;margin:20px auto;padding:15px}
 .card{border:2px solid #ff6600;padding:20px;border-radius:10px;background:#fff; margin-bottom:15px}
 .timeline{display:flex; justify-content:space-between; margin:20px 0; position:relative}
 .timeline::before{content:''; position:absolute; top:15px; left:0; right:0; height:3px; background:#ddd; z-index:0}
 .step{text-align:center; z-index:1; width:25%}
-.step .dot{width:30px; height:30px; border-radius:50%; background:#ddd; margin:0 auto 5px; line-height:30px; color:white}
-.step.active .dot{background:#28a745} .step.active p{font-weight:bold; color:#28a745}
-#map{height:300px; width:100%; border-radius:10px; margin-top:10px; background:#f0f0f0}
+.step.dot{width:30px; height:30px; border-radius:50%; background:#ddd; margin:0 auto 5px; line-height:30px; color:white}
+.step.active.dot{background:#28a745}.step.active p{font-weight:bold; color:#28a745}
+#map{height:350px; width:100%; border-radius:10px; margin-top:10px}
 .btn{padding:12px;margin:5px 0;width:100%;border:none;border-radius:8px;font-size:16px;cursor:pointer;color:white;background:#25D366}
+.leaflet-routing-container{display:none}
 .error{border:2px solid red;background:#ffe6e6;padding:15px;border-radius:10px}
 </style>
 </head><body>
-<nav>🔥 QuickBite Order Tracking</nav>
+<nav>🔥 QuickBite Live Tracking</nav>
 
 <div class="container">
 <div id="orderBox" class="card">Loading Order...</div>
@@ -31,65 +33,71 @@ nav{background:#ff5722;color:white;padding:15px;text-align:center;font-size:20px
         <div class="step" id="s4"><div class="dot">4</div><p>Delivered</p></div>
     </div>
     <div id="map"></div>
-    <small style="color:#666">* Rider location admin update karega</small>
+    <small style="color:#666">* Orange line = Route, Bike = Rider</small>
 </div>
 
 <a id="waBtn" href="#" target="_blank"><button class="btn">📞 Contact Us on WhatsApp</button></a>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 <script>
-const API = 'https://quickbite-ymqk.onrender.com/api'; 
+const API = 'https://quickbite-ymqk.onrender.com/api';
 const urlParams = new URLSearchParams(window.location.search);
 const trackId = urlParams.get('id');
-let map; 
+let map, routingControl, riderMarker;
 
 async function loadOrder(){
     if(!trackId) return document.getElementById('orderBox').innerHTML="<div class='error'><h3>Invalid Order ID</h3></div>";
-    
+
     try{
         const res = await fetch(`${API}/orders/track/${trackId}`);
-        const orderData = await res.json();
-        if(!orderData || !orderData.trackId) return document.getElementById('orderBox').innerHTML="<div class='error'><h3>Order not found</h3></div>";
-        
+        const o = await res.json();
+        if(!o ||!o.trackId) return document.getElementById('orderBox').innerHTML="<div class='error'><h3>Order not found</h3></div>";
+
         document.getElementById('orderBox').innerHTML = `
-            <h2>Order: ${orderData.trackId}</h2>
-            <p><b>Name:</b> ${orderData.name}</p>
-            <p><b>Phone:</b> ${orderData.phone}</p>
-            <p><b>Address:</b> ${orderData.address}</p>
-            <p><b>Total Paid:</b> ₹${orderData.total} | <b>Payment:</b> ${orderData.payment}</p>
-            <p><b>Points Earned:</b> ${orderData.pointsEarned || 0} ⭐</p>
+            <h2>Order: ${o.trackId}</h2>
+            <p><b>Name:</b> ${o.name}</p>
+            <p><b>Phone:</b> ${o.phone}</p>
+            <p><b>Address:</b> ${o.address}</p>
+            <p><b>Total Paid:</b> ₹${o.total} | <b>Payment:</b> ${o.payment}</p>
+            <p><b>Points Earned:</b> ${o.pointsEarned || 0} ⭐</p>
             <hr style="margin:10px 0">
-            <p><b>Items:</b><br> ${orderData.items.map(i=>`• ${i.name} x${i.qty} - ₹${i.price}`).join('<br>')}</p>
+            <p><b>Items:</b><br> ${o.items.map(i=>`• ${i.name} x${i.qty} - ₹${i.price}`).join('<br>')}</p>
         `;
-        
-        document.getElementById('currentStatus').innerText = orderData.status;
+
+        document.getElementById('currentStatus').innerText = o.status;
         const steps = ['Pending', 'Preparing', 'Out for Delivery', 'Delivered'];
-        const index = steps.indexOf(orderData.status);
+        const index = steps.indexOf(o.status);
         for(let i=1; i<=index+1; i++) document.getElementById('s'+i).classList.add('active');
-        
-        initMap(orderData.riderLat, orderData.riderLng);
-        document.getElementById('waBtn').href = `https://wa.me/918207836370?text=Help for order ${orderData.trackId} - Status: ${orderData.status}`;
+
+        initMap(o.shopLat, o.shopLng, o.custLat, o.custLng, o.riderLat, o.riderLng);
+        document.getElementById('waBtn').href = `https://wa.me/918207836370?text=Help for order ${o.trackId} - Status: ${o.status}`;
     } catch(e){
         document.getElementById('orderBox').innerHTML="<div class='error'><h3>Server Error. Refresh karo</h3></div>";
     }
 }
 
-function initMap(lat, lng) {
-    const defaultLoc = { lat: 23.3441, lng: 85.3096 }; // Ranchi default
-    const location = [parseFloat(lat) || defaultLoc.lat, parseFloat(lng) || defaultLoc.lng];
-    
+function initMap(sLat, sLng, cLat, cLng, rLat, rLng) {
+    const s = [sLat || 25.5941, sLng || 85.1376]; // Shop Patna
+    const c = [cLat || 25.5941, cLng || 85.1376]; // Customer
+    const r = [rLat || s[0], rLng || s[1]]; // Rider
+
     if(!map){
-        map = L.map('map').setView(location, 15);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
+        map = L.map('map').setView(s, 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        L.marker(s).addTo(map).bindPopup("🏪 Your Shop");
+        L.marker(c).addTo(map).bindPopup("📍 Customer House");
+        routingControl = L.Routing.control({
+            waypoints: [L.latLng(s), L.latLng(c)],
+            router: L.Routing.osrmv1({serviceUrl: 'https://router.project-osrm.org/route/v1'}), // FREE
+            lineOptions: {styles: [{color: '#ff5722', weight: 5}]},
+            createMarker: function() { return null; }, addWaypoints: false
         }).addTo(map);
-    } else {
-        map.setView(location, 15);
     }
-    
-    if(window.riderMarker) map.removeLayer(window.riderMarker);
-    window.riderMarker = L.marker(location).addTo(map).bindPopup("Rider Location").openPopup();
+    if(riderMarker) map.removeLayer(riderMarker);
+    const bikeIcon = L.icon({iconUrl: 'https://cdn-icons-png.flaticon.com/512/1047/1047711.png', iconSize: [35,35]});
+    riderMarker = L.marker(r, {icon: bikeIcon}).addTo(map).bindPopup("🚚 Rider").openPopup();
 }
 loadOrder();
 setInterval(loadOrder, 10000); // 10 sec me refresh
