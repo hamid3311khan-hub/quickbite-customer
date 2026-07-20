@@ -4,17 +4,30 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const multer = require('multer');
-const fs = require('fs');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-if (!fs.existsSync('./public/uploads')) fs.mkdirSync('./public/uploads', { recursive: true });
+// CLOUDINARY CONFIG - YE NAYA HAI
+cloudinary.config(process.env.CLOUDINARY_URL);
+
+// CLOUDINARY STORAGE - YE NAYA HAI
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'quickbite_menu', // saari photo yaha jayegi
+    allowed_formats: ['jpg', 'jpeg', 'png']
+  },
+});
+const upload = multer({ storage });
 
 app.use(cors({origin: "*"}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+
+// YE WALA HATA DIYA: app.use('/uploads', express.static...
 
 // PAGES ROUTES
 app.get('/', (req,res)=> res.sendFile(path.join(__dirname, 'public/index1.html')));
@@ -24,15 +37,11 @@ app.get('/cart', (req,res)=> res.sendFile(path.join(__dirname, 'public/cart.html
 app.get('/track', (req,res)=> res.sendFile(path.join(__dirname, 'public/track.html')));
 app.get('/order-details', (req,res)=> res.sendFile(path.join(__dirname, 'public/order-details.html')));
 
-const storage = multer.diskStorage({
-    destination: './public/uploads/',
-    filename: (req,file,cb)=> cb(null, Date.now() + '-' + file.originalname)
-});
-const upload = multer({storage});
+// PURANA MULTER HATA DIYA
 
 mongoose.connect(process.env.MONGO_URL).then(()=>console.log('✅ MongoDB Connected')).catch(e=>console.log(e));
 
-// SCHEMAS
+// SCHEMAS - SAME
 const MenuItem = mongoose.model('MenuItem', new mongoose.Schema({
     name:String, price:Number, desc:String, img:String, 
     offer:{type:Number, default:0}, 
@@ -53,28 +62,30 @@ const Coupon = mongoose.model('Coupon', new mongoose.Schema({
     code:String, discount:Number, type:{type:String, default:'FLAT'}
 }, {timestamps:true}));
 
-// MENU API
+// MENU API - SIRF YAHI CHANGE HAI
 app.get('/api/menu', async (req,res)=> res.json(await MenuItem.find().sort({createdAt:-1})));
 app.put('/api/menu/:id/stock', async (req,res)=>{ 
     const item = await MenuItem.findById(req.params.id);
-    item.inStock = !item.inStock;
+    item.inStock =!item.inStock;
     await item.save();
     res.json({success:true, inStock: item.inStock}); 
 });
 app.post('/api/menu', upload.single('img'), async (req,res)=>{
-    const data = {...req.body, img: req.file ? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/400'};
+    const data = {...req.body, img: req.file.path }; // YE LINE BADLI: /uploads ki jagah direct cloudinary link
     await new MenuItem(data).save();
     res.json({success:true});
-}); // <-- Yaha } band kiya
+});
 app.put('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndUpdate(req.params.id, req.body); res.json({success:true}); });
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
+
+// BAaki sab same rahega...
 
 // COUPON API
 app.post('/api/coupon/validate', async (req,res)=>{
     const coupon = await Coupon.findOne({code:req.body.code.toUpperCase()});
     if(!coupon) return res.json({success:false, msg:"Invalid Coupon"});
     res.json({success:true, discount:coupon.discount, type:coupon.type});
-}); // <-- Yaha bhi } band kiya
+});
 app.post('/api/coupon', async (req,res)=>{ await new Coupon(req.body).save(); res.json({success:true}); });
 
 // STATS + REPORT API
