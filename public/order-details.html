@@ -11,6 +11,7 @@ nav{background:#333;color:white;padding:15px}
 .card{border:2px solid #ff6600;padding:20px;border-radius:10px;margin-bottom:20px} 
 .btn{padding:15px;margin:8px;width:100%;border:none;border-radius:8px;font-size:16px;cursor:pointer;color:white}
 .btn1{background:#ffc107} .btn2{background:#17a2b8} .btn3{background:#28a745} .btn4{background:red}
+.wabtn{background:#25D366} /* NAYA BUTTON */
 #map{height:350px;border-radius:10px;margin-top:20px;border:2px solid #ddd}
 </style>
 </head>
@@ -20,22 +21,29 @@ nav{background:#333;color:white;padding:15px}
 <div class="container">
 <div id="orderBox" class="card">Loading...</div>
 
+<!-- ADMIN CONTROLS -->
+<div id="adminPanel">
 <h3>Update Status</h3>
 <button class="btn btn1" onclick="update('Preparing')">👨‍🍳 Preparing</button>
 <button class="btn btn2" onclick="update('Out for Delivery')">🚚 Out for Delivery</button>
 <button class="btn btn3" onclick="update('Delivered')">✅ Delivered</button>
 <button class="btn btn4" onclick="delOrder()">🗑️ Delete Order</button>
+</div>
+
+<!-- CUSTOMER WHATSAPP BUTTON -->
+<button id="waBtn" class="btn wabtn" style="display:none">📱 WhatsApp pe Details Le</button>
 
 <div id="map"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const API = ''; // Render pe khali rakho, khud le lega
+const API = '';
 const urlParams = new URLSearchParams(window.location.search);
 const trackId = urlParams.get('id'); 
 let orderData;
 let map, riderMarker;
+let lastStatus = ""; // POPUP KE LIYE
 
 async function loadOrder(){
     if(!trackId) return document.getElementById('orderBox').innerHTML="Order ID missing in URL";
@@ -47,6 +55,12 @@ async function loadOrder(){
         
         if(!orderData) return document.getElementById('orderBox').innerHTML="Order not found";
         
+        // 1. POPUP LOGIC - STATUS CHANGE HOTE HI
+        if(lastStatus && lastStatus !== orderData.status){
+            alert(`🔔 Update: Aapka order ab "${orderData.status}" hai`);
+        }
+        lastStatus = orderData.status;
+        
         document.getElementById('orderBox').innerHTML = `
             <h2>${orderData.trackId}</h2>
             <p><b>Name:</b> ${orderData.name}</p>
@@ -54,11 +68,11 @@ async function loadOrder(){
             <p><b>Address:</b> ${orderData.address}</p>
             <p><b>Total:</b> ₹${orderData.total}</p>
             <p><b>Payment:</b> ${orderData.payment}</p>
-            <p><b>Current Status:</b> <span style="color:green">${orderData.status}</span></p>
+            <p><b>Current Status:</b> <span style="color:green;font-size:18px">${orderData.status}</span></p>
             <p><b>Items:</b> ${orderData.items.map(i=>i.name+' x'+i.qty).join(', ')}</p>
         `;
         
-        // MAP LOAD - DEFAULT PATNA
+        // MAP
         const lat = orderData.riderLat || 25.5941;
         const lng = orderData.riderLng || 85.1376;
         
@@ -71,6 +85,11 @@ async function loadOrder(){
         if(riderMarker) map.removeLayer(riderMarker);
         riderMarker = L.marker([lat, lng]).addTo(map).bindPopup("Rider: " + orderData.status).openPopup();
         map.setView([lat, lng], 13);
+        
+        // 2. WHATSAPP BUTTON LOGIC
+        const waLink = `https://wa.me/91${orderData.phone}?text=Order ${orderData.trackId} Status: ${orderData.status}`;
+        document.getElementById('waBtn').style.display = 'block';
+        document.getElementById('waBtn').onclick = ()=> window.open(waLink, '_blank');
         
     } catch(e){
         document.getElementById('orderBox').innerHTML="Server Error. Refresh karo";
@@ -93,5 +112,5 @@ async function delOrder(){
 }
 
 loadOrder();
-setInterval(loadOrder, 5000); // 5 sec me live update
+setInterval(loadOrder, 3000); // 3 sec kar diya taaki jaldi update ho
 </script></body></html>
