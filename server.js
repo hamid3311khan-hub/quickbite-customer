@@ -39,6 +39,7 @@ const Rider = mongoose.model('Rider', {
     status:{type:String, default:"Pending"}
 });
 
+// NEW: custLat, custLng add kiya
 const OrderSchema = new mongoose.Schema({
     trackId: String, name:String, phone:String, address:String,
     items:[], total:Number, payment:String, status:{type:String, default:'Pending'},
@@ -84,6 +85,7 @@ app.put('/api/menu/:id/stock', async (req,res)=>{
     res.json({success:true});
 });
 
+// NEW: Order ke time custLat, custLng bhi save hoga
 app.post('/api/orders', async (req,res)=>{
     const trackId = 'QB' + Date.now(); 
     const points = Math.floor(req.body.total / 10);
@@ -103,6 +105,22 @@ app.put('/api/orders/:id/status', async (req,res)=>{
 
 app.delete('/api/orders/:id', async (req,res)=>{ await Order.findByIdAndDelete(req.params.id); res.json({success:true}) });
 
+// NEW: RIDER DELIVERED API
+app.post('/api/order/delivered', async (req,res)=>{
+  try{
+    const order = await Order.findOne({trackId: req.body.orderId});
+    if(!order) return res.json({success:false, msg:"Order nahi mila"});
+    
+    order.status = "Delivered";
+    await order.save();
+    
+    // 17 points add karne ka logic yaha daal dena agar user collection hai
+    // Example: await User.findOneAndUpdate({phone: order.phone}, {$inc: {points: order.pointsEarned}})
+    
+    res.json({success:true, msg:"Order Delivered ho gaya!"});
+  }catch(e){ res.json({success:false, msg:e.message}) }
+})
+
 // ===== RIDER API - FIXED =====
 app.post('/api/rider/register', upload.fields([
     { name: 'aadharImg', maxCount: 1 },
@@ -112,15 +130,12 @@ app.post('/api/rider/register', upload.fields([
   try{
     const {name, fatherName, aadhar, pan, mobile} = req.body;
     const files = req.files;
-
-    // FIX 1: KHALI CHECK
     if(!name ||!fatherName ||!aadhar ||!pan ||!mobile){
         return res.json({success: false, msg: 'Sabhi details bharna zaroori hai'})
     }
     if(!files.aadharImg ||!files.panImg ||!files.photoImg){
         return res.json({success: false, msg: '3no photo upload karna zaroori hai'})
     }
-
     const r = new Rider({
         name, fatherName, aadhar, pan, mobile,
         aadharImg: `/uploads/${files.aadharImg[0].filename}`,
