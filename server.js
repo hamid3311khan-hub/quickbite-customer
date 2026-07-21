@@ -39,7 +39,6 @@ const Rider = mongoose.model('Rider', {
     status:{type:String, default:"Pending"}
 });
 
-// NEW: custLat, custLng add kiya
 const OrderSchema = new mongoose.Schema({
     trackId: String, name:String, phone:String, address:String,
     items:[], total:Number, payment:String, status:{type:String, default:'Pending'},
@@ -85,12 +84,11 @@ app.put('/api/menu/:id/stock', async (req,res)=>{
     res.json({success:true});
 });
 
-// NEW: Order ke time custLat, custLng bhi save hoga
 app.post('/api/orders', async (req,res)=>{
     const trackId = 'QB' + Date.now(); 
     const points = Math.floor(req.body.total / 10);
     await new Order({...req.body, trackId, pointsEarned: points}).save(); 
-    res.json({success:true, trackId})
+    res.json({success:true, trackId}) // WA link hata diya yaha se
 });
 
 app.get('/api/orders/track/:id', async (req,res)=>{ res.json(await Order.findOne({trackId:req.params.id})) });
@@ -105,23 +103,17 @@ app.put('/api/orders/:id/status', async (req,res)=>{
 
 app.delete('/api/orders/:id', async (req,res)=>{ await Order.findByIdAndDelete(req.params.id); res.json({success:true}) });
 
-// NEW: RIDER DELIVERED API
 app.post('/api/order/delivered', async (req,res)=>{
   try{
     const order = await Order.findOne({trackId: req.body.orderId});
     if(!order) return res.json({success:false, msg:"Order nahi mila"});
-    
     order.status = "Delivered";
     await order.save();
-    
-    // 17 points add karne ka logic yaha daal dena agar user collection hai
-    // Example: await User.findOneAndUpdate({phone: order.phone}, {$inc: {points: order.pointsEarned}})
-    
     res.json({success:true, msg:"Order Delivered ho gaya!"});
   }catch(e){ res.json({success:false, msg:e.message}) }
 })
 
-// ===== RIDER API - FIXED =====
+// ===== RIDER API =====
 app.post('/api/rider/register', upload.fields([
     { name: 'aadharImg', maxCount: 1 },
     { name: 'panImg', maxCount: 1 },
@@ -130,18 +122,9 @@ app.post('/api/rider/register', upload.fields([
   try{
     const {name, fatherName, aadhar, pan, mobile} = req.body;
     const files = req.files;
-    if(!name ||!fatherName ||!aadhar ||!pan ||!mobile){
-        return res.json({success: false, msg: 'Sabhi details bharna zaroori hai'})
-    }
-    if(!files.aadharImg ||!files.panImg ||!files.photoImg){
-        return res.json({success: false, msg: '3no photo upload karna zaroori hai'})
-    }
-    const r = new Rider({
-        name, fatherName, aadhar, pan, mobile,
-        aadharImg: `/uploads/${files.aadharImg[0].filename}`,
-        panImg: `/uploads/${files.panImg[0].filename}`,
-        photoImg: `/uploads/${files.photoImg[0].filename}`
-    });
+    if(!name ||!fatherName ||!aadhar ||!pan ||!mobile) return res.json({success: false, msg: 'Sabhi details bharna zaroori hai'})
+    if(!files.aadharImg ||!files.panImg ||!files.photoImg) return res.json({success: false, msg: '3no photo upload karna zaroori hai'})
+    const r = new Rider({...req.body, aadharImg: `/uploads/${files.aadharImg[0].filename}`, panImg: `/uploads/${files.panImg[0].filename}`, photoImg: `/uploads/${files.photoImg[0].filename}`});
     await r.save();
     res.json({success: true, msg: 'Register ho gaya. Admin approval pending hai'});
   }catch(e){ 
@@ -166,6 +149,13 @@ app.get('/api/rider/orders/:mobile', async (req,res)=>{
 app.get('/api/riders/approved', async (req,res)=> res.json(await Rider.find({status: 'Approved'})) );
 app.put('/api/rider/:id/approve', async (req,res)=>{ await Rider.findByIdAndUpdate(req.params.id, {status: 'Approved'}); res.json({success: true}); })
 app.delete('/api/riders/:id', async (req,res)=>{ await Rider.findByIdAndDelete(req.params.id); res.json({success:true}); })
+
+// NEW: BULK DELETE API
+app.post('/api/riders/bulk-delete', async (req,res)=>{ 
+  await Rider.deleteMany({mobile: req.body.mobile}); 
+  res.json({success:true, msg:`${req.body.mobile} wale saare rider delete ho gaye`}) 
+})
+
 app.get('/api/riders', async (req,res)=> res.json(await Rider.find()) );
 app.put('/api/order/assign', async (req,res)=>{ await Order.findByIdAndUpdate(req.body.orderId, {riderId: req.body.riderId}); res.json({success:true}) });
 
