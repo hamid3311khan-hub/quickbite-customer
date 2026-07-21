@@ -111,8 +111,8 @@ function logout(){
 checkLogin();
 
 async function loadData(){
-    // 1. PEHLE RIDER LOAD KARO
-    const riderRes = await fetch(API+'/api/riders');
+    // 1. PEHLE APPROVED RIDER LOAD KARO - YAHI CHANGE KIYA
+    const riderRes = await fetch(API+'/api/riders/approved');
     riders = await riderRes.json();
 
     const stats = await fetch(API+'/api/stats').then(r=>r.json());
@@ -135,10 +135,10 @@ async function loadData(){
             <b>Payment:</b> ${o.payment} | <b>Status:</b> ${o.status} | <b>Points:</b> ${o.pointsEarned || 0} <br>
             <small>${o.phone} | ${o.address}</small> <br>
 
-            <!-- RIDER ASSIGN BLOCK -->
+            <!-- RIDER ASSIGN BLOCK - YAHI CHANGE KIYA -->
             <select id="rider-${o._id}" style="margin-top:8px;">
                 <option value="">-- Rider Select Karo --</option>
-                ${riders.map(r => `<option value="${r.riderId}" ${o.riderId==r.riderId?'selected':''}>${r.name} - ${r.riderId} - ${r.status}</option>`).join('')}
+                ${riders.map(r => `<option value="${r.mobile}" ${o.riderId==r.mobile?'selected':''}>${r.name} - ${r.mobile}</option>`).join('')}
             </select>
             <button class="btn-green" onclick="assignRider('${o._id}')">Rider Assign</button>
 
@@ -231,13 +231,13 @@ async function delOrder(id){
 
 // NAYA FUNCTION: RIDER ASSIGN
 async function assignRider(orderId){
-    const riderId = document.getElementById(`rider-${orderId}`).value;
-    if(!riderId) return alert('Pehle Rider select karo');
+    const riderMobile = document.getElementById(`rider-${orderId}`).value; // mobile le rahe
+    if(!riderMobile) return alert('Pehle Rider select karo');
 
     await fetch(API+`/api/order/assign`, {
         method:'PUT',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({orderId, riderId})
+        body:JSON.stringify({orderId, riderId: riderMobile}) // mobile ko riderId me bhej rahe
     });
     alert('Rider Assign ho gaya!');
     loadData(); // list refresh
