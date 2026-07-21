@@ -18,6 +18,7 @@
   .report-result p{margin:5px 0; font-size:16px;}
   .logout-btn{background:#6c757d; float:right; padding:8px 15px; width:auto;}
     small{color:#666; font-size:12px;}
+  .rider-docs img{width:70px; height:70px; object-fit:cover; border:1px solid #ccc; border-radius:5px; margin:3px;}
 </style>
 </head>
 <body>
@@ -126,13 +127,19 @@ async function loadData(){
     const riderRes = await fetch(API+'/api/riders/approved');
     riders = await riderRes.json();
 
-    // 3. PENDING RIDERS DIKHAO
+    // 3. PENDING RIDERS DIKHAO - PHOTO KE SAATH
     const pending = allRiders.filter(r => r.status === 'Pending');
     document.getElementById('pendingRidersList').innerHTML = pending.length === 0? 'Koi pending rider nahi hai' :
     pending.map(r => `
         <div class="rider-item">
             <b>${r.name}</b> - ${r.mobile} <br>
             <small>Father: ${r.fatherName} | Aadhar: ${r.aadhar} | PAN: ${r.pan}</small> <br>
+            <div class="rider-docs">
+                <b>Docs:</b><br>
+                <img src="${r.aadharImg || 'https://via.placeholder.com/70'}" title="Aadhar">
+                <img src="${r.panImg || 'https://via.placeholder.com/70'}" title="PAN">
+                <img src="${r.photoImg || 'https://via.placeholder.com/70'}" title="Photo">
+            </div>
             <button class="btn-green" onclick="approveRider('${r._id}')">✅ Approve Karo</button>
             <button class="btn-red" onclick="rejectRider('${r._id}')">❌ Reject</button>
         </div>
@@ -190,7 +197,7 @@ async function approveRider(id){
 }
 async function rejectRider(id){
     if(confirm('Pakka Reject karna hai?')){
-        await fetch(API+`/api/riders/${id}`, {method:'DELETE'}); // agar chahiye to delete API bhi bana dena
+        await fetch(API+`/api/riders/${id}`, {method:'DELETE'});
         alert('Rider Reject kiya');
         loadData();
     }
