@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="hi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Rider Panel</title>
 <script src="/socket.io/socket.io.js"></script>
-<style>body{font-family:Arial; background:#f4f4f4; margin:0; padding:20px;} .card{background:white; padding:15px; border-radius:10px; margin-bottom:15px; box-shadow:0 2px 5px #ccc;} .login-box{max-width:400px; margin:50px auto; padding:30px;} input, button{width:100%; padding:12px; margin:8px 0; border-radius:6px; border:1px solid #ccc;} button{background:#ff5722; color:white; border:none; font-weight:bold;} .btn-green{background:#25D366;} .btn-red{background:#dc3545;} .order{border-left:4px solid #ff5722; padding:10px; margin:10px 0;}</style>
+<style>body{font-family:Arial; background:#f4f4f4; margin:0; padding:20px;} .card{background:white; padding:15px; border-radius:10px; margin-bottom:15px; box-shadow:0 2px 5px #ccc;} .login-box{max-width:400px; margin:50px auto; padding:30px;} input, button{width:100%; padding:12px; margin:8px 0; border-radius:6px; border:1px solid #ccc;} button{background:#ff5722; color:white; border:none; font-weight:bold; cursor:pointer;} .btn-green{background:#25D366;} .btn-red{background:#dc3545;} .btn-blue{background:#007bff;} .order{border-left:4px solid #ff5722; padding:10px; margin:10px 0;}</style>
 </head><body>
 <div id="loginDiv" class="card login-box"><h2>🏍️ Rider Login</h2><input id="mobile" placeholder="Registered Mobile Number"><button onclick="login()">Login</button><p id="loginMsg" style="color:red"></p></div>
 <div id="dashboard" style="display:none;">
@@ -10,9 +10,36 @@
 </div>
 <script>
 const API = ''; const socket = io(); let rider = null;
+
 function login(){ fetch(API+'/api/rider/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({mobile: mobile.value})}).then(r=>r.json()).then(d=>{ if(d.success){ rider = d.rider; localStorage.setItem('riderMobile', rider.mobile); showDashboard(); } else { loginMsg.innerText = d.msg; } }) }
+
 function showDashboard(){ document.getElementById('loginDiv').style.display='none'; document.getElementById('dashboard').style.display='block'; riderName.innerText = rider.name; loadMyOrders(); startLocationTracking(); }
-async function loadMyOrders(){ const res = await fetch(API+`/api/rider/orders/${rider.mobile}`); const orders = await res.json(); myOrders.innerHTML = orders.length==0 ? 'Koi order nahi hai' : orders.map(o=>`<div class="order"><b>${o.trackId}</b> - ₹${o.total} <br><small>${o.name} | ${o.phone}</small> <br><small>${o.address}</small> <br><b>Status:</b> ${o.status} <br><a href="https://www.google.com/maps?q=${o.custLat},${o.custLng}" target="_blank"><button>📍 Customer Location</button></a></div>`).join(''); }
+
+async function loadMyOrders(){ 
+  const res = await fetch(API+`/api/rider/orders/${rider.mobile}`); 
+  const orders = await res.json(); 
+  myOrders.innerHTML = orders.length==0 ? 'Koi order nahi hai' : orders.map(o=>{
+    // Agar custLat hai to use karo, warna address se search
+    const mapUrl = o.custLat ? `https://www.google.com/maps?q=${o.custLat},${o.custLng}` : `https://www.google.com/maps?q=${encodeURIComponent(o.address)}`;
+    return `<div class="order">
+      <b>${o.trackId}</b> - ₹${o.total} <br>
+      <small>${o.name} | ${o.phone}</small> <br>
+      <small>${o.address}</small> <br>
+      <b>Status:</b> ${o.status} <br>
+      <a href="${mapUrl}" target="_blank"><button class="btn-blue">📍 Navigate</button></a>
+      <button class="btn-green" onclick="markDelivered('${o.trackId}')">✅ Delivered</button>
+    </div>`
+  }).join(''); 
+}
+
+async function markDelivered(orderId){
+  if(!confirm('Kya delivery ho gayi?')) return;
+  const res = await fetch(API+'/api/order/delivered', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({orderId})});
+  const d = await res.json();
+  alert(d.msg);
+  loadMyOrders(); // list refresh
+}
+
 function startLocationTracking(){ if(navigator.geolocation){ navigator.geolocation.watchPosition(pos=>{ const data = {mobile: rider.mobile, lat: pos.coords.latitude, lng: pos.coords.longitude}; socket.emit('riderLocation', data); }) } }
 function logout(){ localStorage.removeItem('riderMobile'); location.reload(); }
 const savedMobile = localStorage.getItem('riderMobile'); if(savedMobile){ mobile.value = savedMobile; login(); }
