@@ -6,19 +6,19 @@
 <title>QuickBite Admin</title>
 <style>
     body{font-family:Arial; background:#f4f4f4; padding:20px;}
-  .card{background:white; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 5px #ccc;}
+ .card{background:white; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 5px #ccc;}
     input, select, button, textarea{padding:10px; margin:5px; border-radius:5px; border:1px solid #ccc; width:calc(100% - 22px);}
     button{background:#ff5722; color:white; border:none; cursor:pointer;}
     button:hover{opacity:0.9;}
-  .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;}
-  .stat-card{background:#ff5722; color:white; text-align:center; padding:20px;}
-  .stat-card h2{margin:0; font-size:30px;}
-  .order,.menu-item,.rider-item{border:1px solid #ddd; padding:10px; margin:10px 0; border-radius:5px;}
-  .btn-green{background:#25D366;}.btn-red{background:#dc3545;}.btn-blue{background:#007bff;}.btn-orange{background:orange;}
-  .report-result p{margin:5px 0; font-size:16px;}
-  .logout-btn{background:#6c757d; float:right; padding:8px 15px; width:auto;}
+ .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;}
+ .stat-card{background:#ff5722; color:white; text-align:center; padding:20px;}
+ .stat-card h2{margin:0; font-size:30px;}
+ .order,.menu-item,.rider-item{border:1px solid #ddd; padding:10px; margin:10px 0; border-radius:5px;}
+ .btn-green{background:#25D366;}.btn-red{background:#dc3545;}.btn-blue{background:#007bff;}.btn-orange{background:orange;}
+ .report-result p{margin:5px 0; font-size:16px;}
+ .logout-btn{background:#6c757d; float:right; padding:8px 15px; width:auto;}
     small{color:#666; font-size:12px;}
-  .rider-docs img{width:70px; height:70px; object-fit:cover; border:1px solid #ccc; border-radius:5px; margin:3px;}
+ .rider-docs img{width:70px; height:70px; object-fit:cover; border:1px solid #ccc; border-radius:5px; margin:3px;}
 </style>
 </head>
 <body>
@@ -88,24 +88,39 @@
 
 <script>
 const API = '';
-let riders = []; 
-let allRiders = []; 
+let riders = [];
+let allRiders = [];
 
 const ADMIN_PASSWORD = 'admin123';
 
 function checkLogin(){
     if(sessionStorage.getItem('adminLoggedIn')!== 'true'){
         let pass = prompt("🔒 Admin Login\nPassword daalo:");
-        if(pass === ADMIN_PASSWORD){ sessionStorage.setItem('adminLoggedIn', 'true'); } 
+        if(pass === ADMIN_PASSWORD){ sessionStorage.setItem('adminLoggedIn', 'true'); }
         else { alert("Galat Password!"); window.location = '/'; }
     }
 }
 function logout(){ sessionStorage.removeItem('adminLoggedIn'); alert("Logout ho gaye"); window.location = '/'; }
 checkLogin();
 
+async function loadRiders(){
+    const res = await fetch(API+'/api/riders/approved');
+    const ridersData = await res.json();
+
+    // NAYA: Sirf free wale rider filter karo
+    const freeRiders = [];
+    for(let r of ridersData){
+        const check = await fetch(API+`/api/rider/check-busy/${r.mobile}`);
+        const data = await check.json();
+        if(data.free) freeRiders.push(r);
+    }
+    riders = freeRiders; // global me free wale hi rakho
+}
+
 async function loadData(){
     const allRiderRes = await fetch(API+'/api/riders'); allRiders = await allRiderRes.json();
-    const riderRes = await fetch(API+'/api/riders/approved'); riders = await riderRes.json();
+
+    await loadRiders(); // <- YE CALL KIYA
 
     const pending = allRiders.filter(r => r.status && r.status.toLowerCase() === 'pending');
     document.getElementById('pendingRidersList').innerHTML = pending.length === 0? 'Koi pending rider nahi hai' :
@@ -192,7 +207,25 @@ async function updateStatus(id, status){ const riderLat = document.getElementByI
 
 async function delOrder(id){ if(confirm('Pakka Delete karna hai?')){ await fetch(API+`/api/orders/${id}`, {method:'DELETE'}); alert("Order Delete ho gaya"); loadData(); } }
 
-async function assignRider(orderId){ const riderMobile = document.getElementById(`rider-${orderId}`).value; if(!riderMobile) return alert('Pehle Rider select karo'); await fetch(API+`/api/order/assign`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({orderId, riderId: riderMobile})}); alert('Rider Assign ho gaya!'); loadData(); }
+// NAYA: Error check ke saath
+async function assignRider(orderId){
+    const riderMobile = document.getElementById(`rider-${orderId}`).value;
+    if(!riderMobile) return alert('Pehle Rider select karo');
+
+    const res = await fetch(API+`/api/order/assign`, {
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({orderId, riderId: riderMobile})
+    });
+    const data = await res.json();
+
+    if(data.success){
+        alert('Rider Assign ho gaya!');
+    } else {
+        alert('❌ ' + data.msg); // Busy hai to error dikhega
+    }
+    loadData();
+}
 
 loadData();
 </script>
