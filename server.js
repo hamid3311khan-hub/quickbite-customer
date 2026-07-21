@@ -31,7 +31,7 @@ const MenuItem = mongoose.model('MenuItem', {
     img: String, veg: Boolean, inStock: {type:Boolean, default:true}, offer: Number
 });
 
-// NAYA RIDER SCHEMA
+// RIDER SCHEMA
 const Rider = mongoose.model('Rider', {
     name:String, fatherName:String, aadhar:String, pan:String, 
     mobile:{type:String, unique:true}, 
@@ -45,7 +45,7 @@ const OrderSchema = new mongoose.Schema({
     riderLat:Number, riderLng:Number, pointsEarned:Number, coupon:String, discount:Number,
     shopLat: {type:Number, default: 25.5941}, 
     shopLng: {type:Number, default: 85.1376}, 
-    custLat: Number, custLng: Number, riderId: String // riderId me ab mobile save hoga
+    custLat: Number, custLng: Number, riderId: String // riderId me mobile save hoga
 }, {timestamps: true});
 
 const Order = mongoose.model('Order', OrderSchema);
@@ -102,7 +102,7 @@ app.delete('/api/orders/:id', async (req,res)=>{
     res.json({success:true})
 });
 
-// ===== NAYE RIDER API =====
+// ===== RIDER API =====
 // 1. Rider Register
 app.post('/api/rider/register', async (req,res)=>{
   try{
@@ -131,8 +131,16 @@ app.put('/api/rider/:id/approve', async (req,res)=>{
   res.json({success: true});
 })
 
-// Purana wala bhi rehne de backup ke liye
+// 5. Delete Rider - REJECT KE LIYE NAYA
+app.delete('/api/riders/:id', async (req,res)=>{
+  await Rider.findByIdAndDelete(req.params.id);
+  res.json({success:true});
+})
+
+// 6. Saare Rider - Admin ke liye
 app.get('/api/riders', async (req,res)=> res.json(await Rider.find()) );
+
+// 7. Order ko Rider Assign
 app.put('/api/order/assign', async (req,res)=>{ await Order.findByIdAndUpdate(req.body.orderId, {riderId: req.body.riderId}); res.json({success:true}) });
 
 app.post('/api/coupon', async (req,res)=>{ await new Coupon(req.body).save(); res.json({success:true}) });
@@ -173,6 +181,6 @@ app.get('/track', (req, res) => res.sendFile(path.join(__dirname, 'public', 'tra
 app.get('/payment', (req, res) => res.sendFile(path.join(__dirname, 'public', 'payment.html')));
 app.get('/order-details', (req, res) => res.sendFile(path.join(__dirname, 'public', 'track.html')));
 app.get('/rider', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider.html')));
-app.get('/rider-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider-register.html'))); // NAYA PAGE
+app.get('/rider-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider-register.html')));
 
 server.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
