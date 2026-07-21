@@ -25,13 +25,18 @@ mongoose.connect(process.env.MONGO_URL)
 .then(()=>console.log('✅ MongoDB Connected'))
 .catch(err => { console.log('Mongo Error:', err); process.exit(1) });
 
+// ===== MODELS =====
 const MenuItem = mongoose.model('MenuItem', {
     name: String, price: Number, category: String, desc: String,
     img: String, veg: Boolean, inStock: {type:Boolean, default:true}, offer: Number
 });
 
+// NAYA RIDER SCHEMA
 const Rider = mongoose.model('Rider', {
-    riderId:String, name:String, phone:String, lat:Number, lng:Number, status:{type:String, default:"Offline"}
+    name:String, fatherName:String, aadhar:String, pan:String, 
+    mobile:{type:String, unique:true}, 
+    lat:Number, lng:Number, 
+    status:{type:String, default:"Pending"} // Pending, Approved, Online, Offline
 });
 
 const OrderSchema = new mongoose.Schema({
@@ -40,7 +45,7 @@ const OrderSchema = new mongoose.Schema({
     riderLat:Number, riderLng:Number, pointsEarned:Number, coupon:String, discount:Number,
     shopLat: {type:Number, default: 25.5941}, 
     shopLng: {type:Number, default: 85.1376}, 
-    custLat: Number, custLng: Number, riderId: String
+    custLat: Number, custLng: Number, riderId: String // riderId me ab mobile save hoga
 }, {timestamps: true});
 
 const Order = mongoose.model('Order', OrderSchema);
@@ -52,10 +57,11 @@ const storage = multer.diskStorage({
 });
 const upload = multer({storage});
 
+// ===== SOCKET.IO =====
 io.on('connection', (socket) => {
     socket.on('riderLocation', async (data) => {
-        await Rider.findOneAndUpdate({riderId: data.riderId}, {lat: data.lat, lng: data.lng, status: "Online"});
-        await Order.updateMany({riderId: data.riderId, status: "Out for Delivery"}, {riderLat: data.lat, riderLng: data.lng});
+        await Rider.findOneAndUpdate({mobile: data.mobile}, {lat: data.lat, lng: data.lng, status: "Online"});
+        await Order.updateMany({riderId: data.mobile, status: "Out for Delivery"}, {riderLat: data.lat, riderLng: data.lng});
         io.emit('locationUpdate'); 
     });
 });
@@ -66,7 +72,7 @@ app.get('/api/menu', async (req,res)=> { const items = await MenuItem.find(); re
 app.post('/api/menu', upload.single('img'), async (req,res)=>{
     const data = {...req.body, img: req.file? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/400', veg: req.body.veg === 'true'};
     await new MenuItem(data).save(); res.json({success:true});
-}); // YE } BAND THA
+});
 
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
 
@@ -96,9 +102,36 @@ app.delete('/api/orders/:id', async (req,res)=>{
     res.json({success:true})
 });
 
-// RIDER API
-app.post('/api/rider/login', async (req,res)=>{ let rider = await Rider.findOne({riderId: req.body.riderId}); if(!rider) rider = await new Rider(req.body).save(); await Rider.findOneAndUpdate({riderId: req.body.riderId}, {status: "Online"}); res.json(rider); });
-app.get('/api/rider/orders/:riderId', async (req,res)=> res.json(await Order.find({riderId: req.params.riderId, status: {$ne: "Delivered"}})) );
+// ===== NAYE RIDER API =====
+// 1. Rider Register
+app.post('/api/rider/register', async (req,res)=>{
+  try{
+    const {name, fatherName, aadhar, pan, mobile} = req.body;
+    const r = new Rider({name, fatherName, aadhar, pan, mobile});
+    await r.save();
+    res.json({success: true, msg: 'Register ho gaya. Admin approval pending hai'});
+  }catch(e){ res.json({success: false, msg: 'Mobile pehle se register hai'}) }
+})
+
+// 2. Rider Login
+app.post('/api/rider/login', async (req,res)=>{ 
+  let rider = await Rider.findOne({mobile: req.body.mobile}); 
+  if(!rider) return res.json({success:false, msg:"Mobile register nahi hai"});
+  if(rider.status !== 'Approved') return res.json({success:false, msg:"Approval pending hai"});
+  await Rider.findOneAndUpdate({mobile: req.body.mobile}, {status: "Online"}); 
+  res.json({success:true, rider}); 
+});
+
+// 3. Saare Approved Rider - Admin ke liye
+app.get('/api/riders/approved', async (req,res)=> res.json(await Rider.find({status: 'Approved'})) );
+
+// 4. Admin Approve karega
+app.put('/api/rider/:id/approve', async (req,res)=>{
+  await Rider.findByIdAndUpdate(req.params.id, {status: 'Approved'});
+  res.json({success: true});
+})
+
+// Purana wala bhi rehne de backup ke liye
 app.get('/api/riders', async (req,res)=> res.json(await Rider.find()) );
 app.put('/api/order/assign', async (req,res)=>{ await Order.findByIdAndUpdate(req.body.orderId, {riderId: req.body.riderId}); res.json({success:true}) });
 
@@ -140,5 +173,6 @@ app.get('/track', (req, res) => res.sendFile(path.join(__dirname, 'public', 'tra
 app.get('/payment', (req, res) => res.sendFile(path.join(__dirname, 'public', 'payment.html')));
 app.get('/order-details', (req, res) => res.sendFile(path.join(__dirname, 'public', 'track.html')));
 app.get('/rider', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider.html')));
+app.get('/rider-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider-register.html'))); // NAYA PAGE
 
 server.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
