@@ -60,7 +60,40 @@ app.delete('/api/orders/:id', async (req,res)=>{ await Order.findByIdAndDelete(r
 app.post('/api/order/delivered', async (req,res)=>{ try{ const order = await Order.findOne({trackId: req.body.orderId}); if(!order) return res.json({success:false, msg:"Order nahi mila"}); order.status = "Delivered"; await order.save(); res.json({success:true, msg:"Order Delivered ho gaya!"}); }catch(e){ res.json({success:false, msg:e.message}) } })
 
 // ===== RIDER API =====
-app.post('/api/rider/register', upload.fields([{ name: 'aadharImg', maxCount: 1 }, { name: 'panImg', maxCount: 1 }, { name: 'photoImg', maxCount: 1 }]), async (req,res)=>{ try{ const {name, fatherName, aadhar, pan, mobile} = req.body; const files = req.files; if(!name ||!fatherName ||!aadhar ||!pan ||!mobile) return res.json({success: false, msg: 'Sabhi details bharna zaroori hai'}) if(!files.aadharImg ||!files.panImg ||!files.photoImg) return res.json({success: false, msg: '3no photo upload karna zaroori hai'}) const r = new Rider({...req.body, aadharImg: `/uploads/${files.aadharImg[0].filename}`, panImg: `/uploads/${files.panImg[0].filename}`, photoImg: `/uploads/${files.photoImg[0].filename}`}); await r.save(); res.json({success: true, msg: 'Register ho gaya. Admin approval pending hai'}); }catch(e){ if(e.code === 11000) return res.json({success: false, msg: 'Ye mobile pehle se register hai'}) res.json({success: false, msg: 'Error: ' + e.message}) } })
+app.post('/api/rider/register', upload.fields([
+    { name: 'aadharImg', maxCount: 1 }, 
+    { name: 'panImg', maxCount: 1 }, 
+    { name: 'photoImg', maxCount: 1 }
+]), async (req,res)=>{ 
+    try{ 
+        const {name, fatherName, aadhar, pan, mobile} = req.body; 
+        const files = req.files; 
+        
+        if(!name || !fatherName || !aadhar || !pan || !mobile) {
+            return res.json({success: false, msg: 'Sabhi details bharna zaroori hai'});
+        }
+        
+        if(!files.aadharImg || !files.panImg || !files.photoImg) {
+            return res.json({success: false, msg: '3no photo upload karna zaroori hai'});
+        }
+        
+        const r = new Rider({
+            ...req.body, 
+            aadharImg: `/uploads/${files.aadharImg[0].filename}`, 
+            panImg: `/uploads/${files.panImg[0].filename}`, 
+            photoImg: `/uploads/${files.photoImg[0].filename}`
+        }); 
+        
+        await r.save(); 
+        res.json({success: true, msg: 'Register ho gaya. Admin approval pending hai'}); 
+    
+    }catch(e){ 
+        if(e.code === 11000) {
+            return res.json({success: false, msg: 'Ye mobile pehle se register hai'});
+        }
+        res.json({success: false, msg: 'Error: ' + e.message}); 
+    } 
+});
 
 app.post('/api/rider/login', async (req,res)=>{ let rider = await Rider.findOne({mobile: req.body.mobile}); if(!rider) return res.json({success:false, msg:"Mobile register nahi hai"}); if(!['Approved','Online'].includes(rider.status)) return res.json({success:false, msg:"Approval pending hai"}); await Rider.findOneAndUpdate({mobile: req.body.mobile}, {status: "Online"}); res.json({success:true, rider}); });
 
