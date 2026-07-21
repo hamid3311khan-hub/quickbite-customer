@@ -73,7 +73,7 @@ app.post('/api/menu', upload.single('img'), async (req,res)=>{
     const data = {...req.body, img: req.file? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/400', veg: req.body.veg === 'true'};
     await new MenuItem(data).save(); 
     res.json({success:true});
-}); // <-- YAHI } BAND KIYA THA
+});
 
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
 
@@ -103,7 +103,7 @@ app.put('/api/orders/:id/status', async (req,res)=>{
 
 app.delete('/api/orders/:id', async (req,res)=>{ await Order.findByIdAndDelete(req.params.id); res.json({success:true}) });
 
-// ===== RIDER API =====
+// ===== RIDER API - FIXED =====
 app.post('/api/rider/register', upload.fields([
     { name: 'aadharImg', maxCount: 1 },
     { name: 'panImg', maxCount: 1 },
@@ -112,15 +112,27 @@ app.post('/api/rider/register', upload.fields([
   try{
     const {name, fatherName, aadhar, pan, mobile} = req.body;
     const files = req.files;
+
+    // FIX 1: KHALI CHECK
+    if(!name ||!fatherName ||!aadhar ||!pan ||!mobile){
+        return res.json({success: false, msg: 'Sabhi details bharna zaroori hai'})
+    }
+    if(!files.aadharImg ||!files.panImg ||!files.photoImg){
+        return res.json({success: false, msg: '3no photo upload karna zaroori hai'})
+    }
+
     const r = new Rider({
         name, fatherName, aadhar, pan, mobile,
-        aadharImg: files.aadharImg ? `/uploads/${files.aadharImg[0].filename}` : '',
-        panImg: files.panImg ? `/uploads/${files.panImg[0].filename}` : '',
-        photoImg: files.photoImg ? `/uploads/${files.photoImg[0].filename}` : ''
+        aadharImg: `/uploads/${files.aadharImg[0].filename}`,
+        panImg: `/uploads/${files.panImg[0].filename}`,
+        photoImg: `/uploads/${files.photoImg[0].filename}`
     });
     await r.save();
     res.json({success: true, msg: 'Register ho gaya. Admin approval pending hai'});
-  }catch(e){ res.json({success: false, msg: 'Mobile pehle se register hai'}) }
+  }catch(e){ 
+    if(e.code === 11000) return res.json({success: false, msg: 'Ye mobile pehle se register hai'})
+    res.json({success: false, msg: 'Error: ' + e.message}) 
+  }
 })
 
 app.post('/api/rider/login', async (req,res)=>{ 
