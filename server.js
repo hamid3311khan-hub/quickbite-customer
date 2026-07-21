@@ -113,7 +113,7 @@ app.post('/api/order/delivered', async (req,res)=>{
   }catch(e){ res.json({success:false, msg:e.message}) }
 })
 
-// ===== RIDER API =====
+// ===== RIDER API - YAHAN CHANGE HAI =====
 app.post('/api/rider/register', upload.fields([
     { name: 'aadharImg', maxCount: 1 },
     { name: 'panImg', maxCount: 1 },
@@ -133,10 +133,11 @@ app.post('/api/rider/register', upload.fields([
   }
 })
 
+// CHANGE 1: Login me Approved + Online dono allow
 app.post('/api/rider/login', async (req,res)=>{ 
   let rider = await Rider.findOne({mobile: req.body.mobile}); 
   if(!rider) return res.json({success:false, msg:"Mobile register nahi hai"});
-  if(rider.status !== 'Approved') return res.json({success:false, msg:"Approval pending hai"});
+  if(!['Approved','Online'].includes(rider.status)) return res.json({success:false, msg:"Approval pending hai"});
   await Rider.findOneAndUpdate({mobile: req.body.mobile}, {status: "Online"}); 
   res.json({success:true, rider}); 
 });
@@ -146,7 +147,9 @@ app.get('/api/rider/orders/:mobile', async (req,res)=>{
   res.json(orders);
 })
 
-app.get('/api/riders/approved', async (req,res)=> res.json(await Rider.find({status: 'Approved'})) );
+// CHANGE 2: Approved + Online dono list me aaye
+app.get('/api/riders/approved', async (req,res)=> res.json(await Rider.find({status: {$in: ['Approved','Online']}})) );
+
 app.put('/api/rider/:id/approve', async (req,res)=>{ await Rider.findByIdAndUpdate(req.params.id, {status: 'Approved'}); res.json({success: true}); })
 app.delete('/api/riders/:id', async (req,res)=>{ await Rider.findByIdAndDelete(req.params.id); res.json({success:true}); })
 
