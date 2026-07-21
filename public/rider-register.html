@@ -1,5 +1,5 @@
 <!DOCTYPE html><html lang="hi"><head><meta charset="UTF-8"><title>Rider Registration</title><meta name="viewport" content="width=device-width, initial-scale=1">
-<style>body{font-family:Arial; background:#f4f4f4; padding:20px; margin:0;} .card{background:white; padding:20px; border-radius:12px; max-width:420px; margin:auto; box-shadow:0 2px 10px rgba(0,0,0,0.1);} h2{text-align:center; color:#ff5722;} input{width:100%; padding:12px; margin:8px 0; border-radius:6px; border:1px solid #ccc; box-sizing:border-box;} label{font-weight:bold; font-size:14px;} button{width:100%; padding:14px; margin-top:10px; border-radius:6px; border:none; background:#ff5722; color:white; font-size:16px; font-weight:bold;} #msg{text-align:center; margin-top:10px; font-weight:bold;}</style>
+<style>body{font-family:Arial; background:#f4f4f4; padding:20px; margin:0;}.card{background:white; padding:20px; border-radius:12px; max-width:420px; margin:auto; box-shadow:0 2px 10px rgba(0,0,0,0.1);} h2{text-align:center; color:#ff5722;} input{width:100%; padding:12px; margin:8px 0; border-radius:6px; border:1px solid #ccc; box-sizing:border-box;} label{font-weight:bold; font-size:14px;} button{width:100%; padding:14px; margin-top:10px; border-radius:6px; border:none; background:#ff5722; color:white; font-size:16px; font-weight:bold; cursor:pointer;} #msg{text-align:center; margin-top:10px; font-weight:bold;}</style>
 </head><body><div class="card">
   <h2>🏍️ QuickBite Rider Join</h2>
   <input id="name" placeholder="Full Name" required>
@@ -10,14 +10,37 @@
   <label>Aadhar Photo</label><input type="file" id="aadharImg" accept="image/*" required>
   <label>PAN Photo</label><input type="file" id="panImg" accept="image/*" required>
   <label>Your Photo</label><input type="file" id="photoImg" accept="image/*" required>
-  <button onclick="register()">Register Karo</button><p id="msg"></p>
+  <button type="button" onclick="register()">Register Karo</button><p id="msg"></p> <!-- type="button" add kiya -->
 </div><script>
-const API = ''; async function register(){
-  const fd = new FormData();
-  fd.append('name', name.value); fd.append('fatherName', father.value); fd.append('aadhar', aadhar.value);
-  fd.append('pan', pan.value); fd.append('mobile', mobile.value);
-  fd.append('aadharImg', aadharImg.files[0]); fd.append('panImg', panImg.files[0]); fd.append('photoImg', photoImg.files[0]);
-  const res = await fetch(API+'/api/rider/register', {method:'POST', body:fd}); const d = await res.json();
-  msg.innerText = d.msg; msg.style.color = d.success ? 'green' : 'red';
+const API = '';
+async function register(){
+  const btn = document.querySelector('button');
+  btn.disabled = true;
+  msg.innerText = "Register ho raha hai...";
+  msg.style.color = "blue";
+
+  try{
+    const fd = new FormData();
+    fd.append('name', document.getElementById('name').value);
+    fd.append('fatherName', document.getElementById('father').value);
+    fd.append('aadhar', document.getElementById('aadhar').value);
+    fd.append('pan', document.getElementById('pan').value);
+    fd.append('mobile', document.getElementById('mobile').value);
+    fd.append('aadharImg', document.getElementById('aadharImg').files[0]);
+    fd.append('panImg', document.getElementById('panImg').files[0]);
+    fd.append('photoImg', document.getElementById('photoImg').files[0]);
+
+    const res = await fetch(API+'/api/rider/register', {method:'POST', body:fd});
+    const d = await res.json();
+    msg.innerText = d.msg;
+    msg.style.color = d.success? 'green' : 'red';
+
+    if(d.success) setTimeout(()=>window.location='/rider', 2000);
+  }catch(err){
+    msg.innerText = "Server Error. Photo 2MB se kam rakho";
+    msg.style.color = "red";
+    console.log(err)
+  }
+  btn.disabled = false;
 }
 </script></body></html>
