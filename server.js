@@ -88,7 +88,7 @@ app.post('/api/orders', async (req,res)=>{
     const trackId = 'QB' + Date.now(); 
     const points = Math.floor(req.body.total / 10);
     await new Order({...req.body, trackId, pointsEarned: points}).save(); 
-    res.json({success:true, trackId}) // WA link hata diya yaha se
+    res.json({success:true, trackId})
 });
 
 app.get('/api/orders/track/:id', async (req,res)=>{ res.json(await Order.findOne({trackId:req.params.id})) });
