@@ -127,8 +127,8 @@ async function loadData(){
     const riderRes = await fetch(API+'/api/riders/approved');
     riders = await riderRes.json();
 
-    // 3. PENDING RIDERS DIKHAO - PHOTO KE SAATH
-    const pending = allRiders.filter(r => r.status === 'Pending');
+    // 3. PENDING RIDERS DIKHAO - PHOTO KE SAATH [FIXED LINE]
+    const pending = allRiders.filter(r => r.status && r.status.toLowerCase() === 'pending');
     document.getElementById('pendingRidersList').innerHTML = pending.length === 0? 'Koi pending rider nahi hai' :
     pending.map(r => `
         <div class="rider-item">
