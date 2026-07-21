@@ -27,17 +27,10 @@
 <h1>🔥 QuickBite Admin Panel</h1>
 
 <div class="grid">
-    <div class="card stat-card">
-        <h3>Total Orders</h3>
-        <h2 id="totalOrders">0</h2>
-    </div>
-    <div class="card stat-card" style="background:#007bff;">
-        <h3>Total Customers</h3>
-        <h2 id="totalCustomers">0</h2>
-    </div>
+    <div class="card stat-card"><h3>Total Orders</h3><h2 id="totalOrders">0</h2></div>
+    <div class="card stat-card" style="background:#007bff;"><h3>Total Customers</h3><h2 id="totalCustomers">0</h2></div>
 </div>
 
-<!-- NAYA SECTION: PENDING RIDERS -->
 <div class="card">
     <h2>🏍️ Pending Rider Approvals</h2>
     <div id="pendingRidersList">Loading...</div>
@@ -95,39 +88,25 @@
 
 <script>
 const API = '';
-let riders = []; // RIDER LIST KE LIYE
-let allRiders = []; // APPROVE KE LIYE
+let riders = []; 
+let allRiders = []; 
 
 const ADMIN_PASSWORD = 'admin123';
 
 function checkLogin(){
     if(sessionStorage.getItem('adminLoggedIn')!== 'true'){
         let pass = prompt("🔒 Admin Login\nPassword daalo:");
-        if(pass === ADMIN_PASSWORD){
-            sessionStorage.setItem('adminLoggedIn', 'true');
-        } else {
-            alert("Galat Password!");
-            window.location = '/';
-        }
+        if(pass === ADMIN_PASSWORD){ sessionStorage.setItem('adminLoggedIn', 'true'); } 
+        else { alert("Galat Password!"); window.location = '/'; }
     }
 }
-function logout(){
-    sessionStorage.removeItem('adminLoggedIn');
-    alert("Logout ho gaye");
-    window.location = '/';
-}
+function logout(){ sessionStorage.removeItem('adminLoggedIn'); alert("Logout ho gaye"); window.location = '/'; }
 checkLogin();
 
 async function loadData(){
-    // 1. SAARE RIDER LOAD KARO APPROVE KE LIYE
-    const allRiderRes = await fetch(API+'/api/riders');
-    allRiders = await allRiderRes.json();
+    const allRiderRes = await fetch(API+'/api/riders'); allRiders = await allRiderRes.json();
+    const riderRes = await fetch(API+'/api/riders/approved'); riders = await riderRes.json();
 
-    // 2. SIRF APPROVED RIDER LOAD KARO ASSIGN KE LIYE
-    const riderRes = await fetch(API+'/api/riders/approved');
-    riders = await riderRes.json();
-
-    // 3. PENDING RIDERS DIKHAO - PHOTO KE SAATH [FIXED LINE]
     const pending = allRiders.filter(r => r.status && r.status.toLowerCase() === 'pending');
     document.getElementById('pendingRidersList').innerHTML = pending.length === 0? 'Koi pending rider nahi hai' :
     pending.map(r => `
@@ -142,6 +121,7 @@ async function loadData(){
             </div>
             <button class="btn-green" onclick="approveRider('${r._id}')">✅ Approve Karo</button>
             <button class="btn-red" onclick="rejectRider('${r._id}')">❌ Reject</button>
+            <button class="btn-orange" onclick="bulkDeleteRider('${r.mobile}')">🗑️ Is Mobile ke Sab Delete</button>
         </div>
     `).join('');
 
@@ -164,14 +144,11 @@ async function loadData(){
             <b>${o.trackId}</b> - ${o.name} - ₹${o.total} <br>
             <b>Payment:</b> ${o.payment} | <b>Status:</b> ${o.status} | <b>Points:</b> ${o.pointsEarned || 0} <br>
             <small>${o.phone} | ${o.address}</small> <br>
-
-            <!-- RIDER ASSIGN BLOCK -->
             <select id="rider-${o._id}" style="margin-top:8px;">
                 <option value="">-- Rider Select Karo --</option>
                 ${riders.map(r => `<option value="${r.mobile}" ${o.riderId==r.mobile?'selected':''}>${r.name} - ${r.mobile}</option>`).join('')}
             </select>
             <button class="btn-green" onclick="assignRider('${o._id}')">Rider Assign</button>
-
             <div style="display:flex; gap:5px; margin-top:5px;">
                 <input type="text" id="lat-${o._id}" placeholder="Rider Lat" value="${o.riderLat || ''}" style="width:45%">
                 <input type="text" id="lng-${o._id}" placeholder="Rider Lng" value="${o.riderLng || ''}" style="width:45%">
@@ -189,103 +166,33 @@ async function loadData(){
     `).join('');
 }
 
-// NAYA FUNCTION: APPROVE RIDER
-async function approveRider(id){
-    await fetch(API+`/api/rider/${id}/approve`, {method:'PUT'});
-    alert('Rider Approved!');
-    loadData();
-}
-async function rejectRider(id){
-    if(confirm('Pakka Reject karna hai?')){
-        await fetch(API+`/api/riders/${id}`, {method:'DELETE'});
-        alert('Rider Reject kiya');
-        loadData();
-    }
-}
+async function approveRider(id){ await fetch(API+`/api/rider/${id}/approve`, {method:'PUT'}); alert('Rider Approved!'); loadData(); }
+async function rejectRider(id){ if(confirm('Pakka Reject karna hai?')){ await fetch(API+`/api/riders/${id}`, {method:'DELETE'}); alert('Rider Reject kiya'); loadData(); } }
+async function bulkDeleteRider(mobile){ if(!confirm(`${mobile} number wale saare rider delete kar du?`)) return; await fetch(API+`/api/riders/bulk-delete`,{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({mobile})}); alert('Saare duplicate delete ho gaye'); loadData(); }
 
-async function getReport(){
-  let s = document.getElementById('startDate').value;
-  let e = document.getElementById('endDate').value;
-  if(!s ||!e) return alert('Start aur End date select karo');
-  const d = await fetch(`${API}/api/report?start=${s}&end=${e}`).then(r=>r.json());
-  document.getElementById('reportResult').innerHTML = `
-    <p><b>Total Revenue:</b> ₹${d.totalRevenue}</p>
-    <p><b>Total Orders:</b> ${d.totalOrders}</p>
-  `
-}
+async function getReport(){ let s = document.getElementById('startDate').value; let e = document.getElementById('endDate').value; if(!s ||!e) return alert('Start aur End date select karo'); const d = await fetch(`${API}/api/report?start=${s}&end=${e}`).then(r=>r.json()); document.getElementById('reportResult').innerHTML = `<p><b>Total Revenue:</b> ₹${d.totalRevenue}</p><p><b>Total Orders:</b> ${d.totalOrders}</p>` }
 
 async function sendBroadcast(type){
     const message = document.getElementById('broadcastMsg').value;
     if(!message) return alert('Message likho');
     let body = {message, type};
-    if(type === 'manual'){
-        const numbers = document.getElementById('manualNumbers').value;
-        if(!numbers) return alert('Number bhi daalo');
-        body.numbers = numbers;
-    }
-    const res = await fetch(API+'/api/broadcast', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(body)
-    });
-    const data = await res.json();
-    alert(`${data.count} logo ko link ban gaye`);
-    if(data.links) data.links.forEach(link => window.open(link, '_blank'));
+    if(type === 'manual'){ const numbers = document.getElementById('manualNumbers').value; if(!numbers) return alert('Number bhi daalo'); body.numbers = numbers; }
+    const res = await fetch(API+'/api/broadcast', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    const data = await res.json(); alert(`${data.count} logo ko link ban gaye`); if(data.links) data.links.forEach(link => window.open(link, '_blank'));
 }
 
-async function addCoupon(){
-    const body = {code:couponCode.value, discount:+couponDiscount.value, type:couponType.value};
-    await fetch(API+'/api/coupon', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
-    alert('Coupon Added'); couponCode.value='';
-}
-async function addItem(){
-    const fd = new FormData();
-    fd.append('name', itemName.value); fd.append('price', itemPrice.value); fd.append('desc', itemDesc.value);
-    fd.append('category', itemCategory.value); fd.append('offer', itemOffer.value); fd.append('img', itemImg.files[0]);
-    await fetch(API+'/api/menu', {method:'POST', body:fd}); alert('Item Added'); loadData();
-}
+async function addCoupon(){ const body = {code:couponCode.value, discount:+couponDiscount.value, type:couponType.value}; await fetch(API+'/api/coupon', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}); alert('Coupon Added'); couponCode.value=''; }
+async function addItem(){ const fd = new FormData(); fd.append('name', itemName.value); fd.append('price', itemPrice.value); fd.append('desc', itemDesc.value); fd.append('category', itemCategory.value); fd.append('offer', itemOffer.value); fd.append('img', itemImg.files[0]); await fetch(API+'/api/menu', {method:'POST', body:fd}); alert('Item Added'); loadData(); }
 async function toggleStock(id){ await fetch(API+`/api/menu/${id}/stock`, {method:'PUT'}); loadData(); }
 async function delItem(id){ if(confirm('Delete?')){ await fetch(API+`/api/menu/${id}`, {method:'DELETE'}); loadData(); }}
 
-async function updateLocation(id){
-    const riderLat = document.getElementById(`lat-${id}`).value;
-    const riderLng = document.getElementById(`lng-${id}`).value;
-    await fetch(API+`/api/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status: 'Out for Delivery', riderLat, riderLng})});
-    alert('📍 Location Save ho gayi');
-    loadData();
-}
+async function updateLocation(id){ const riderLat = document.getElementById(`lat-${id}`).value; const riderLng = document.getElementById(`lng-${id}`).value; await fetch(API+`/api/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status: 'Out for Delivery', riderLat, riderLng})}); alert('📍 Location Save ho gayi'); loadData(); }
 
-async function updateStatus(id, status){
-    const riderLat = document.getElementById(`lat-${id}`).value;
-    const riderLng = document.getElementById(`lng-${id}`).value;
-    const res = await fetch(API+`/api/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status, riderLat, riderLng})});
-    const data = await res.json();
-    if(data.customerWaLink) window.open(data.customerWaLink, '_blank');
-    alert("Status Updated: " + status);
-    loadData();
-}
+async function updateStatus(id, status){ const riderLat = document.getElementById(`lat-${id}`).value; const riderLng = document.getElementById(`lng-${id}`).value; const res = await fetch(API+`/api/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status, riderLat, riderLng})}); const data = await res.json(); if(data.customerWaLink) window.open(data.customerWaLink, '_blank'); alert("Status Updated: " + status); loadData(); }
 
-async function delOrder(id){
-    if(confirm('Pakka Delete karna hai?')){
-        await fetch(API+`/api/orders/${id}`, {method:'DELETE'});
-        alert("Order Delete ho gaya");
-        loadData();
-    }
-}
+async function delOrder(id){ if(confirm('Pakka Delete karna hai?')){ await fetch(API+`/api/orders/${id}`, {method:'DELETE'}); alert("Order Delete ho gaya"); loadData(); } }
 
-// NAYA FUNCTION: RIDER ASSIGN
-async function assignRider(orderId){
-    const riderMobile = document.getElementById(`rider-${orderId}`).value;
-    if(!riderMobile) return alert('Pehle Rider select karo');
-
-    await fetch(API+`/api/order/assign`, {
-        method:'PUT',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({orderId, riderId: riderMobile})
-    });
-    alert('Rider Assign ho gaya!');
-    loadData();
-}
+async function assignRider(orderId){ const riderMobile = document.getElementById(`rider-${orderId}`).value; if(!riderMobile) return alert('Pehle Rider select karo'); await fetch(API+`/api/order/assign`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({orderId, riderId: riderMobile})}); alert('Rider Assign ho gaya!'); loadData(); }
 
 loadData();
 </script>
