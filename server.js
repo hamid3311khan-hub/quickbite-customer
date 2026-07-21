@@ -34,7 +34,7 @@ const MenuItem = mongoose.model('MenuItem', {
 const Rider = mongoose.model('Rider', {
     name:String, fatherName:String, aadhar:String, pan:String, 
     mobile:{type:String, unique:true},
-    aadharImg: String, panImg: String, photoImg: String, // PHOTO ADDED
+    aadharImg: String, panImg: String, photoImg: String,
     lat:Number, lng:Number, 
     status:{type:String, default:"Pending"}
 });
@@ -68,26 +68,39 @@ io.on('connection', (socket) => {
 
 // ===== API ROUTES =====
 app.get('/api/menu', async (req,res)=> { const items = await MenuItem.find(); res.json(items); });
+
 app.post('/api/menu', upload.single('img'), async (req,res)=>{
     const data = {...req.body, img: req.file? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/400', veg: req.body.veg === 'true'};
-    await new MenuItem(data).save(); res.json({success:true});
+    await new MenuItem(data).save(); 
+    res.json({success:true});
+}); // <-- YAHI } BAND KIYA THA
+
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
+
 app.put('/api/menu/:id/stock', async (req,res)=>{
-    const item = await MenuItem.findById(req.params.id); item.inStock =!item.inStock; await item.save(); res.json({success:true});
+    const item = await MenuItem.findById(req.params.id); 
+    item.inStock =!item.inStock; 
+    await item.save(); 
+    res.json({success:true});
 });
 
 app.post('/api/orders', async (req,res)=>{
-    const trackId = 'QB' + Date.now(); const points = Math.floor(req.body.total / 10);
-    await new Order({...req.body, trackId, pointsEarned: points}).save(); res.json({success:true, trackId})
+    const trackId = 'QB' + Date.now(); 
+    const points = Math.floor(req.body.total / 10);
+    await new Order({...req.body, trackId, pointsEarned: points}).save(); 
+    res.json({success:true, trackId})
 });
+
 app.get('/api/orders/track/:id', async (req,res)=>{ res.json(await Order.findOne({trackId:req.params.id})) });
 app.get('/api/orders', async (req,res)=>{ res.json(await Order.find().sort({createdAt:-1})) });
 app.get('/api/orders/history/:phone', async (req,res)=>{ res.json(await Order.find({phone:req.params.phone}).sort({createdAt:-1})) });
+
 app.put('/api/orders/:id/status', async (req,res)=>{
     const updated = await Order.findByIdAndUpdate(req.params.id, req.body, {new:true});
     const waLink = `https://wa.me/91${updated.phone}?text=QuickBite Update%0AOrder: ${updated.trackId}%0AStatus: ${updated.status}`;
     res.json({success:true, customerWaLink: waLink})
 });
+
 app.delete('/api/orders/:id', async (req,res)=>{ await Order.findByIdAndDelete(req.params.id); res.json({success:true}) });
 
 // ===== RIDER API =====
@@ -118,14 +131,14 @@ app.post('/api/rider/login', async (req,res)=>{
   res.json({success:true, rider}); 
 });
 
-app.get('/api/rider/orders/:mobile', async (req,res)=>{ // NAYA
+app.get('/api/rider/orders/:mobile', async (req,res)=>{
   const orders = await Order.find({riderId: req.params.mobile, status: {$ne: 'Delivered'}}).sort({createdAt:-1});
   res.json(orders);
 })
 
 app.get('/api/riders/approved', async (req,res)=> res.json(await Rider.find({status: 'Approved'})) );
 app.put('/api/rider/:id/approve', async (req,res)=>{ await Rider.findByIdAndUpdate(req.params.id, {status: 'Approved'}); res.json({success: true}); })
-app.delete('/api/riders/:id', async (req,res)=>{ await Rider.findByIdAndDelete(req.params.id); res.json({success:true}); }) // DELETE ADDED
+app.delete('/api/riders/:id', async (req,res)=>{ await Rider.findByIdAndDelete(req.params.id); res.json({success:true}); })
 app.get('/api/riders', async (req,res)=> res.json(await Rider.find()) );
 app.put('/api/order/assign', async (req,res)=>{ await Order.findByIdAndUpdate(req.body.orderId, {riderId: req.body.riderId}); res.json({success:true}) });
 
@@ -135,7 +148,8 @@ app.get('/api/stats', async (req,res)=>{ const orders = await Order.countDocumen
 app.get('/api/report', async (req,res)=>{ const {start, end} = req.query; const endDate = new Date(end); endDate.setHours(23,59,59); const orders = await Order.find({createdAt: {$gte: new Date(start), $lte: endDate}}); const totalRevenue = orders.reduce((a,b)=>a+b.total,0); res.json({totalRevenue, totalOrders:orders.length, topItems:[]}) });
 
 app.post('/api/broadcast', async (req,res)=>{
-    const {message, type, numbers} = req.body; let phones = [];
+    const {message, type, numbers} = req.body; 
+    let phones = [];
     if(type === 'all'){ phones = await Order.distinct('phone'); } 
     else if(type === 'new'){ phones = []; return res.json({count: 0, links: [], msg: "New customer DB nahi hai abhi"}) } 
     else { phones = numbers.split(',').map(n=>n.trim()); }
