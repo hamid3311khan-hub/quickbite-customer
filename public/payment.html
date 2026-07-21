@@ -3,7 +3,7 @@
 <nav><a href="/">🏠 Home</a> <a href="/index">🍔 Menu</a></nav>
 <div class="container"><h2>💳 Payment</h2><div class="order-summary" id="summary"></div>
 <h3>Select Payment Method</h3><div class="payment-option"><input type="radio" name="pay" value="COD" checked> <b>Cash on Delivery</b></div>
-<button class="btn" id="orderBtn" onclick="placeOrder()">📍 Location Le rahe hain...</button><button class="btn" style="background:#666" onclick="window.location='/index'">⬅ Back to Cart</button></div>
+<button class="btn" id="orderBtn" disabled>📍 Location Le rahe hain...</button><button class="btn" style="background:#666" onclick="window.location='/index'">⬅ Back to Cart</button></div>
 <script>
 const API = 'https://quickbite-ymqk.onrender.com/api'; 
 const orderData = JSON.parse(localStorage.getItem('orderData'));
@@ -12,43 +12,19 @@ if(!orderData){ alert("Cart khali hai"); window.location='/index'; }
 
 document.getElementById('summary').innerHTML = `<h4>Order Summary</h4><p><b>Name:</b> ${orderData.name}</p><p><b>Phone:</b> ${orderData.phone}</p><p><b>Address:</b> ${orderData.address}</p><p><b>Items:</b> ${orderData.items.map(i=>`${i.name} x${i.qty}`).join(', ')}</p><h3 style="color:#ff6600">Total: ₹${orderData.total}</h3>`;
 
-// STEP 1: Page load hote hi location le lo
 let custLat = null; let custLng = null;
 navigator.geolocation.getCurrentPosition(
-  (pos) => {
-    custLat = pos.coords.latitude;
-    custLng = pos.coords.longitude;
-    orderBtn.innerText = "✅ Order Place Karein";
-    orderBtn.disabled = false;
-  },
-  (err) => {
-    alert("Location allow karo warna rider ko dhoondhne me dikkat hogi");
-    orderBtn.innerText = "✅ Order Place Karein";
-    orderBtn.disabled = false;
-  }
+  (pos) => { custLat = pos.coords.latitude; custLng = pos.coords.longitude; orderBtn.innerText = "✅ Order Place Karein"; orderBtn.disabled = false; },
+  (err) => { alert("Location allow karo warna rider ko dhoondhne me dikkat hogi"); orderBtn.innerText = "✅ Order Place Karein"; orderBtn.disabled = false; }
 )
 
 function placeOrder(){ 
-    orderBtn.disabled = true;
-    orderBtn.innerText = "Order Place ho raha hai...";
-    
+    orderBtn.disabled = true; orderBtn.innerText = "Order Place ho raha hai...";
     const payment = document.querySelector('input[name="pay"]:checked').value; 
-    // STEP 2: Location ko orderData me add kar do
     const finalOrder = {...orderData, payment, custLat, custLng}; 
-    
     fetch(`${API}/orders`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(finalOrder)})
     .then(res=>res.json())
-    .then(d=>{
-        alert('Order Placed! Track ID: '+d.trackId); 
-        if(d.waLink){ window.open(d.waLink, '_blank'); }
-        localStorage.removeItem('cart'); 
-        localStorage.removeItem('orderData'); 
-        window.location='/track?id='+d.trackId
-    })
-    .catch(err=>{
-        alert("Order Failed. Try again");
-        orderBtn.disabled = false;
-        orderBtn.innerText = "✅ Order Place Karein";
-    })
+    .then(d=>{ alert('Order Placed! Track ID: '+d.trackId); localStorage.removeItem('cart'); localStorage.removeItem('orderData'); window.location='/track?id='+d.trackId })
+    .catch(err=>{ alert("Order Failed. Try again"); orderBtn.disabled = false; orderBtn.innerText = "✅ Order Place Karein"; })
 }
 </script></body></html>
