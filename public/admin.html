@@ -6,17 +6,17 @@
 <title>QuickBite Admin</title>
 <style>
     body{font-family:Arial; background:#f4f4f4; padding:20px;}
-   .card{background:white; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 5px #ccc;}
+  .card{background:white; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 5px #ccc;}
     input, select, button, textarea{padding:10px; margin:5px; border-radius:5px; border:1px solid #ccc; width:calc(100% - 22px);}
     button{background:#ff5722; color:white; border:none; cursor:pointer;}
     button:hover{opacity:0.9;}
-   .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;}
-   .stat-card{background:#ff5722; color:white; text-align:center; padding:20px;}
-   .stat-card h2{margin:0; font-size:30px;}
-   .order,.menu-item{border:1px solid #ddd; padding:10px; margin:10px 0; border-radius:5px;}
-   .btn-green{background:#25D366;}.btn-red{background:#dc3545;}.btn-blue{background:#007bff;}
-   .report-result p{margin:5px 0; font-size:16px;}
-   .logout-btn{background:#6c757d; float:right; padding:8px 15px; width:auto;}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;}
+  .stat-card{background:#ff5722; color:white; text-align:center; padding:20px;}
+  .stat-card h2{margin:0; font-size:30px;}
+  .order,.menu-item,.rider-item{border:1px solid #ddd; padding:10px; margin:10px 0; border-radius:5px;}
+  .btn-green{background:#25D366;}.btn-red{background:#dc3545;}.btn-blue{background:#007bff;}.btn-orange{background:orange;}
+  .report-result p{margin:5px 0; font-size:16px;}
+  .logout-btn{background:#6c757d; float:right; padding:8px 15px; width:auto;}
     small{color:#666; font-size:12px;}
 </style>
 </head>
@@ -34,6 +34,12 @@
         <h3>Total Customers</h3>
         <h2 id="totalCustomers">0</h2>
     </div>
+</div>
+
+<!-- NAYA SECTION: PENDING RIDERS -->
+<div class="card">
+    <h2>🏍️ Pending Rider Approvals</h2>
+    <div id="pendingRidersList">Loading...</div>
 </div>
 
 <div class="card">
@@ -89,6 +95,7 @@
 <script>
 const API = '';
 let riders = []; // RIDER LIST KE LIYE
+let allRiders = []; // APPROVE KE LIYE
 
 const ADMIN_PASSWORD = 'admin123';
 
@@ -111,9 +118,25 @@ function logout(){
 checkLogin();
 
 async function loadData(){
-    // 1. PEHLE APPROVED RIDER LOAD KARO - YAHI CHANGE KIYA
+    // 1. SAARE RIDER LOAD KARO APPROVE KE LIYE
+    const allRiderRes = await fetch(API+'/api/riders');
+    allRiders = await allRiderRes.json();
+
+    // 2. SIRF APPROVED RIDER LOAD KARO ASSIGN KE LIYE
     const riderRes = await fetch(API+'/api/riders/approved');
     riders = await riderRes.json();
+
+    // 3. PENDING RIDERS DIKHAO
+    const pending = allRiders.filter(r => r.status === 'Pending');
+    document.getElementById('pendingRidersList').innerHTML = pending.length === 0? 'Koi pending rider nahi hai' :
+    pending.map(r => `
+        <div class="rider-item">
+            <b>${r.name}</b> - ${r.mobile} <br>
+            <small>Father: ${r.fatherName} | Aadhar: ${r.aadhar} | PAN: ${r.pan}</small> <br>
+            <button class="btn-green" onclick="approveRider('${r._id}')">✅ Approve Karo</button>
+            <button class="btn-red" onclick="rejectRider('${r._id}')">❌ Reject</button>
+        </div>
+    `).join('');
 
     const stats = await fetch(API+'/api/stats').then(r=>r.json());
     document.getElementById('totalOrders').innerText = stats.orders;
@@ -135,7 +158,7 @@ async function loadData(){
             <b>Payment:</b> ${o.payment} | <b>Status:</b> ${o.status} | <b>Points:</b> ${o.pointsEarned || 0} <br>
             <small>${o.phone} | ${o.address}</small> <br>
 
-            <!-- RIDER ASSIGN BLOCK - YAHI CHANGE KIYA -->
+            <!-- RIDER ASSIGN BLOCK -->
             <select id="rider-${o._id}" style="margin-top:8px;">
                 <option value="">-- Rider Select Karo --</option>
                 ${riders.map(r => `<option value="${r.mobile}" ${o.riderId==r.mobile?'selected':''}>${r.name} - ${r.mobile}</option>`).join('')}
@@ -157,6 +180,20 @@ async function loadData(){
             <button class="btn-red" onclick="delOrder('${o._id}')">Delete</button>
         </div>
     `).join('');
+}
+
+// NAYA FUNCTION: APPROVE RIDER
+async function approveRider(id){
+    await fetch(API+`/api/rider/${id}/approve`, {method:'PUT'});
+    alert('Rider Approved!');
+    loadData();
+}
+async function rejectRider(id){
+    if(confirm('Pakka Reject karna hai?')){
+        await fetch(API+`/api/riders/${id}`, {method:'DELETE'}); // agar chahiye to delete API bhi bana dena
+        alert('Rider Reject kiya');
+        loadData();
+    }
 }
 
 async function getReport(){
@@ -231,16 +268,16 @@ async function delOrder(id){
 
 // NAYA FUNCTION: RIDER ASSIGN
 async function assignRider(orderId){
-    const riderMobile = document.getElementById(`rider-${orderId}`).value; // mobile le rahe
+    const riderMobile = document.getElementById(`rider-${orderId}`).value;
     if(!riderMobile) return alert('Pehle Rider select karo');
 
     await fetch(API+`/api/order/assign`, {
         method:'PUT',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({orderId, riderId: riderMobile}) // mobile ko riderId me bhej rahe
+        body:JSON.stringify({orderId, riderId: riderMobile})
     });
     alert('Rider Assign ho gaya!');
-    loadData(); // list refresh
+    loadData();
 }
 
 loadData();
