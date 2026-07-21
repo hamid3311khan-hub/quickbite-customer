@@ -1,9 +1,9 @@
 <!DOCTYPE html><html><head><title>Payment - QuickBite</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>*{margin:0;font-family:Arial} nav{background:#ff6600;color:white;padding:15px} nav a{color:white;text-decoration:none;margin:0 10px;font-weight:bold} .container{max-width:500px;margin:30px auto;background:white;padding:30px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1)} h2{color:#ff6600;margin-bottom:20px} .order-summary{background:#f8f8f8;padding:15px;border-radius:8px;margin-bottom:20px} .payment-option{border:2px solid #ddd;padding:15px;margin:10px 0;border-radius:8px} .btn{width:100%;padding:15px;background:#28a745;color:white;border:none;border-radius:8px;font-size:18px;font-weight:bold;cursor:pointer;margin-top:20px}</style></head><body>
+<style>*{margin:0;font-family:Arial} nav{background:#ff6600;color:white;padding:15px} nav a{color:white;text-decoration:none;margin:0 10px;font-weight:bold} .container{max-width:500px;margin:30px auto;background:white;padding:30px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1)} h2{color:#ff6600;margin-bottom:20px} .order-summary{background:#f8f8f8;padding:15px;border-radius:8px;margin-bottom:20px} .payment-option{border:2px solid #ddd;padding:15px;margin:10px 0;border-radius:8px} .btn{width:100%;padding:15px;background:#28a745;color:white;border:none;border-radius:8px;font-size:18px;font-weight:bold;cursor:pointer;margin-top:20px} .btn:disabled{background:#ccc}</style></head><body>
 <nav><a href="/">🏠 Home</a> <a href="/index">🍔 Menu</a></nav>
 <div class="container"><h2>💳 Payment</h2><div class="order-summary" id="summary"></div>
 <h3>Select Payment Method</h3><div class="payment-option"><input type="radio" name="pay" value="COD" checked> <b>Cash on Delivery</b></div>
-<button class="btn" onclick="placeOrder()">Place Order</button><button class="btn" style="background:#666" onclick="window.location='/index'">⬅ Back to Cart</button></div>
+<button class="btn" id="orderBtn" onclick="placeOrder()">📍 Location Le rahe hain...</button><button class="btn" style="background:#666" onclick="window.location='/index'">⬅ Back to Cart</button></div>
 <script>
 const API = 'https://quickbite-ymqk.onrender.com/api'; 
 const orderData = JSON.parse(localStorage.getItem('orderData'));
@@ -12,24 +12,43 @@ if(!orderData){ alert("Cart khali hai"); window.location='/index'; }
 
 document.getElementById('summary').innerHTML = `<h4>Order Summary</h4><p><b>Name:</b> ${orderData.name}</p><p><b>Phone:</b> ${orderData.phone}</p><p><b>Address:</b> ${orderData.address}</p><p><b>Items:</b> ${orderData.items.map(i=>`${i.name} x${i.qty}`).join(', ')}</p><h3 style="color:#ff6600">Total: ₹${orderData.total}</h3>`;
 
+// STEP 1: Page load hote hi location le lo
+let custLat = null; let custLng = null;
+navigator.geolocation.getCurrentPosition(
+  (pos) => {
+    custLat = pos.coords.latitude;
+    custLng = pos.coords.longitude;
+    orderBtn.innerText = "✅ Order Place Karein";
+    orderBtn.disabled = false;
+  },
+  (err) => {
+    alert("Location allow karo warna rider ko dhoondhne me dikkat hogi");
+    orderBtn.innerText = "✅ Order Place Karein";
+    orderBtn.disabled = false;
+  }
+)
+
 function placeOrder(){ 
+    orderBtn.disabled = true;
+    orderBtn.innerText = "Order Place ho raha hai...";
+    
     const payment = document.querySelector('input[name="pay"]:checked').value; 
-    const finalOrder = {...orderData, payment}; 
+    // STEP 2: Location ko orderData me add kar do
+    const finalOrder = {...orderData, payment, custLat, custLng}; 
     
     fetch(`${API}/orders`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(finalOrder)})
     .then(res=>res.json())
     .then(d=>{
         alert('Order Placed! Track ID: '+d.trackId); 
-        
-        // WHATSAPP KHOL DO
-        if(d.waLink){
-            window.open(d.waLink, '_blank');
-        }
-        
+        if(d.waLink){ window.open(d.waLink, '_blank'); }
         localStorage.removeItem('cart'); 
         localStorage.removeItem('orderData'); 
         window.location='/track?id='+d.trackId
     })
-    .catch(err=>alert("Order Failed. Try again"))
+    .catch(err=>{
+        alert("Order Failed. Try again");
+        orderBtn.disabled = false;
+        orderBtn.innerText = "✅ Order Place Karein";
+    })
 }
 </script></body></html>
