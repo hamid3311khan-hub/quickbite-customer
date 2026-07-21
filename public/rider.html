@@ -19,7 +19,6 @@ async function loadMyOrders(){
   const res = await fetch(API+`/api/rider/orders/${rider.mobile}`); 
   const orders = await res.json(); 
   myOrders.innerHTML = orders.length==0 ? 'Koi order nahi hai' : orders.map(o=>{
-    // Agar custLat hai to use karo, warna address se search
     const mapUrl = o.custLat ? `https://www.google.com/maps?q=${o.custLat},${o.custLng}` : `https://www.google.com/maps?q=${encodeURIComponent(o.address)}`;
     return `<div class="order">
       <b>${o.trackId}</b> - ₹${o.total} <br>
@@ -32,13 +31,7 @@ async function loadMyOrders(){
   }).join(''); 
 }
 
-async function markDelivered(orderId){
-  if(!confirm('Kya delivery ho gayi?')) return;
-  const res = await fetch(API+'/api/order/delivered', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({orderId})});
-  const d = await res.json();
-  alert(d.msg);
-  loadMyOrders(); // list refresh
-}
+async function markDelivered(orderId){ if(!confirm('Kya delivery ho gayi?')) return; const res = await fetch(API+'/api/order/delivered', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({orderId})}); const d = await res.json(); alert(d.msg); loadMyOrders(); }
 
 function startLocationTracking(){ if(navigator.geolocation){ navigator.geolocation.watchPosition(pos=>{ const data = {mobile: rider.mobile, lat: pos.coords.latitude, lng: pos.coords.longitude}; socket.emit('riderLocation', data); }) } }
 function logout(){ localStorage.removeItem('riderMobile'); location.reload(); }
