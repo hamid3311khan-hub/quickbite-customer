@@ -59,11 +59,13 @@ const upload = multer({storage});
 
 // ===== SOCKET.IO =====
 io.on('connection', (socket) => {
+    console.log('Rider Connected'); // Terminal log
     socket.on('riderLocation', async (data) => {
         await Rider.findOneAndUpdate({mobile: data.mobile}, {lat: data.lat, lng: data.lng, status: "Online"});
         await Order.updateMany({riderId: data.mobile, status: "Out for Delivery"}, {riderLat: data.lat, riderLng: data.lng});
         io.emit('locationUpdate'); 
     });
+    socket.on('disconnect', ()=> console.log('Rider Disconnected')); // Terminal log
 });
 
 // ===== API ROUTES =====
@@ -113,7 +115,7 @@ app.post('/api/order/delivered', async (req,res)=>{
   }catch(e){ res.json({success:false, msg:e.message}) }
 })
 
-// ===== RIDER API - YAHAN CHANGE HAI =====
+// ===== RIDER API =====
 app.post('/api/rider/register', upload.fields([
     { name: 'aadharImg', maxCount: 1 },
     { name: 'panImg', maxCount: 1 },
@@ -133,7 +135,7 @@ app.post('/api/rider/register', upload.fields([
   }
 })
 
-// CHANGE 1: Login me Approved + Online dono allow
+// Login: Approved + Online dono
 app.post('/api/rider/login', async (req,res)=>{ 
   let rider = await Rider.findOne({mobile: req.body.mobile}); 
   if(!rider) return res.json({success:false, msg:"Mobile register nahi hai"});
@@ -147,20 +149,28 @@ app.get('/api/rider/orders/:mobile', async (req,res)=>{
   res.json(orders);
 })
 
-// CHANGE 2: Approved + Online dono list me aaye
+// Approved + Online dono list me
 app.get('/api/riders/approved', async (req,res)=> res.json(await Rider.find({status: {$in: ['Approved','Online']}})) );
 
 app.put('/api/rider/:id/approve', async (req,res)=>{ await Rider.findByIdAndUpdate(req.params.id, {status: 'Approved'}); res.json({success: true}); })
 app.delete('/api/riders/:id', async (req,res)=>{ await Rider.findByIdAndDelete(req.params.id); res.json({success:true}); })
 
-// NEW: BULK DELETE API
+// BULK DELETE
 app.post('/api/riders/bulk-delete', async (req,res)=>{ 
   await Rider.deleteMany({mobile: req.body.mobile}); 
   res.json({success:true, msg:`${req.body.mobile} wale saare rider delete ho gaye`}) 
 })
 
 app.get('/api/riders', async (req,res)=> res.json(await Rider.find()) );
-app.put('/api/order/assign', async (req,res)=>{ await Order.findByIdAndUpdate(req.body.orderId, {riderId: req.body.riderId}); res.json({success:true}) });
+
+// Assign ke saath status bhi auto change
+app.put('/api/order/assign', async (req,res)=>{ 
+  await Order.findByIdAndUpdate(req.body.orderId, {
+    riderId: req.body.riderId,
+    status: 'Out for Delivery' // Auto status
+  }); 
+  res.json({success:true}) 
+});
 
 app.post('/api/coupon', async (req,res)=>{ await new Coupon(req.body).save(); res.json({success:true}) });
 app.post('/api/coupon/validate', async (req,res)=>{ const coupon = await Coupon.findOne({code:req.body.code}); if(coupon) { res.json({success:true,...coupon._doc}) } else { res.json({success:false}) } });
