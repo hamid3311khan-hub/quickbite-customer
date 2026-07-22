@@ -7,88 +7,228 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
     body{background:#f8f9fa}
-    .navbar-brand{color:#ff5722 !important; font-weight:bold}
+  .navbar-brand{color:#ff5722!important; font-weight:bold}
+  .nav-tabs.nav-link.active{background:#ff5722; color:white; border:none;}
+  .stat-card{border-radius:15px; color:white; padding:20px; box-shadow:0 4px 10px rgba(0,0,0,0.1)}
+  .stat-card h3{font-size:28px; margin:0;}
+  .new-order{animation: blink 1.5s infinite; border-left:5px solid #ff5722;}
+    @keyframes blink {50%{background:#fff3cd;}}
 </style>
 </head>
 <body>
 
 <nav class="navbar bg-white shadow-sm px-3">
-    <span class="navbar-brand">🍔 <span id="resName"></span> Dashboard</span>
-    <button class="btn btn-outline-danger btn-sm" onclick="logout()">Logout</button>
+    <a href="/" class="navbar-brand">🍔 <span id="resName"></span> Dashboard</a>
+    <div>
+        <a href="/restaurant-profile" class="btn btn-outline-secondary btn-sm me-2">⚙️ Profile</a>
+        <button class="btn btn-outline-danger btn-sm" onclick="logout()">Logout</button>
+    </div>
 </nav>
 
 <div class="container mt-4">
-    <div class="row">
-        <!-- Item Add Form -->
-        <div class="col-md-4">
-            <div class="card shadow-sm p-3">
-                <h5>Add New Item</h5>
-                <form id="itemForm">
-                    <input type="text" id="name" placeholder="Item Name" class="form-control mb-2" required>
-                    <input type="number" id="price" placeholder="Price" class="form-control mb-2" required>
-                    <input type="text" id="image" placeholder="Image URL" class="form-control mb-2">
-                    <textarea id="desc" placeholder="Description" class="form-control mb-2" rows="2"></textarea>
-                    <button class="btn btn-warning w-100">Add Item</button>
-                </form>
-                <div id="msg" class="mt-2"></div>
+    <!-- STATS CARDS -->
+    <div class="row mb-4">
+        <div class="col-md-3"><div class="stat-card" style="background:#28a745;"><h6>Aaj ke Orders</h6><h3 id="todayOrders">0</h3></div></div>
+        <div class="col-md-3"><div class="stat-card" style="background:#007bff;"><h6>Aaj ki Kamai</h6><h3 id="todayRevenue">₹0</h3></div></div>
+        <div class="col-md-3"><div class="stat-card" style="background:#ffc107; color:#000;"><h6>Total Items</h6><h3 id="totalItems">0</h3></div></div>
+        <div class="col-md-3"><div class="stat-card" style="background:#dc3545;"><h6>Pending Orders</h6><h3 id="pendingOrders">0</h3></div></div>
+    </div>
+
+    <!-- TABS -->
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#menu">🍔 Menu</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#orders">📦 Orders <span class="badge bg-danger" id="orderCount">0</span></a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#offers">🎟️ Offers</a></li>
+    </ul>
+
+    <div class="tab-content">
+        <!-- TAB 1: MENU -->
+        <div class="tab-pane fade show active" id="menu">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card shadow-sm p-3">
+                        <h5>Add New Item</h5>
+                        <form id="itemForm">
+                            <input type="text" id="name" placeholder="Item Name" class="form-control mb-2" required>
+                            <input type="number" id="price" placeholder="Price" class="form-control mb-2" required>
+                            <input type="text" id="category" placeholder="Category: Pizza, Burger" class="form-control mb-2">
+                            <input type="file" id="imageFile" class="form-control mb-2" accept="image/*">
+                            <input type="hidden" id="imageBase64">
+                            <textarea id="desc" placeholder="Description" class="form-control mb-2" rows="2"></textarea>
+                            <img id="preview" style="width:100%; height:120px; object-fit:cover; display:none; border-radius:8px; margin-bottom:10px;">
+                            <button class="btn btn-warning w-100 fw-bold">Add Item</button>
+                        </form>
+                        <div id="msg" class="mt-2"></div>
+                    </div>
+                </div>
+
+                <div class="col-md-8">
+                    <div class="card shadow-sm p-3">
+                        <h5>Your Menu Items</h5>
+                        <table class="table table-sm">
+                            <thead><tr><th>Image</th><th>Name</th><th>Price</th><th>Stock</th><th>Action</th></tr></thead>
+                            <tbody id="menuList"><tr><td colspan="5">Loading...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Item List -->
-        <div class="col-md-8">
+        <!-- TAB 2: ORDERS -->
+        <div class="tab-pane fade" id="orders">
             <div class="card shadow-sm p-3">
-                <h5>Your Menu Items</h5>
-                <table class="table table-sm">
-                    <thead><tr><th>Name</th><th>Price</th><th>Action</th></tr></thead>
-                    <tbody id="menuList"><tr><td colspan="3">Loading...</td></tr></tbody>
-                </table>
+                <h5>New Orders</h5>
+                <audio id="notifSound" src="https://cdn.freesound.org/previews/270/270404_5123851-lq.mp3"></audio>
+                <div id="ordersList">Loading...</div>
+            </div>
+        </div>
+
+        <!-- TAB 3: OFFERS -->
+        <div class="tab-pane fade" id="offers">
+            <div class="card shadow-sm p-3">
+                <h5>Create Restaurant Offer</h5>
+                <input type="text" id="offerCode" placeholder="Code: BURGER50" class="form-control mb-2">
+                <input type="number" id="offerDiscount" placeholder="Discount %" class="form-control mb-2">
+                <button class="btn btn-success" onclick="addOffer()">Create Offer</button>
+                <div id="offerMsg" class="mt-2"></div>
             </div>
         </div>
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 const owner = JSON.parse(localStorage.getItem('owner'));
 if(!owner){ window.location.href = '/restaurant-login'; }
 
 document.getElementById('resName').innerText = owner.restaurantName;
-const restaurantId = owner.restaurantId; // moms-kitchen
+const restaurantId = owner.restaurantId;
+let lastOrderCount = 0;
 
-// 1. Item Add karna
+// PHOTO PREVIEW
+document.getElementById('imageFile').addEventListener('change', function(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(event){
+        document.getElementById('imageBase64').value = event.target.result;
+        document.getElementById('preview').src = event.target.result;
+        document.getElementById('preview').style.display = 'block';
+    }
+    reader.readAsDataURL(file);
+});
+
+// 1. Item Add
 document.getElementById('itemForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
-    const data = new FormData();
-    data.append('name', document.getElementById('name').value);
-    data.append('price', document.getElementById('price').value);
-    data.append('image', document.getElementById('image').value);
-    data.append('description', document.getElementById('desc').value);
-    data.append('restaurantId', restaurantId); // IMPORTANT: Auto set ho jayega
-
-    const res = await fetch('/api/menu', {method:'POST', body:data});
+    const data = {
+        name: document.getElementById('name').value,
+        price: document.getElementById('price').value,
+        category: document.getElementById('category').value,
+        description: document.getElementById('desc').value,
+        image: document.getElementById('imageBase64').value,
+        restaurantId: restaurantId
+    };
+    const res = await fetch('/api/menu', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
     const result = await res.json();
     if(result.success){
-        document.getElementById('msg').innerHTML = `<div class="alert alert-success">Item Added!</div>`;
+        document.getElementById('msg').innerHTML = `<div class="alert alert-success">✅ Item Added!</div>`;
         document.getElementById('itemForm').reset();
-        loadMenu();
+        document.getElementById('preview').style.display='none';
+        loadMenu(); loadStats();
+        setTimeout(()=>document.getElementById('msg').innerHTML='', 3000);
     }
 });
 
-// 2. Apne restaurant ke item load karna
+// 2. Menu Load
 async function loadMenu(){
     const res = await fetch(`/api/menu?shop=${restaurantId}`);
     const items = await res.json();
+    document.getElementById('totalItems').innerText = items.length;
     let rows = '';
     items.forEach(i=>{
-        rows += `<tr><td>${i.name}</td><td>₹${i.price}</td><td><button class="btn btn-sm btn-danger" onclick="deleteItem('${i._id}')">Delete</button></td></tr>`;
+        rows += `<tr>
+            <td><img src="${i.image || 'https://via.placeholder.com/50'}" width="50" height="50" style="object-fit:cover; border-radius:5px;"></td>
+            <td>${i.name}</td>
+            <td>₹${i.price}</td>
+            <td><button class="btn btn-sm ${i.inStock?'btn-success':'btn-secondary'}" onclick="toggleStock('${i._id}')">${i.inStock?'ON':'OFF'}</button></td>
+            <td><button class="btn btn-sm btn-danger" onclick="deleteItem('${i._id}')">Delete</button></td>
+        </tr>`;
     });
-    document.getElementById('menuList').innerHTML = rows || '<tr><td colspan="3">No items yet</td></tr>';
+    document.getElementById('menuList').innerHTML = rows || '<tr><td colspan="5">No items yet</td></tr>';
+}
+
+async function toggleStock(id){
+    await fetch(`/api/menu/${id}/stock`, {method:'PUT'});
+    loadMenu();
 }
 
 async function deleteItem(id){
-    if(confirm('Delete kare?')){
+    if(confirm('Pakka Delete kare?')){
         await fetch(`/api/menu/${id}`, {method:'DELETE'});
-        loadMenu();
+        loadMenu(); loadStats();
     }
+}
+
+// 3. Orders Load
+async function loadOrders(){
+    const res = await fetch(`/api/orders?shop=${restaurantId}`);
+    const orders = await res.json();
+
+    if(orders.length > lastOrderCount && lastOrderCount!= 0){
+        document.getElementById('notifSound').play();
+        alert('🔔 Naya Order Aaya!');
+    }
+    lastOrderCount = orders.length;
+    document.getElementById('orderCount').innerText = orders.filter(o=>o.status=='Pending').length;
+    document.getElementById('pendingOrders').innerText = orders.filter(o=>o.status!='Delivered').length;
+
+    let html = '';
+    if(orders.length === 0) html = '<p class="text-center text-muted">Abhi koi order nahi hai</p>';
+
+    orders.forEach(o=>{
+        html += `<div class="border p-3 mb-2 rounded ${o.status=='Pending'?'new-order':''}">
+            <div class="d-flex justify-content-between">
+                <div><b>${o.trackId}</b> - ${o.name} <br><small>${o.phone}</small></div>
+                <h5 class="text-success">₹${o.total}</h5>
+            </div>
+            <p class="mb-1"><b>Address:</b> ${o.address}</p>
+            <p class="mb-1"><b>Items:</b> ${o.items? o.items.map(i=>i.name+' x'+i.qty).join(', ') : ''}</p>
+            <div class="d-flex gap-2 align-items-center">
+                <b>Status:</b>
+                <select onchange="updateOrderStatus('${o._id}', this.value)" class="form-select form-select-sm" style="width:200px;">
+                    <option ${o.status=='Pending'?'selected':''}>Pending</option>
+                    <option ${o.status=='Preparing'?'selected':''}>Preparing</option>
+                    <option ${o.status=='Ready'?'selected':''}>Ready for Pickup</option>
+                    <option ${o.status=='Delivered'?'selected':''}>Delivered</option>
+                </select>
+            </div>
+        </div>`;
+    });
+    document.getElementById('ordersList').innerHTML = html;
+}
+
+async function updateOrderStatus(id, status){
+    await fetch(`/api/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})});
+    loadOrders(); loadStats();
+}
+
+// 4. Stats Load
+async function loadStats(){
+    const res = await fetch(`/api/restaurant/stats?shop=${restaurantId}`);
+    const data = await res.json();
+    document.getElementById('todayOrders').innerText = data.orders;
+    document.getElementById('todayRevenue').innerText = '₹' + data.revenue;
+}
+
+// 5. Offer Add
+async function addOffer(){
+    const body = {code: offerCode.value, discount: +offerDiscount.value, restaurantId: restaurantId};
+    const res = await fetch('/api/restaurant/offer', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    const data = await res.json();
+    document.getElementById('offerMsg').innerHTML = `<div class="alert alert-success">${data.msg}</div>`;
+    offerCode.value=''; offerDiscount.value='';
+    setTimeout(()=>document.getElementById('offerMsg').innerHTML='', 3000);
 }
 
 function logout(){
@@ -96,7 +236,12 @@ function logout(){
     window.location.href = '/restaurant-login';
 }
 
+// Initial Load
 loadMenu();
+loadOrders();
+loadStats();
+setInterval(loadOrders, 10000);
+setInterval(loadStats, 60000);
 </script>
 </body>
 </html>
