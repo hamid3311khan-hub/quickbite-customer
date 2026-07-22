@@ -16,7 +16,8 @@ button{background:#ff5722; color:white; border:none; font-weight:bold; cursor:po
 .btn-blue{background:#007bff;} 
 .order{border-left:4px solid #ff5722; padding:10px; margin:10px 0; background:#fff;}
 .btn-row{display:flex; gap:8px; flex-wrap:wrap;}
-.btn-row button{width:auto; flex:1; min-width:100px;}
+.btn-row button, .btn-row a{width:auto; flex:1; min-width:100px;}
+.btn-row a{text-decoration:none;}
 h2,h3{margin:5px 0;}
 </style>
 </head>
@@ -100,6 +101,10 @@ async function loadMyOrders(){
       <b>Status:</b> <span style="color:#ff5722">${o.status}</span> <br><br>
       <div class="btn-row">
         <a href="${mapUrl}" target="_blank"><button class="btn-blue">📍 Navigate</button></a>
+        
+        <!-- NAYA INVOICE BUTTON -->
+        <a href="/invoice?id=${o.trackId}" target="_blank"><button style="background:#ff5722">📄 Invoice</button></a>
+
         <button style="background:orange" onclick="callCustomer('${o.phone}', '${o.name}')">📞 Call</button>
         ${deliveredBtn}
       </div>
@@ -119,7 +124,6 @@ async function markDelivered(orderId){
   loadMyOrders(); 
 }
 
-// NAYA: Call ka prompt
 function callCustomer(phone, name){
   const ok = confirm(`Call ${name} ko?\nNumber: ${phone}\n\nCall Now ya Cancel`);
   if(ok){
