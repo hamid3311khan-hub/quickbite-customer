@@ -161,5 +161,13 @@ app.get('/payment', (req, res) => res.sendFile(path.join(__dirname, 'public', 'p
 app.get('/order-details', (req, res) => res.sendFile(path.join(__dirname, 'public', 'track.html')));
 app.get('/rider', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider.html')));
 app.get('/rider-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider-register.html')));
+const Restaurant = mongoose.model('Restaurant', {
+    id: String, name: String, address: String, image: String, status: {type:String, default:"Active"}
+});
+
+app.get('/api/restaurants', async (req,res)=>{
+    const shops = await Restaurant.find();
+    res.json(shops);
+});
 
 server.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
