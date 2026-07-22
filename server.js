@@ -173,7 +173,6 @@ app.get('/payment', (req, res) => res.sendFile(path.join(__dirname, 'public', 'p
 app.get('/order-details', (req, res) => res.sendFile(path.join(__dirname, 'public', 'track.html')));
 app.get('/rider', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider.html')));
 app.get('/rider-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider-register.html')));
-
 // NAYA UPLOAD SYSTEM - CLOUDINARY
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
@@ -204,5 +203,4 @@ app.get('/photo-test', (req,res)=>{
 app.post('/photo-test', uploadCloud.single('photo'), (req,res)=>{
   res.send("Photo ka link: " + req.file.path)
 })
-
 server.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
