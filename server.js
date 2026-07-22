@@ -6,19 +6,19 @@ const path = require('path');
 const http = require('http');
 const { Server } = require("socket.io");
 const PDFDocument = require('pdfkit');
+const multer = require('multer'); 
+const upload = multer();
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: {origin: "*"} });
 const PORT = process.env.PORT || 10000;
 
-// MIDDLEWARE
 app.use(cors({origin: "*"}));
 app.use(express.json({limit: '10mb'}));
 app.use(express.urlencoded({limit: '10mb', extended: true}));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// DB CONNECT
 mongoose.connect(process.env.MONGO_URL)
 .then(()=>console.log('✅ MongoDB Connected'))
 .catch(err => { console.log('Mongo Error:', err); process.exit(1) });
@@ -29,6 +29,20 @@ const MenuItem = mongoose.model('MenuItem', {
     image: String, veg: Boolean, inStock: {type:Boolean, default:true}, offer: Number,
     restaurantId: {type: String, default: 'default-shop'}
 });
+
+const RestaurantOwner = mongoose.model('RestaurantOwner', {
+    restaurantId: {type: String, unique: true},
+    restaurantName: String,
+    ownerName: String,
+    mobile: {type: String, unique: true},
+    email: String,
+    address: String,
+    password: String,
+    status: {type: String, default: "Pending"},
+    paymentStatus: {type: String, default: "Unpaid"},
+    createdAt: {type: Date, default: Date.now}
+});
+
 const Rider = mongoose.model('Rider', { name:String, fatherName:String, aadhar:String, pan:String, mobile:{type:String, unique:true}, aadharImg: String, panImg: String, photoImg: String, lat:Number, lng:Number, status:{type:String, default:"Pending"} });
 const OrderSchema = new mongoose.Schema({ trackId: String, name:String, phone:String, address:String, items:[], total:Number, payment:String, status:{type:String, default:'Pending'}, riderLat:Number, riderLng:Number, pointsEarned:Number, coupon:String, discount:Number, shopLat: {type:Number, default: 25.5941}, shopLng: {type:Number, default: 85.1376}, custLat: Number, custLng: Number, riderId: String, restaurantId: {type: String, default: 'default-shop'} }, {timestamps: true});
 const Order = mongoose.model('Order', OrderSchema);
@@ -53,7 +67,7 @@ app.get('/api/menu', async (req,res)=> {
     res.json(items); 
 });
 
-app.post('/api/menu', async (req,res)=>{
+app.post('/api/menu', upload.none(), async (req,res)=>{
   try{
     const {name, price, desc, category, offer, image, restaurantId} = req.body;
     if(!image) return res.json({success:false, msg:"Image nahi mili"});
@@ -73,7 +87,43 @@ app.put('/api/orders/:id/status', async (req,res)=>{ const updated = await Order
 app.delete('/api/orders/:id', async (req,res)=>{ await Order.findByIdAndDelete(req.params.id); res.json({success:true}) });
 app.post('/api/order/delivered', async (req,res)=>{ try{ const order = await Order.findOne({trackId: req.body.orderId}); if(!order) return res.json({success:false, msg:"Order nahi mila"}); order.status = "Delivered"; await order.save(); res.json({success:true, msg:"Order Delivered ho gaya!"}); }catch(e){ res.json({success:false, msg:e.message}) } })
 
-// RESTAURANTS API - MULTI RESTAURANT
+// ===== NEW RESTAURANT OWNER APIs =====
+app.post('/api/restaurant/register', async (req,res)=>{
+    try{
+        const {restaurantId, restaurantName, ownerName, mobile, email, address, password} = req.body;
+        const exists = await RestaurantOwner.findOne({$or: [{mobile}, {restaurantId}]});
+        if(exists) return res.json({success:false, msg: "Mobile ya Restaurant ID pehle se hai"});
+        
+        await new RestaurantOwner({restaurantId, restaurantName, ownerName, mobile, email, address, password, paymentStatus: "Paid"}).save();
+        res.json({success:true, msg: "Register ho gaya. Approval pending hai."})
+    }catch(e){ res.json({success:false, msg:e.message}) }
+});
+
+app.post('/api/restaurant/login', async (req,res)=>{
+    const {mobile, password} = req.body;
+    const owner = await RestaurantOwner.findOne({mobile, password});
+    if(!owner) return res.json({success:false, msg: "Galat mobile ya password"});
+    if(owner.status !== "Approved") return res.json({success:false, msg: "Approval pending hai"});
+    res.json({success:true, owner})
+});
+
+app.get('/api/restaurant/owners', async (req,res)=>{
+    const owners = await RestaurantOwner.find().sort({createdAt:-1});
+    res.json(owners);
+});
+
+app.put('/api/restaurant/owner/:id/approve', async (req,res)=>{
+    const owner = await RestaurantOwner.findByIdAndUpdate(req.params.id, {status: "Approved"}, {new:true});
+    await new Restaurant({id: owner.restaurantId, name: owner.restaurantName, address: owner.address, image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=200&fit=crop"}).save();
+    res.json({success:true});
+});
+
+app.delete('/api/restaurant/owner/:id', async (req,res)=>{
+    await RestaurantOwner.findByIdAndDelete(req.params.id);
+    res.json({success:true});
+});
+
+// RESTAURANTS API
 app.get('/api/restaurants', async (req,res)=>{
     const shops = await Restaurant.find({status: "Active"});
     if(shops.length === 0){
@@ -129,5 +179,11 @@ app.get('/payment', (req, res) => res.sendFile(path.join(__dirname, 'public', 'p
 app.get('/rider', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider.html')));
 app.get('/rider-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider-register.html')));
 app.get('/restaurants', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurants.html')));
+
+// NEW PAGE ROUTES
+app.get('/restaurant-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-register.html')));
+app.get('/restaurant-login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-login.html')));
+app.get('/restaurant-dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-dashboard.html')));
+app.get('/admin-owners', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin-owners.html')));
 
 server.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
