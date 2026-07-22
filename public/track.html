@@ -14,7 +14,7 @@ nav{background:#ff5722;color:white;padding:15px;text-align:center;font-size:20px
 .step.dot{width:30px; height:30px; border-radius:50%; background:#ddd; margin:0 auto 5px; line-height:30px; color:white}
 .step.active.dot{background:#28a745}.step.active p{font-weight:bold; color:#28a745}
 #map{height:350px; width:100%; border-radius:10px; margin-top:10px}
-.btn{padding:12px;margin:5px 0;width:100%;border:none;border-radius:8px;font-size:16px;cursor:pointer;color:white;background:#25D366}
+.btn{padding:12px;margin:5px 0;width:100%;border:none;border-radius:8px;font-size:16px;cursor:pointer;color:white;background:#25D366; text-decoration:none; display:block; text-align:center; font-weight:bold;}
 .leaflet-routing-container{display:none}
 .error{border:2px solid red;background:#ffe6e6;padding:15px;border-radius:10px}
 </style>
@@ -34,8 +34,15 @@ nav{background:#ff5722;color:white;padding:15px;text-align:center;font-size:20px
     <div id="map"></div>
     <small style="color:#666">* Orange line = Route, Bike = Rider</small>
 </div>
-<a id="waBtn" href="#" target="_blank"><button class="btn">📞 Contact Us on WhatsApp</button></a>
-</div>
+
+<!-- INVOICE + WHATSAPP BUTTON -->
+<a id="invoiceBtn" href="#" target="_blank" class="btn" style="background:#ff5722; margin-bottom:10px;">
+   📄 Download Invoice PDF
+</a>
+<a id="waBtn" href="#" target="_blank" class="btn" style="background:#25D366;">
+   📞 Contact Us on WhatsApp
+</a>
+</div> <!-- YE DIV BAND KIYA -->
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
@@ -51,13 +58,20 @@ async function loadOrder(){
         const res = await fetch(`${API}/orders/track/${trackId}`);
         const o = await res.json();
         if(!o ||!o.trackId) return document.getElementById('orderBox').innerHTML="<div class='error'><h3>Order not found</h3></div>";
+
         document.getElementById('orderBox').innerHTML = `<h2>Order: ${o.trackId}</h2><p><b>Name:</b> ${o.name}</p><p><b>Phone:</b> ${o.phone}</p><p><b>Address:</b> ${o.address}</p><p><b>Total Paid:</b> ₹${o.total} | <b>Payment:</b> ${o.payment}</p><p><b>Points Earned:</b> ${o.pointsEarned || 0} ⭐</p><hr style="margin:10px 0"><p><b>Items:</b><br> ${o.items.map(i=>`• ${i.name} x${i.qty} - ₹${i.price}`).join('<br>')}</p>`;
+
         document.getElementById('currentStatus').innerText = o.status;
         const steps = ['Pending', 'Preparing', 'Out for Delivery', 'Delivered'];
         const index = steps.indexOf(o.status);
         for(let i=1; i<=index+1; i++) document.getElementById('s'+i).classList.add('active');
+
         initMap(o.shopLat, o.shopLng, o.custLat, o.custLng, o.riderLat, o.riderLng);
-        document.getElementById('waBtn').href = `https://wa.me/918207836370?text=Help for order ${o.trackId} - Status: ${o.status}`;
+
+        // YE NAYA ADD KIYA - DYNAMIC LINK
+        document.getElementById('invoiceBtn').href = `/invoice?id=${o.trackId}`;
+        document.getElementById('waBtn').href = `https://wa.me/91${o.phone}?text=Hi QuickBite, mera Order ID: ${o.trackId} - Status: ${o.status}`;
+
     } catch(e){
         document.getElementById('orderBox').innerHTML="<div class='error'><h3>Server Error. Refresh karo</h3></div>";
     }
