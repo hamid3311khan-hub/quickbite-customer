@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>More Restaurants</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  body{background:#f8f9fa}
+  .shop-card{cursor:pointer; transition:0.2s; border:none}
+  .shop-card:hover{transform: translateY(-5px); box-shadow:0 8px 20px rgba(0,0,0,0.1)}
+  .shop-img{height:180px; object-fit:cover}
+</style>
+</head>
+<body>
+<nav class="navbar navbar-dark bg-dark">
+  <div class="container">
+    <a class="navbar-brand" href="home.html">← Back</a>
+    <span class="navbar-text text-white">Choose Restaurant</span>
+  </div>
+</nav>
+
+<div class="container py-4">
+  <h3 class="mb-4">Nearby Restaurants</h3>
+  <div id="restaurantList" class="row g-4">
+    <p>Loading...</p>
+  </div>
+</div>
+
+<script>
+async function loadRestaurants(){
+    try{
+        const res = await fetch('/api/restaurants');
+        const shops = await res.json();
+        const list = document.getElementById('restaurantList');
+        list.innerHTML = '';
+        
+        if(shops.length === 0){
+            list.innerHTML = '<p class="text-center">No restaurants found</p>';
+            return;
+        }
+
+        shops.forEach(shop => {
+            if(shop.status !== 'Active') return;
+            list.innerHTML += `
+            <div class="col-md-4 col-sm-6">
+                <div class="card shop-card" onclick="openShop('${shop.id}')">
+                    <img src="${shop.image || 'https://via.placeholder.com/400x180'}" class="card-img-top shop-img">
+                    <div class="card-body">
+                        <h5 class="card-title">${shop.name}</h5>
+                        <p class="card-text text-muted">${shop.address}</p>
+                        <span class="badge bg-success">⭐ 4.5</span>
+                    </div>
+                </div>
+            </div>`;
+        });
+    }catch(e){
+        document.getElementById('restaurantList').innerHTML = '<p class="text-danger">Error loading restaurants</p>';
+    }
+}
+
+function openShop(shopId){
+    // Purane index.html ko hi kholega, bas shopId bhej dega
+    window.location.href = `index.html?shop=${shopId}`;
+}
+
+loadRestaurants();
+</script>
+</body>
+</html>
