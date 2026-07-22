@@ -80,6 +80,7 @@ function filterItems(){
     displayItems(filtered);
 }
 
+// YAHI WALI FUNCTION FIX KI HAI
 function displayItems(items){
     if(items.length==0) document.getElementById('menu').innerHTML="<h3 style='text-align:center;width:100%;padding:50px'>No items found</h3>"
     else document.getElementById('menu').innerHTML = items.map(item=>{
@@ -87,7 +88,7 @@ function displayItems(items){
         return `
         <div class="card">
             ${item.inStock===false ? '<div class="out-stock">Out of Stock</div>' : ''}
-            <img src="${item.img}">
+            <img src="${item.image || item.img}" onerror="this.src='https://via.placeholder.com/300x200/ff6600/ffffff?text=QuickBite'">
             <h3>${item.name} ${item.offer?`<span style="color:red;background:#ffe0e0;padding:2px 6px;border-radius:4px">-${item.offer}%</span>`:''}</h3>
             <p style="color:#666">${item.desc}</p>
             <p style="font-size:12px;color:#888">${item.category || 'Other'}</p>
