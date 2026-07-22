@@ -29,7 +29,7 @@ async function loadRestaurants(){
         list.innerHTML += `
         <div class="col-md-4">
             <div class="card shadow-sm p-3" onclick="window.location.href='/index?shop=${shop.id}'" style="cursor:pointer">
-                <img src="${shop.image}" class="card-img-top mb-2" style="height:180px; object-fit:cover; border-radius:8px">
+                <img src="${shop.image}" class="card-img-top mb-2" style="height:180px; object-fit:cover; border-radius:8px" onerror="this.src='https://via.placeholder.com/400x180/ff6600/ffffff?text=QuickBite'">
                 <h5>${shop.name}</h5>
                 <p class="text-muted">${shop.address}</p>
             </div>
