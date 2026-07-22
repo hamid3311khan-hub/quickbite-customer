@@ -3,8 +3,6 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
-const multer = require('multer');
-const fs = require('fs');
 const http = require('http');
 const { Server } = require("socket.io");
 const PDFDocument = require('pdfkit');
@@ -14,28 +12,25 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: {origin: "*"} });
 const PORT = process.env.PORT || 10000;
 
-// ===== LOCAL UPLOAD =====
-const uploadDir = './public/uploads';
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-const storage = multer.diskStorage({ 
-  destination: uploadDir, 
-  filename: (req,file,cb)=> cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '_')) 
-});
-const upload = multer({storage});
-// ===== LOCAL UPLOAD END =====
+// ===== HATA DIYA: multer aur upload folder =====
+// const uploadDir = './public/uploads'; ... sab hata do
 
 app.use(cors({origin: "*"}));
-app.use(express.json());
+app.use(express.json({limit: '10mb'})); // IMPORTANT: Base64 badi hoti hai isliye limit badhai
+app.use(express.urlencoded({limit: '10mb', extended: true})); // IMPORTANT
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+// app.use('/uploads', express.static...  YE LINE BHI HATA DO
 
 mongoose.connect(process.env.MONGO_URL)
 .then(()=>console.log('✅ MongoDB Connected'))
 .catch(err => { console.log('Mongo Error:', err); process.exit(1) });
 
 // ===== MODELS =====
-const MenuItem = mongoose.model('MenuItem', { name: String, price: Number, category: String, desc: String, img: String, veg: Boolean, inStock: {type:Boolean, default:true}, offer: Number });
+const MenuItem = mongoose.model('MenuItem', { 
+    name: String, price: Number, category: String, desc: String, 
+    image: String, // img ki jagah image kar diya
+    veg: Boolean, inStock: {type:Boolean, default:true}, offer: Number 
+});
 const Rider = mongoose.model('Rider', { name:String, fatherName:String, aadhar:String, pan:String, mobile:{type:String, unique:true}, aadharImg: String, panImg: String, photoImg: String, lat:Number, lng:Number, status:{type:String, default:"Pending"} });
 const OrderSchema = new mongoose.Schema({ trackId: String, name:String, phone:String, address:String, items:[], total:Number, payment:String, status:{type:String, default:'Pending'}, riderLat:Number, riderLng:Number, pointsEarned:Number, coupon:String, discount:Number, shopLat: {type:Number, default: 25.5941}, shopLng: {type:Number, default: 85.1376}, custLat: Number, custLng: Number, riderId: String }, {timestamps: true});
 const Order = mongoose.model('Order', OrderSchema);
@@ -55,11 +50,27 @@ io.on('connection', (socket) => {
 // ===== API ROUTES =====
 app.get('/api/menu', async (req,res)=> { const items = await MenuItem.find(); res.json(items); });
 
-// LOCAL UPLOAD WAPAS
-app.post('/api/menu', upload.single('img'), async (req,res)=>{
-  const data = {...req.body, img: req.file? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/400', veg: req.body.veg === 'true'};
-  await new MenuItem(data).save();
-  res.json({success:true});
+// NAYA BASE64 WALA POST
+app.post('/api/menu', async (req,res)=>{
+  try{
+    const {name, price, desc, category, offer, image} = req.body; // image me base64 code aayega
+    if(!image) return res.json({success:false, msg:"Image nahi mili"});
+    
+    const data = {
+        name, 
+        price, 
+        desc, 
+        category, 
+        offer, 
+        image, // seedha base64 code save
+        veg: req.body.veg === 'true', 
+        inStock: true
+    };
+    await new MenuItem(data).save();
+    res.json({success:true});
+  }catch(e){
+    res.json({success:false, msg:e.message})
+  }
 });
 
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
@@ -112,54 +123,20 @@ app.get('/invoice', async (req,res)=>{
   doc.end();
 })
 
-// ===== RIDER API =====
-// LOCAL UPLOAD WAPAS
-app.post('/api/rider/register', upload.fields([
-    { name: 'aadharImg', maxCount: 1 },
-    { name: 'panImg', maxCount: 1 },
-    { name: 'photoImg', maxCount: 1 }
-]), async (req,res)=>{
-    try{
-        const {name, fatherName, aadhar, pan, mobile} = req.body;
-        const files = req.files;
-
-        if(!name ||!fatherName ||!aadhar ||!pan ||!mobile) {
-            return res.json({success: false, msg: 'Sabhi details bharna zaroori hai'});
-        }
-
-        if(!files.aadharImg ||!files.panImg ||!files.photoImg) {
-            return res.json({success: false, msg: '3no photo upload karna zaroori hai'});
-        }
-
-        const r = new Rider({
-           ...req.body,
-            aadharImg: `/uploads/${files.aadharImg[0].filename}`,
-            panImg: `/uploads/${files.panImg[0].filename}`,
-            photoImg: `/uploads/${files.photoImg[0].filename}`
-        });
-
-        await r.save();
-        res.json({success: true, msg: 'Register ho gaya. Admin approval pending hai'});
-
-    }catch(e){
-        if(e.code === 11000) {
-            return res.json({success: false, msg: 'Ye mobile pehle se register hai'});
-        }
-        res.json({success: false, msg: 'Error: ' + e.message});
-    }
+// ===== RIDER API - ISKO BAAD ME BASE64 KARENGE =====
+app.post('/api/rider/register', async (req,res)=>{
+    res.json({success:false, msg: 'Rider photo abhi file se hi jayegi. Pehle menu thik kar lete hain'});
 });
 
+// BAAD KI ROUTES SAME RAHENGI...
 app.post('/api/rider/login', async (req,res)=>{ let rider = await Rider.findOne({mobile: req.body.mobile}); if(!rider) return res.json({success:false, msg:"Mobile register nahi hai"}); if(!['Approved','Online'].includes(rider.status)) return res.json({success:false, msg:"Approval pending hai"}); await Rider.findOneAndUpdate({mobile: req.body.mobile}, {status: "Online"}); res.json({success:true, rider}); });
-
 app.get('/api/rider/orders/:mobile', async (req,res)=>{ const orders = await Order.find({riderId: req.params.mobile, status: {$ne: 'Delivered'}}).sort({createdAt:-1}); res.json(orders); })
-
 app.get('/api/riders/approved', async (req,res)=> res.json(await Rider.find({status: {$in: ['Approved','Online']}})) );
 app.put('/api/rider/:id/approve', async (req,res)=>{ await Rider.findByIdAndUpdate(req.params.id, {status: 'Approved'}); res.json({success: true}); })
 app.delete('/api/riders/:id', async (req,res)=>{ await Rider.findByIdAndDelete(req.params.id); res.json({success:true}); })
 app.post('/api/riders/bulk-delete', async (req,res)=>{ await Rider.deleteMany({mobile: req.body.mobile}); res.json({success:true, msg:`${req.body.mobile} wale saare rider delete ho gaye`}) })
 app.get('/api/riders', async (req,res)=> res.json(await Rider.find()) );
 
-// 1 RIDER = 1 ORDER WALA RULE
 app.put('/api/order/assign', async (req,res)=>{
   const busyOrder = await Order.findOne({ riderId: req.body.riderId, status: {$ne: 'Delivered'} });
   if(busyOrder){ return res.json({success:false, msg:"Ye rider abhi busy hai. Pehle wala order complete karega tabhi naya milega"}) }
@@ -167,9 +144,7 @@ app.put('/api/order/assign', async (req,res)=>{
   res.json({success:true})
 });
 
-// Busy check API
 app.get('/api/rider/check-busy/:mobile', async (req,res)=>{ const busy = await Order.findOne({riderId: req.params.mobile, status: {$ne: 'Delivered'}}); res.json({free:!busy}); })
-
 app.post('/api/coupon', async (req,res)=>{ await new Coupon(req.body).save(); res.json({success:true}) });
 app.post('/api/coupon/validate', async (req,res)=>{ const coupon = await Coupon.findOne({code:req.body.code}); if(coupon) { res.json({success:true,...coupon._doc}) } else { res.json({success:false}) } });
 app.get('/api/stats', async (req,res)=>{ const orders = await Order.countDocuments(); const customers = await Order.distinct('phone').then(a=>a.length); res.json({orders, customers}) });
@@ -186,19 +161,5 @@ app.get('/payment', (req, res) => res.sendFile(path.join(__dirname, 'public', 'p
 app.get('/order-details', (req, res) => res.sendFile(path.join(__dirname, 'public', 'track.html')));
 app.get('/rider', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider.html')));
 app.get('/rider-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider-register.html')));
-
-// TEST PAGE
-app.get('/photo-test', (req,res)=>{
-  res.send(`
-    <form action="/photo-test" method="POST" enctype="multipart/form-data">
-      <h2>Photo Upload Test</h2>
-      <input type="file" name="photo">
-      <button>Upload Karo</button>
-    </form>
-  `)
-})
-app.post('/photo-test', upload.single('photo'), (req,res)=>{
-  res.send("Photo ka link: " + `/uploads/${req.file.filename}`)
-})
 
 server.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
