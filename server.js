@@ -7,7 +7,7 @@ const multer = require('multer');
 const fs = require('fs');
 const http = require('http');
 const { Server } = require("socket.io");
-const PDFDocument = require('pdfkit'); // <-- YE NAYA ADD KIYA
+const PDFDocument = require('pdfkit');
 
 const app = express();
 const server = http.createServer(app);
@@ -64,20 +64,16 @@ app.post('/api/order/delivered', async (req,res)=>{ try{ const order = await Ord
 app.get('/invoice', async (req,res)=>{
   const { id } = req.query;
   if(!id) return res.send('Order ID nahi diya');
-  
   const order = await Order.findOne({trackId:id});
   if(!order) return res.send('Order nahi mila');
-
   const doc = new PDFDocument({margin: 40});
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename=QuickBite-${id}.pdf`);
   doc.pipe(res);
-
   doc.fontSize(22).text('QuickBite', {align: 'center'});
   doc.moveDown(0.5);
   doc.fontSize(14).text('INVOICE', {align: 'center'});
   doc.moveDown();
-
   doc.fontSize(11);
   doc.text(`Order ID: ${order.trackId}`);
   doc.text(`Date: ${new Date(order.createdAt).toLocaleString()}`);
@@ -87,28 +83,24 @@ app.get('/invoice', async (req,res)=>{
   doc.moveDown();
   doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke();
   doc.moveDown(0.5);
-
   doc.font('Helvetica-Bold');
   doc.text('Item', 40); doc.text('Qty', 300); doc.text('Price', 370); doc.text('Total', 460);
   doc.font('Helvetica'); doc.moveDown(0.3);
-
   order.items.forEach(i=>{
     doc.text(i.name, 40); doc.text(i.qty, 300); 
     doc.text(`₹${i.price}`, 370); doc.text(`₹${i.price*i.qty}`, 460);
     doc.moveDown(0.5);
   });
-
   doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke();
   doc.moveDown(0.5);
   doc.fontSize(14).font('Helvetica-Bold');
   doc.text(`Grand Total: ₹${order.total}`, 370);
-
   doc.moveDown(2);
   doc.fontSize(10).font('Helvetica').text('Thank you for ordering with QuickBite!', {align: 'center'});
   doc.end();
 })
 
-// ===== RIDER API =====
+// ===== RIDER API - YE THEEK KIYA HAI =====
 app.post('/api/rider/register', upload.fields([
     { name: 'aadharImg', maxCount: 1 }, 
     { name: 'panImg', maxCount: 1 }, 
