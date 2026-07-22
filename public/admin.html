@@ -6,19 +6,20 @@
 <title>QuickBite Admin</title>
 <style>
     body{font-family:Arial; background:#f4f4f4; padding:20px;}
- .card{background:white; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 5px #ccc;}
+   .card{background:white; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 5px #ccc;}
     input, select, button, textarea{padding:10px; margin:5px; border-radius:5px; border:1px solid #ccc; width:calc(100% - 22px);}
     button{background:#ff5722; color:white; border:none; cursor:pointer;}
     button:hover{opacity:0.9;}
- .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;}
- .stat-card{background:#ff5722; color:white; text-align:center; padding:20px;}
- .stat-card h2{margin:0; font-size:30px;}
- .order,.menu-item,.rider-item{border:1px solid #ddd; padding:10px; margin:10px 0; border-radius:5px;}
- .btn-green{background:#25D366;}.btn-red{background:#dc3545;}.btn-blue{background:#007bff;}.btn-orange{background:orange;}
- .report-result p{margin:5px 0; font-size:16px;}
- .logout-btn{background:#6c757d; float:right; padding:8px 15px; width:auto;}
+   .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;}
+   .stat-card{background:#ff5722; color:white; text-align:center; padding:20px;}
+   .stat-card h2{margin:0; font-size:30px;}
+   .order,.menu-item,.rider-item{border:1px solid #ddd; padding:10px; margin:10px 0; border-radius:5px;}
+   .btn-green{background:#25D366;}.btn-red{background:#dc3545;}.btn-blue{background:#007bff;}.btn-orange{background:orange;}
+   .report-result p{margin:5px 0; font-size:16px;}
+   .logout-btn{background:#6c757d; float:right; padding:8px 15px; width:auto;}
     small{color:#666; font-size:12px;}
- .rider-docs img{width:70px; height:70px; object-fit:cover; border:1px solid #ccc; border-radius:5px; margin:3px;}
+   .rider-docs img{width:70px; height:70px; object-fit:cover; border:1px solid #ccc; border-radius:5px; margin:3px;}
+   .menu-item img{width:80px; height:80px; object-fit:cover; border-radius:5px; float:left; margin-right:10px;} /* NAYA */
 </style>
 </head>
 <body>
@@ -76,7 +77,9 @@
     <input type="text" id="itemDesc" placeholder="Description">
     <input type="text" id="itemCategory" placeholder="Category: Pizza, Burger">
     <input type="number" id="itemOffer" placeholder="Offer %">
-    <input type="file" id="itemImg">
+    <input type="file" id="itemImg" accept="image/*">
+    <input type="hidden" id="itemImageBase64"> <!-- BASE64 KE LIYE -->
+    <img id="previewImg" style="width:100px; height:100px; object-fit:cover; margin:10px 0; display:none; border-radius:5px;">
     <button onclick="addItem()">Add Item</button>
     <div id="menuList"></div>
 </div>
@@ -102,6 +105,19 @@ function checkLogin(){
 }
 function logout(){ sessionStorage.removeItem('adminLoggedIn'); alert("Logout ho gaye"); window.location = '/'; }
 checkLogin();
+
+// PHOTO KO BASE64 ME CONVERT KARNE WALA
+document.getElementById('itemImg').addEventListener('change', function(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(event){
+        document.getElementById('itemImageBase64').value = event.target.result;
+        document.getElementById('previewImg').src = event.target.result;
+        document.getElementById('previewImg').style.display = 'block';
+    }
+    reader.readAsDataURL(file);
+});
 
 async function loadRiders(){
     const res = await fetch(API+'/api/riders/approved');
@@ -144,6 +160,7 @@ async function loadData(){
     const menu = await fetch(API+'/api/menu').then(r=>r.json());
     document.getElementById('menuList').innerHTML = menu.map(i=>`
         <div class="menu-item">
+            <img src="${i.image || 'https://via.placeholder.com/80'}" onerror="this.src='https://via.placeholder.com/80?text=No+Img'">
             <b>${i.name}</b> - ₹${i.price} - ${i.inStock? 'In Stock' : 'Out of Stock'}
             <button onclick="toggleStock('${i._id}')">${i.inStock? 'OFF' : 'ON'}</button>
             <button class="btn-red" onclick="delItem('${i._id}')">Delete</button>
@@ -161,10 +178,9 @@ async function loadData(){
                 ${riders.map(r => `<option value="${r.mobile}" ${o.riderId==r.mobile?'selected':''}>${r.name} - ${r.mobile}</option>`).join('')}
             </select>
             <button class="btn-green" onclick="assignRider('${o._id}')">Rider Assign</button>
-            
-            <!-- NAYA INVOICE BUTTON -->
-            <a href="/invoice?id=${o.trackId}" target="_blank" 
-               style="display:inline-block; background:#ff5722; color:white; padding:8px 12px; 
+
+            <a href="/invoice?id=${o.trackId}" target="_blank"
+               style="display:inline-block; background:#ff5722; color:white; padding:8px 12px;
                       border-radius:5px; text-decoration:none; font-size:13px; margin:5px 0;">
                📄 Invoice
             </a>
@@ -202,7 +218,35 @@ async function sendBroadcast(type){
 }
 
 async function addCoupon(){ const body = {code:couponCode.value, discount:+couponDiscount.value, type:couponType.value}; await fetch(API+'/api/coupon', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}); alert('Coupon Added'); couponCode.value=''; }
-async function addItem(){ const fd = new FormData(); fd.append('name', itemName.value); fd.append('price', itemPrice.value); fd.append('desc', itemDesc.value); fd.append('category', itemCategory.value); fd.append('offer', itemOffer.value); fd.append('img', itemImg.files[0]); await fetch(API+'/api/menu', {method:'POST', body:fd}); alert('Item Added'); loadData(); }
+
+// NAYA ADDFUNCTION - BASE64 WALA
+async function addItem(){
+    const body = {
+        name: itemName.value,
+        price: itemPrice.value,
+        desc: itemDesc.value,
+        category: itemCategory.value,
+        offer: itemOffer.value,
+        image: document.getElementById('itemImageBase64').value
+    };
+    if(!body.image) return alert('Photo select karo');
+
+    await fetch(API+'/api/menu', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(body)
+    });
+
+    alert('Item Added');
+    loadData();
+
+    // form clear
+    itemName.value=''; itemPrice.value=''; itemDesc.value='';
+    itemCategory.value=''; itemOffer.value=''; itemImg.value='';
+    document.getElementById('itemImageBase64').value='';
+    document.getElementById('previewImg').style.display='none';
+}
+
 async function toggleStock(id){ await fetch(API+`/api/menu/${id}/stock`, {method:'PUT'}); loadData(); }
 async function delItem(id){ if(confirm('Delete?')){ await fetch(API+`/api/menu/${id}`, {method:'DELETE'}); loadData(); }}
 
