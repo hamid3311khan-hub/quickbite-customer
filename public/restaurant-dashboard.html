@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Restaurant Dashboard - QuickBite</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+    body{background:#f8f9fa}
+    .navbar-brand{color:#ff5722 !important; font-weight:bold}
+</style>
+</head>
+<body>
+
+<nav class="navbar bg-white shadow-sm px-3">
+    <span class="navbar-brand">🍔 <span id="resName"></span> Dashboard</span>
+    <button class="btn btn-outline-danger btn-sm" onclick="logout()">Logout</button>
+</nav>
+
+<div class="container mt-4">
+    <div class="row">
+        <!-- Item Add Form -->
+        <div class="col-md-4">
+            <div class="card shadow-sm p-3">
+                <h5>Add New Item</h5>
+                <form id="itemForm">
+                    <input type="text" id="name" placeholder="Item Name" class="form-control mb-2" required>
+                    <input type="number" id="price" placeholder="Price" class="form-control mb-2" required>
+                    <input type="text" id="image" placeholder="Image URL" class="form-control mb-2">
+                    <textarea id="desc" placeholder="Description" class="form-control mb-2" rows="2"></textarea>
+                    <button class="btn btn-warning w-100">Add Item</button>
+                </form>
+                <div id="msg" class="mt-2"></div>
+            </div>
+        </div>
+
+        <!-- Item List -->
+        <div class="col-md-8">
+            <div class="card shadow-sm p-3">
+                <h5>Your Menu Items</h5>
+                <table class="table table-sm">
+                    <thead><tr><th>Name</th><th>Price</th><th>Action</th></tr></thead>
+                    <tbody id="menuList"><tr><td colspan="3">Loading...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const owner = JSON.parse(localStorage.getItem('owner'));
+if(!owner){ window.location.href = '/restaurant-login'; }
+
+document.getElementById('resName').innerText = owner.restaurantName;
+const restaurantId = owner.restaurantId; // moms-kitchen
+
+// 1. Item Add karna
+document.getElementById('itemForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const data = new FormData();
+    data.append('name', document.getElementById('name').value);
+    data.append('price', document.getElementById('price').value);
+    data.append('image', document.getElementById('image').value);
+    data.append('description', document.getElementById('desc').value);
+    data.append('restaurantId', restaurantId); // IMPORTANT: Auto set ho jayega
+
+    const res = await fetch('/api/menu', {method:'POST', body:data});
+    const result = await res.json();
+    if(result.success){
+        document.getElementById('msg').innerHTML = `<div class="alert alert-success">Item Added!</div>`;
+        document.getElementById('itemForm').reset();
+        loadMenu();
+    }
+});
+
+// 2. Apne restaurant ke item load karna
+async function loadMenu(){
+    const res = await fetch(`/api/menu?shop=${restaurantId}`);
+    const items = await res.json();
+    let rows = '';
+    items.forEach(i=>{
+        rows += `<tr><td>${i.name}</td><td>₹${i.price}</td><td><button class="btn btn-sm btn-danger" onclick="deleteItem('${i._id}')">Delete</button></td></tr>`;
+    });
+    document.getElementById('menuList').innerHTML = rows || '<tr><td colspan="3">No items yet</td></tr>';
+}
+
+async function deleteItem(id){
+    if(confirm('Delete kare?')){
+        await fetch(`/api/menu/${id}`, {method:'DELETE'});
+        loadMenu();
+    }
+}
+
+function logout(){
+    localStorage.removeItem('owner');
+    window.location.href = '/restaurant-login';
+}
+
+loadMenu();
+</script>
+</body>
+</html>
