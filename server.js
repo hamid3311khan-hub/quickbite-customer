@@ -174,4 +174,35 @@ app.get('/order-details', (req, res) => res.sendFile(path.join(__dirname, 'publi
 app.get('/rider', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider.html')));
 app.get('/rider-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider-register.html')));
 
+// NAYA UPLOAD SYSTEM - CLOUDINARY
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
+cloudinary.config({ 
+  cloud_name: 'yaha_apna_cloud_name', 
+  api_key: 'yaha_api_key', 
+  api_secret: 'yaha_api_secret' 
+});
+
+const storageCloud = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: { folder: 'quickbite_test' }
+});
+const uploadCloud = multer({ storage: storageCloud });
+
+// NAYA TEST WALA PAGE
+app.get('/photo-test', (req,res)=>{
+  res.send(`
+    <form action="/photo-test" method="POST" enctype="multipart/form-data">
+      <h2>Photo Upload Test</h2>
+      <input type="file" name="photo">
+      <button>Upload Karo</button>
+    </form>
+  `)
+})
+
+app.post('/photo-test', uploadCloud.single('photo'), (req,res)=>{
+  res.send("Photo ka link: " + req.file.path)
+})
+
 server.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
