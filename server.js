@@ -35,7 +35,7 @@ const RestaurantOwner = mongoose.model('RestaurantOwner', {
     restaurantName: String,
     ownerName: String,
     mobile: {type: String, unique: true},
-    email: String,
+    email: {type: String, unique: true}, // UNIQUE ADD KIYA
     address: String,
     password: String,
     status: {type: String, default: "Pending"},
@@ -47,9 +47,8 @@ const Rider = mongoose.model('Rider', { name:String, fatherName:String, aadhar:S
 const OrderSchema = new mongoose.Schema({ trackId: String, name:String, phone:String, address:String, items:[], total:Number, payment:String, status:{type:String, default:'Pending'}, riderLat:Number, riderLng:Number, pointsEarned:Number, coupon:String, discount:Number, shopLat: {type:Number, default: 25.5941}, shopLng: {type:Number, default: 85.1376}, custLat: Number, custLng: Number, riderId: String, restaurantId: {type: String, default: 'default-shop'} }, {timestamps: true});
 const Order = mongoose.model('Order', OrderSchema);
 const Coupon = mongoose.model('Coupon', {code:String, discount:Number, type:String});
-const Restaurant = mongoose.model('Restaurant', {
-    id: String, name: String, address: String, image: String, status: {type:String, default:"Active"}
-});
+const Offer = mongoose.model('Offer', {code:String, discount:Number, type:{type:String, default:"PERCENT"}, restaurantId:String, createdAt:{type:Date, default:Date.now}});
+const Restaurant = mongoose.model('Restaurant', {id:String, name:String, address:String, image:String, status:{type:String, default:"Active"}});
 
 // ===== SOCKET.IO =====
 io.on('connection', (socket) => {
@@ -67,75 +66,89 @@ app.get('/api/menu', async (req,res)=> {
     res.json(items); 
 });
 
+// FIX 1: SHOP FILTER ADD
+app.get('/api/orders', async (req,res)=>{ 
+    const shop = req.query.shop;
+    if(shop) return res.json(await Order.find({restaurantId: shop}).sort({createdAt:-1}));
+    res.json(await Order.find().sort({createdAt:-1})) 
+});
+
+// FIX 2: STATS API ADD
+app.get('/api/restaurant/stats', async (req,res)=>{
+    const shop = req.query.shop;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const orders = await Order.find({ restaurantId: shop, createdAt: {$gte: today} });
+    const revenue = orders.reduce((a,b)=>a+b.total, 0);
+    res.json({ orders: orders.length, revenue });
+})
+
+app.post('/api/restaurant/offer', async (req,res)=>{
+    await new Offer(req.body).save();
+    res.json({success:true, msg: "Offer Created!"});
+})
+
 app.post('/api/menu', upload.none(), async (req,res)=>{
   try{
     const {name, price, desc, category, offer, image, restaurantId} = req.body;
     if(!image) return res.json({success:false, msg:"Image nahi mili"});
-    const data = {name, price, desc, category, offer, image, restaurantId: restaurantId || 'default-shop', veg: req.body.veg === 'true', inStock: true};
-    await new MenuItem(data).save();
+    await new MenuItem({name, price, desc, category, offer, image, restaurantId: restaurantId || 'default-shop', veg: req.body.veg === 'true', inStock: true}).save();
     res.json({success:true});
   }catch(e){ res.json({success:false, msg:e.message}) }
 });
 
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
 app.put('/api/menu/:id/stock', async (req,res)=>{ const item = await MenuItem.findById(req.params.id); item.inStock =!item.inStock; await item.save(); res.json({success:true}); });
-app.post('/api/orders', async (req,res)=>{ const trackId = 'QB' + Date.now(); const points = Math.floor(req.body.total / 10); await new Order({...req.body, trackId, pointsEarned: points}).save(); res.json({success:true, trackId}) });
+
+// FIX 3: ORDER CREATE + OWNER NOTIFICATION
+app.post('/api/orders', async (req,res)=>{ 
+    const trackId = 'QB' + Date.now(); 
+    const points = Math.floor(req.body.total / 10); 
+    const newOrder = await new Order({...req.body, trackId, pointsEarned: points}).save(); 
+    const ownerData = await RestaurantOwner.findOne({restaurantId: newOrder.restaurantId});
+    if(ownerData){ console.log(`Owner WA: https://wa.me/91${ownerData.mobile}?text=Naya Order: ${newOrder.trackId}`); }
+    res.json({success:true, trackId}) 
+});
+
 app.get('/api/orders/track/:id', async (req,res)=>{ res.json(await Order.findOne({trackId:req.params.id})) });
-app.get('/api/orders', async (req,res)=>{ res.json(await Order.find().sort({createdAt:-1})) });
 app.get('/api/orders/history/:phone', async (req,res)=>{ res.json(await Order.find({phone:req.params.phone}).sort({createdAt:-1})) });
 app.put('/api/orders/:id/status', async (req,res)=>{ const updated = await Order.findByIdAndUpdate(req.params.id, req.body, {new:true}); const waLink = `https://wa.me/91${updated.phone}?text=QuickBite Update%0AOrder: ${updated.trackId}%0AStatus: ${updated.status}`; res.json({success:true, customerWaLink: waLink}) });
 app.delete('/api/orders/:id', async (req,res)=>{ await Order.findByIdAndDelete(req.params.id); res.json({success:true}) });
-app.post('/api/order/delivered', async (req,res)=>{ try{ const order = await Order.findOne({trackId: req.body.orderId}); if(!order) return res.json({success:false, msg:"Order nahi mila"}); order.status = "Delivered"; await order.save(); res.json({success:true, msg:"Order Delivered ho gaya!"}); }catch(e){ res.json({success:false, msg:e.message}) } })
 
-// ===== NEW RESTAURANT OWNER APIs =====
+// ===== RESTAURANT OWNER APIs =====
 app.post('/api/restaurant/register', async (req,res)=>{
     try{
         const {restaurantId, restaurantName, ownerName, mobile, email, address, password} = req.body;
-        const exists = await RestaurantOwner.findOne({$or: [{mobile}, {restaurantId}]});
-        if(exists) return res.json({success:false, msg: "Mobile ya Restaurant ID pehle se hai"});
-        
+        const exists = await RestaurantOwner.findOne({$or: [{mobile}, {email}, {restaurantId}]});
+        if(exists) return res.json({success:false, msg: "Mobile/Email/ID pehle se hai"});
         await new RestaurantOwner({restaurantId, restaurantName, ownerName, mobile, email, address, password, paymentStatus: "Paid"}).save();
         res.json({success:true, msg: "Register ho gaya. Approval pending hai."})
     }catch(e){ res.json({success:false, msg:e.message}) }
 });
 
+// FIX 4: EMAIL SE LOGIN
 app.post('/api/restaurant/login', async (req,res)=>{
-    const {mobile, password} = req.body;
-    const owner = await RestaurantOwner.findOne({mobile, password});
-    if(!owner) return res.json({success:false, msg: "Galat mobile ya password"});
+    const {email, password} = req.body;
+    const owner = await RestaurantOwner.findOne({email, password});
+    if(!owner) return res.json({success:false, msg: "Galat email ya password"});
     if(owner.status !== "Approved") return res.json({success:false, msg: "Approval pending hai"});
     res.json({success:true, owner})
 });
 
-app.get('/api/restaurant/owners', async (req,res)=>{
-    const owners = await RestaurantOwner.find().sort({createdAt:-1});
-    res.json(owners);
-});
-
+app.get('/api/restaurant/owners', async (req,res)=> res.json(await RestaurantOwner.find().sort({createdAt:-1})) );
 app.put('/api/restaurant/owner/:id/approve', async (req,res)=>{
     const owner = await RestaurantOwner.findByIdAndUpdate(req.params.id, {status: "Approved"}, {new:true});
     await new Restaurant({id: owner.restaurantId, name: owner.restaurantName, address: owner.address, image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=200&fit=crop"}).save();
     res.json({success:true});
 });
+app.delete('/api/restaurant/owner/:id', async (req,res)=>{ await RestaurantOwner.findByIdAndDelete(req.params.id); res.json({success:true}); });
 
-app.delete('/api/restaurant/owner/:id', async (req,res)=>{
-    await RestaurantOwner.findByIdAndDelete(req.params.id);
-    res.json({success:true});
-});
-
-// RESTAURANTS API
 app.get('/api/restaurants', async (req,res)=>{
     const shops = await Restaurant.find({status: "Active"});
-    if(shops.length === 0){
-        return res.json([
-            {id: "moms-kitchen", name: "Moms Kitchen", address: "Chhapra, Bihar", image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=200&fit=crop"},
-            {id: "pizza-hub", name: "Pizza Hub", address: "Patna, Bihar", image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=200&fit=crop"}
-        ]);
-    }
+    if(shops.length === 0){ return res.json([{id: "moms-kitchen", name: "Moms Kitchen", address: "Chhapra, Bihar", image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=200&fit=crop"}]); }
     res.json(shops);
 });
 
-// RIDER + COUPON + STATS
+// BAAKI SAB RIDER + COUPON + STATS + PDF WALE ROUTE SAME
 app.post('/api/rider/register', async (req,res)=>{ res.json({success:false, msg: 'Rider photo abhi file se hi jayegi.'}); });
 app.post('/api/rider/login', async (req,res)=>{ let rider = await Rider.findOne({mobile: req.body.mobile}); if(!rider) return res.json({success:false, msg:"Mobile register nahi hai"}); if(!['Approved','Online'].includes(rider.status)) return res.json({success:false, msg:"Approval pending hai"}); await Rider.findOneAndUpdate({mobile: req.body.mobile}, {status: "Online"}); res.json({success:true, rider}); });
 app.get('/api/rider/orders/:mobile', async (req,res)=>{ const orders = await Order.find({riderId: req.params.mobile, status: {$ne: 'Delivered'}}).sort({createdAt:-1}); res.json(orders); })
@@ -151,7 +164,6 @@ app.get('/api/stats', async (req,res)=>{ const orders = await Order.countDocumen
 app.get('/api/report', async (req,res)=>{ const {start, end} = req.query; const endDate = new Date(end); endDate.setHours(23,59,59); const orders = await Order.find({createdAt: {$gte: new Date(start), $lte: endDate}}); const totalRevenue = orders.reduce((a,b)=>a+b.total,0); res.json({totalRevenue, totalOrders:orders.length, topItems:[]}) });
 app.post('/api/broadcast', async (req,res)=>{ const {message, type, numbers} = req.body; let phones = []; if(type === 'all'){ phones = await Order.distinct('phone'); } else { phones = numbers.split(',').map(n=>n.trim()); } const links = phones.map(p => `https://wa.me/91${p}?text=${encodeURIComponent(message)}`); res.json({count: phones.length, links}); });
 
-// ===== INVOICE PDF =====
 app.get('/invoice', async (req,res)=>{
   const { id } = req.query;
   const order = await Order.findOne({trackId:id});
@@ -179,8 +191,6 @@ app.get('/payment', (req, res) => res.sendFile(path.join(__dirname, 'public', 'p
 app.get('/rider', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider.html')));
 app.get('/rider-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider-register.html')));
 app.get('/restaurants', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurants.html')));
-
-// NEW PAGE ROUTES
 app.get('/restaurant-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-register.html')));
 app.get('/restaurant-login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-login.html')));
 app.get('/restaurant-dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-dashboard.html')));
