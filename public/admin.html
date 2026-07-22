@@ -106,21 +106,18 @@ checkLogin();
 async function loadRiders(){
     const res = await fetch(API+'/api/riders/approved');
     const ridersData = await res.json();
-
-    // NAYA: Sirf free wale rider filter karo
     const freeRiders = [];
     for(let r of ridersData){
         const check = await fetch(API+`/api/rider/check-busy/${r.mobile}`);
         const data = await check.json();
         if(data.free) freeRiders.push(r);
     }
-    riders = freeRiders; // global me free wale hi rakho
+    riders = freeRiders;
 }
 
 async function loadData(){
     const allRiderRes = await fetch(API+'/api/riders'); allRiders = await allRiderRes.json();
-
-    await loadRiders(); // <- YE CALL KIYA
+    await loadRiders();
 
     const pending = allRiders.filter(r => r.status && r.status.toLowerCase() === 'pending');
     document.getElementById('pendingRidersList').innerHTML = pending.length === 0? 'Koi pending rider nahi hai' :
@@ -164,6 +161,14 @@ async function loadData(){
                 ${riders.map(r => `<option value="${r.mobile}" ${o.riderId==r.mobile?'selected':''}>${r.name} - ${r.mobile}</option>`).join('')}
             </select>
             <button class="btn-green" onclick="assignRider('${o._id}')">Rider Assign</button>
+            
+            <!-- NAYA INVOICE BUTTON -->
+            <a href="/invoice?id=${o.trackId}" target="_blank" 
+               style="display:inline-block; background:#ff5722; color:white; padding:8px 12px; 
+                      border-radius:5px; text-decoration:none; font-size:13px; margin:5px 0;">
+               📄 Invoice
+            </a>
+
             <div style="display:flex; gap:5px; margin-top:5px;">
                 <input type="text" id="lat-${o._id}" placeholder="Rider Lat" value="${o.riderLat || ''}" style="width:45%">
                 <input type="text" id="lng-${o._id}" placeholder="Rider Lng" value="${o.riderLng || ''}" style="width:45%">
@@ -207,22 +212,19 @@ async function updateStatus(id, status){ const riderLat = document.getElementByI
 
 async function delOrder(id){ if(confirm('Pakka Delete karna hai?')){ await fetch(API+`/api/orders/${id}`, {method:'DELETE'}); alert("Order Delete ho gaya"); loadData(); } }
 
-// NAYA: Error check ke saath
 async function assignRider(orderId){
     const riderMobile = document.getElementById(`rider-${orderId}`).value;
     if(!riderMobile) return alert('Pehle Rider select karo');
-
     const res = await fetch(API+`/api/order/assign`, {
         method:'PUT',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({orderId, riderId: riderMobile})
     });
     const data = await res.json();
-
     if(data.success){
         alert('Rider Assign ho gaya!');
     } else {
-        alert('❌ ' + data.msg); // Busy hai to error dikhega
+        alert('❌ ' + data.msg);
     }
     loadData();
 }
