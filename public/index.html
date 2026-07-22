@@ -21,7 +21,6 @@ body.dark .grid{background:#121212}
 button{background:#ff6600;color:white;border:none;padding:10px 15px;border-radius:5px;cursor:pointer} 
 button:disabled{background:#ccc;cursor:not-allowed}
 input{width:95%;padding:10px;margin:8px 0;border:1px solid #ddd;border-radius:5px} 
-.back-btn{background:#666;margin:10px} 
 .out-stock{position:absolute;top:10px;right:10px;background:red;color:white;padding:5px 10px;border-radius:5px;font-size:12px}
 .reorder-btn{background:#28a745;margin-top:10px;width:100%}
 @media(max-width:600px){.grid{grid-template-columns:1fr}}
@@ -53,6 +52,8 @@ const API = 'https://quickbite-ymqk.onrender.com/api';
 let cart = JSON.parse(localStorage.getItem('cart')) || [];
 let allItems = []; 
 let currentCat = 'All';
+const urlParams = new URLSearchParams(window.location.search);
+const shopId = urlParams.get('shop') || 'default-shop';
 
 if(localStorage.getItem('dark')=='true') document.body.classList.add('dark');
 function toggleDark(){
@@ -60,7 +61,7 @@ function toggleDark(){
     localStorage.setItem('dark', document.body.classList.contains('dark'));
 }
 
-fetch(`${API}/menu`).then(res=>res.json()).then(items=>{
+fetch(`${API}/menu?shop=${shopId}`).then(res=>res.json()).then(items=>{
     allItems = items;
     loadCategories();
     displayItems(items);
@@ -121,7 +122,6 @@ function showCart(){
     if(cart.length==0) return alert("Cart khali hai");
     window.location = '/cart';
 } 
-
 function checkReorder(){
     const lastOrder = JSON.parse(localStorage.getItem('lastOrder') || '[]');
     if(lastOrder.length>0){
