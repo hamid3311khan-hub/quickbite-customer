@@ -27,10 +27,10 @@ mongoose.connect(process.env.MONGO_URL)
 const MenuItem = mongoose.model('MenuItem', { 
     name: String, price: Number, category: String, desc: String, 
     image: String, veg: Boolean, inStock: {type:Boolean, default:true}, offer: Number,
-    restaurantId: {type: String, default: 'default-shop'} // NAYA FIELD
+    restaurantId: {type: String, default: 'default-shop'}
 });
 const Rider = mongoose.model('Rider', { name:String, fatherName:String, aadhar:String, pan:String, mobile:{type:String, unique:true}, aadharImg: String, panImg: String, photoImg: String, lat:Number, lng:Number, status:{type:String, default:"Pending"} });
-const OrderSchema = new mongoose.Schema({ trackId: String, name:String, phone:String, address:String, items:[], total:Number, payment:String, status:{type:String, default:'Pending'}, riderLat:Number, riderLng:Number, pointsEarned:Number, coupon:String, discount:Number, shopLat: {type:Number, default: 25.5941}, shopLng: {type:Number, default: 85.1376}, custLat: Number, custLng: Number, riderId: String, restaurantId: {type: String, default: 'default-shop'} }, {timestamps: true}); // NAYA FIELD
+const OrderSchema = new mongoose.Schema({ trackId: String, name:String, phone:String, address:String, items:[], total:Number, payment:String, status:{type:String, default:'Pending'}, riderLat:Number, riderLng:Number, pointsEarned:Number, coupon:String, discount:Number, shopLat: {type:Number, default: 25.5941}, shopLng: {type:Number, default: 85.1376}, custLat: Number, custLng: Number, riderId: String, restaurantId: {type: String, default: 'default-shop'} }, {timestamps: true});
 const Order = mongoose.model('Order', OrderSchema);
 const Coupon = mongoose.model('Coupon', {code:String, discount:Number, type:String});
 const Restaurant = mongoose.model('Restaurant', {
@@ -73,19 +73,19 @@ app.put('/api/orders/:id/status', async (req,res)=>{ const updated = await Order
 app.delete('/api/orders/:id', async (req,res)=>{ await Order.findByIdAndDelete(req.params.id); res.json({success:true}) });
 app.post('/api/order/delivered', async (req,res)=>{ try{ const order = await Order.findOne({trackId: req.body.orderId}); if(!order) return res.json({success:false, msg:"Order nahi mila"}); order.status = "Delivered"; await order.save(); res.json({success:true, msg:"Order Delivered ho gaya!"}); }catch(e){ res.json({success:false, msg:e.message}) } })
 
-// RESTAURANTS API - SIRF 1 BAAR
+// RESTAURANTS API - MULTI RESTAURANT
 app.get('/api/restaurants', async (req,res)=>{
     const shops = await Restaurant.find({status: "Active"});
     if(shops.length === 0){
         return res.json([
-            {id: "moms-kitchen", name: "Moms Kitchen", address: "Chhapra, Bihar", image: "https://via.placeholder.com/400x180"},
-            {id: "pizza-hub", name: "Pizza Hub", address: "Patna, Bihar", image: "https://via.placeholder.com/400x180"}
+            {id: "moms-kitchen", name: "Moms Kitchen", address: "Chhapra, Bihar", image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=200&fit=crop"},
+            {id: "pizza-hub", name: "Pizza Hub", address: "Patna, Bihar", image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=200&fit=crop"}
         ]);
     }
     res.json(shops);
 });
 
-// RIDER + COUPON + STATS WALE ROUTES SAME...
+// RIDER + COUPON + STATS
 app.post('/api/rider/register', async (req,res)=>{ res.json({success:false, msg: 'Rider photo abhi file se hi jayegi.'}); });
 app.post('/api/rider/login', async (req,res)=>{ let rider = await Rider.findOne({mobile: req.body.mobile}); if(!rider) return res.json({success:false, msg:"Mobile register nahi hai"}); if(!['Approved','Online'].includes(rider.status)) return res.json({success:false, msg:"Approval pending hai"}); await Rider.findOneAndUpdate({mobile: req.body.mobile}, {status: "Online"}); res.json({success:true, rider}); });
 app.get('/api/rider/orders/:mobile', async (req,res)=>{ const orders = await Order.find({riderId: req.params.mobile, status: {$ne: 'Delivered'}}).sort({createdAt:-1}); res.json(orders); })
@@ -128,6 +128,6 @@ app.get('/track', (req, res) => res.sendFile(path.join(__dirname, 'public', 'tra
 app.get('/payment', (req, res) => res.sendFile(path.join(__dirname, 'public', 'payment.html')));
 app.get('/rider', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider.html')));
 app.get('/rider-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider-register.html')));
-app.get('/restaurants', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurants.html'))); // NAYA ROUTE
+app.get('/restaurants', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurants.html')));
 
 server.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
