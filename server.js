@@ -169,5 +169,8 @@ app.get('/api/restaurants', async (req,res)=>{
     const shops = await Restaurant.find();
     res.json(shops);
 });
-
+app.get('/api/restaurants', async (req,res)=>{
+    const shops = await Restaurant.find();
+    res.json(shops);
+});
 server.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
