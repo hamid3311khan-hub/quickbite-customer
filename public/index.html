@@ -5,10 +5,12 @@
 body.dark{background:#121212;color:#eee}
 body.dark .card, body.dark .search-bar{background:#1e1e1e;color:#eee}
 body.dark .cat-btn{background:#333;color:#ff6600;border-color:#ff6600}
-nav{background:#ff6600;color:white;padding:15px;display:flex;justify-content:space-between;position:sticky;top:0;z-index:100} 
+nav{background:#ff6600;color:white;padding:15px;display:flex;justify-content:space-between;position:sticky;top:0;z-index:100;align-items:center;} 
 nav a{color:white;text-decoration:none;margin:0 10px;font-weight:bold} 
+nav button{background:none; border:none; color:white; cursor:pointer; font-size:16px;}
 .banner{background:linear-gradient(90deg,#ff6600,#ff3300);color:white;text-align:center;padding:15px;font-size:18px;font-weight:bold}
-.search-bar{padding:15px;background:white;position:sticky;top:55px;z-index:99}
+.search-bar{padding:15px;background:white;position:sticky;top:60px;z-index:99}
+body.dark .search-bar{background:#1e1e1e;}
 .search-bar input{width:95%;padding:10px;border-radius:20px;border:1px solid #ddd}
 .categories{display:flex;gap:10px;padding:10px 0;overflow-x:auto}
 .cat-btn{padding:8px 16px;border:2px solid #ff6600;border-radius:20px;background:white;color:#ff6600;cursor:pointer;white-space:nowrap}
@@ -23,14 +25,38 @@ button:disabled{background:#ccc;cursor:not-allowed}
 input{width:95%;padding:10px;margin:8px 0;border:1px solid #ddd;border-radius:5px} 
 .out-stock{position:absolute;top:10px;right:10px;background:red;color:white;padding:5px 10px;border-radius:5px;font-size:12px}
 .reorder-btn{background:#28a745;margin-top:10px;width:100%}
+
+/* SYSTEM MENU CSS */
+#sysMenu{display:none; position:absolute; right:0; top:45px; background:white; border-radius:10px; box-shadow:0 5px 15px rgba(0,0,0,0.2); min-width:220px; z-index:999; overflow:hidden;}
+#sysMenu a{display:block; padding:12px 15px; color:#333; text-decoration:none; border-bottom:1px solid #eee;}
+#sysMenu a:hover{background:#f5f5f5;}
+body.dark #sysMenu{background:#2a2a2a;}
+body.dark #sysMenu a{color:#eee; border-color:#444;}
+body.dark #sysMenu a:hover{background:#333;}
+
 @media(max-width:600px){.grid{grid-template-columns:1fr}}
 </style></head><body>
 
 <nav>
-    <div><a href="/">🏠 Home</a> <a href="/track">📦 Track</a> <a href="/admin">🔒 Admin</a></div>
     <div>
+        <a href="/">🏠 Home</a> 
+        <a href="/track">📦 Track</a> 
+    </div>
+    <div style="display:flex; gap:15px; align-items:center; position:relative;">
         <button onclick="toggleDark()">🌙</button>
-        <button onclick="showCart()">Cart (<span id="count">0</span>)</button>
+        <button onclick="showCart()" style="background:white;color:#ff6600;border-radius:20px;padding:8px 15px;font-weight:bold;">Cart (<span id="count">0</span>)</button>
+        
+        <!-- 3 DOT BUTTON -->
+        <button onclick="toggleSysMenu()" style="font-size:24px;">⋮</button>
+        
+        <!-- HIDDEN MENU -->
+        <div id="sysMenu">
+            <a href="/restaurant-login">🏪 Restaurant Login</a>
+            <a href="/restaurant-register">+ Add New Restaurant</a>
+            <a href="/rider">🚴 Rider Login</a>
+            <a href="/rider-register">+ Rider Register</a>
+            <a href="/admin" style="color:red; font-weight:bold;">👑 Admin Panel</a>
+        </div>
     </div>
 </nav>
 
@@ -60,6 +86,18 @@ function toggleDark(){
     document.body.classList.toggle('dark');
     localStorage.setItem('dark', document.body.classList.contains('dark'));
 }
+
+// SYSTEM MENU TOGGLE
+function toggleSysMenu(){
+    const menu = document.getElementById('sysMenu');
+    menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+}
+// Bahar click karne pe band
+document.addEventListener('click', function(e){
+    if(!e.target.closest('#sysMenu') && !e.target.closest('button[onclick="toggleSysMenu()"]')){
+        document.getElementById('sysMenu').style.display = 'none';
+    }
+})
 
 fetch(`${API}/menu?shop=${shopId}`).then(res=>res.json()).then(items=>{
     allItems = items;
