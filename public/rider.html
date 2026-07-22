@@ -101,10 +101,7 @@ async function loadMyOrders(){
       <b>Status:</b> <span style="color:#ff5722">${o.status}</span> <br><br>
       <div class="btn-row">
         <a href="${mapUrl}" target="_blank"><button class="btn-blue">📍 Navigate</button></a>
-        
-        <!-- NAYA INVOICE BUTTON -->
         <a href="/invoice?id=${o.trackId}" target="_blank"><button style="background:#ff5722">📄 Invoice</button></a>
-
         <button style="background:orange" onclick="callCustomer('${o.phone}', '${o.name}')">📞 Call</button>
         ${deliveredBtn}
       </div>
@@ -124,10 +121,15 @@ async function markDelivered(orderId){
   loadMyOrders(); 
 }
 
+// FIXED: +91 add kiya
 function callCustomer(phone, name){
+  let cleanPhone = phone.toString().replace(/\D/g, ''); // number se sab hatado
+  if(cleanPhone.length === 10){
+    cleanPhone = '+91' + cleanPhone; // 10 digit hai to +91 lagao
+  }
   const ok = confirm(`Call ${name} ko?\nNumber: ${phone}\n\nCall Now ya Cancel`);
   if(ok){
-    window.location.href = `tel:${phone}`;
+    window.location.href = `tel:${cleanPhone}`;
   }
 }
 
