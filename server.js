@@ -7,6 +7,7 @@ const multer = require('multer');
 const fs = require('fs');
 const http = require('http');
 const { Server } = require("socket.io");
+const PDFDocument = require('pdfkit'); // <-- YE NAYA ADD KIYA
 
 const app = express();
 const server = http.createServer(app);
@@ -58,6 +59,54 @@ app.get('/api/orders/history/:phone', async (req,res)=>{ res.json(await Order.fi
 app.put('/api/orders/:id/status', async (req,res)=>{ const updated = await Order.findByIdAndUpdate(req.params.id, req.body, {new:true}); const waLink = `https://wa.me/91${updated.phone}?text=QuickBite Update%0AOrder: ${updated.trackId}%0AStatus: ${updated.status}`; res.json({success:true, customerWaLink: waLink}) });
 app.delete('/api/orders/:id', async (req,res)=>{ await Order.findByIdAndDelete(req.params.id); res.json({success:true}) });
 app.post('/api/order/delivered', async (req,res)=>{ try{ const order = await Order.findOne({trackId: req.body.orderId}); if(!order) return res.json({success:false, msg:"Order nahi mila"}); order.status = "Delivered"; await order.save(); res.json({success:true, msg:"Order Delivered ho gaya!"}); }catch(e){ res.json({success:false, msg:e.message}) } })
+
+// ===== NAYA INVOICE PDF ROUTE =====
+app.get('/invoice', async (req,res)=>{
+  const { id } = req.query;
+  if(!id) return res.send('Order ID nahi diya');
+  
+  const order = await Order.findOne({trackId:id});
+  if(!order) return res.send('Order nahi mila');
+
+  const doc = new PDFDocument({margin: 40});
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename=QuickBite-${id}.pdf`);
+  doc.pipe(res);
+
+  doc.fontSize(22).text('QuickBite', {align: 'center'});
+  doc.moveDown(0.5);
+  doc.fontSize(14).text('INVOICE', {align: 'center'});
+  doc.moveDown();
+
+  doc.fontSize(11);
+  doc.text(`Order ID: ${order.trackId}`);
+  doc.text(`Date: ${new Date(order.createdAt).toLocaleString()}`);
+  doc.text(`Customer: ${order.name}`);
+  doc.text(`Phone: ${order.phone}`);
+  doc.text(`Address: ${order.address}`);
+  doc.moveDown();
+  doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke();
+  doc.moveDown(0.5);
+
+  doc.font('Helvetica-Bold');
+  doc.text('Item', 40); doc.text('Qty', 300); doc.text('Price', 370); doc.text('Total', 460);
+  doc.font('Helvetica'); doc.moveDown(0.3);
+
+  order.items.forEach(i=>{
+    doc.text(i.name, 40); doc.text(i.qty, 300); 
+    doc.text(`₹${i.price}`, 370); doc.text(`₹${i.price*i.qty}`, 460);
+    doc.moveDown(0.5);
+  });
+
+  doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke();
+  doc.moveDown(0.5);
+  doc.fontSize(14).font('Helvetica-Bold');
+  doc.text(`Grand Total: ₹${order.total}`, 370);
+
+  doc.moveDown(2);
+  doc.fontSize(10).font('Helvetica').text('Thank you for ordering with QuickBite!', {align: 'center'});
+  doc.end();
+})
 
 // ===== RIDER API =====
 app.post('/api/rider/register', upload.fields([
