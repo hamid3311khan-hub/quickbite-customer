@@ -9,37 +9,21 @@ const http = require('http');
 const { Server } = require("socket.io");
 const PDFDocument = require('pdfkit');
 
-// ===== CLOUDINARY =====
-const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
-
-cloudinary.config({
-  cloud_name: process.env.CLOUD_NAME,
-  api_key: process.env.CLOUD_API_KEY,
-  api_secret: process.env.CLOUD_API_SECRET
-});
-
-const storageCloud = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'quickbite',
-    allowed_formats: ['jpg', 'png', 'jpeg', 'webp']
-  }
-});
-const uploadCloud = multer({ storage: storageCloud });
-// ===== CLOUDINARY END =====
-
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: {origin: "*"} });
 const PORT = process.env.PORT || 10000;
 
+// ===== LOCAL UPLOAD =====
 const uploadDir = './public/uploads';
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-// Purana wala local upload - abhi backup ke liye rakha hai
-const storage = multer.diskStorage({ destination: uploadDir, filename: (req,file,cb)=> cb(null, Date.now() + '-' + file.originalname) });
+const storage = multer.diskStorage({ 
+  destination: uploadDir, 
+  filename: (req,file,cb)=> cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '_')) 
+});
 const upload = multer({storage});
+// ===== LOCAL UPLOAD END =====
 
 app.use(cors({origin: "*"}));
 app.use(express.json());
@@ -71,9 +55,9 @@ io.on('connection', (socket) => {
 // ===== API ROUTES =====
 app.get('/api/menu', async (req,res)=> { const items = await MenuItem.find(); res.json(items); });
 
-// CHANGED: upload -> uploadCloud
-app.post('/api/menu', uploadCloud.single('img'), async (req,res)=>{
-  const data = {...req.body, img: req.file? req.file.path : 'https://via.placeholder.com/400', veg: req.body.veg === 'true'};
+// LOCAL UPLOAD WAPAS
+app.post('/api/menu', upload.single('img'), async (req,res)=>{
+  const data = {...req.body, img: req.file? `/uploads/${req.file.filename}` : 'https://via.placeholder.com/400', veg: req.body.veg === 'true'};
   await new MenuItem(data).save();
   res.json({success:true});
 });
@@ -88,7 +72,7 @@ app.put('/api/orders/:id/status', async (req,res)=>{ const updated = await Order
 app.delete('/api/orders/:id', async (req,res)=>{ await Order.findByIdAndDelete(req.params.id); res.json({success:true}) });
 app.post('/api/order/delivered', async (req,res)=>{ try{ const order = await Order.findOne({trackId: req.body.orderId}); if(!order) return res.json({success:false, msg:"Order nahi mila"}); order.status = "Delivered"; await order.save(); res.json({success:true, msg:"Order Delivered ho gaya!"}); }catch(e){ res.json({success:false, msg:e.message}) } })
 
-// ===== NAYA INVOICE PDF ROUTE =====
+// ===== INVOICE PDF =====
 app.get('/invoice', async (req,res)=>{
   const { id } = req.query;
   if(!id) return res.send('Order ID nahi diya');
@@ -129,8 +113,8 @@ app.get('/invoice', async (req,res)=>{
 })
 
 // ===== RIDER API =====
-// CHANGED: upload -> uploadCloud
-app.post('/api/rider/register', uploadCloud.fields([
+// LOCAL UPLOAD WAPAS
+app.post('/api/rider/register', upload.fields([
     { name: 'aadharImg', maxCount: 1 },
     { name: 'panImg', maxCount: 1 },
     { name: 'photoImg', maxCount: 1 }
@@ -149,9 +133,9 @@ app.post('/api/rider/register', uploadCloud.fields([
 
         const r = new Rider({
            ...req.body,
-            aadharImg: files.aadharImg[0].path,
-            panImg: files.panImg[0].path,
-            photoImg: files.photoImg[0].path
+            aadharImg: `/uploads/${files.aadharImg[0].filename}`,
+            panImg: `/uploads/${files.panImg[0].filename}`,
+            photoImg: `/uploads/${files.photoImg[0].filename}`
         });
 
         await r.save();
@@ -213,8 +197,8 @@ app.get('/photo-test', (req,res)=>{
     </form>
   `)
 })
-app.post('/photo-test', uploadCloud.single('photo'), (req,res)=>{
-  res.send("Photo ka link: " + req.file.path)
+app.post('/photo-test', upload.single('photo'), (req,res)=>{
+  res.send("Photo ka link: " + `/uploads/${req.file.filename}`)
 })
 
 server.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
