@@ -2,7 +2,10 @@
   "name": "quickbite",
   "version": "1.0.0",
   "main": "server.js",
-  "scripts": { "start": "node server.js" },
+  "scripts": { 
+    "start": "node server.js",
+    "dev": "nodemon server.js" 
+  },
   "dependencies": {
     "express": "^4.18.2",
     "mongoose": "^8.0.0",
@@ -11,5 +14,8 @@
     "dotenv": "^16.3.1",
     "socket.io": "^4.7.5",
     "pdfkit": "^0.15.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
   }
 }
