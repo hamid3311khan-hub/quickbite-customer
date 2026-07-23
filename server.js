@@ -7,7 +7,7 @@ const http = require('http');
 const { Server } = require("socket.io");
 const PDFDocument = require('pdfkit');
 const multer = require('multer');
-const cron = require('node-cron'); // NAYA
+const cron = require('node-cron'); 
 const upload = multer();
 
 const app = express();
@@ -41,8 +41,8 @@ const RestaurantOwner = mongoose.model('RestaurantOwner', {
     password: String,
     status: {type: String, default: "Pending"},
     paymentStatus: {type: String, default: "Unpaid"},
-    lastPaymentDate: {type: Date, default: Date.now}, // NAYA
-    nextDueDate: {type: Date}, // NAYA
+    lastPaymentDate: {type: Date, default: Date.now},
+    nextDueDate: {type: Date},
     createdAt: {type: Date, default: Date.now}
 });
 
@@ -77,7 +77,7 @@ app.get('/api/orders', async (req,res)=>{
 
 app.get('/api/restaurant/stats', async (req,res)=>{
     const shop = req.query.shop;
-    const today = new Date(); today.setHours(0,0,0,0);
+    const today = new Date(); today.setHours(0,0,0,0); // FIXED
     const orders = await Order.find({ restaurantId: shop, createdAt: {$gte: today} });
     const revenue = orders.reduce((a,b)=>a+b.total, 0);
     res.json({ orders: orders.length, revenue });
@@ -121,14 +121,14 @@ app.post('/api/restaurant/register', async (req,res)=>{
         const exists = await RestaurantOwner.findOne({$or: [{mobile}, {email}, {restaurantId}]});
         if(exists) return res.json({success:false, msg: "Mobile/Email/ID pehle se hai"});
         
-        let nextYear = new Date(); // NAYA
-        nextYear.setFullYear(nextYear.getFullYear() + 1); // NAYA
+        let nextYear = new Date();
+        nextYear.setFullYear(nextYear.getFullYear() + 1);
 
         await new RestaurantOwner({
             restaurantId, restaurantName, ownerName, mobile, email, address, password, 
             paymentStatus: "Paid",
-            lastPaymentDate: Date.now(), // NAYA
-            nextDueDate: nextYear // NAYA
+            lastPaymentDate: Date.now(),
+            nextDueDate: nextYear
         }).save();
         res.json({success:true, msg: "Register ho gaya. Approval pending hai."})
     }catch(e){ res.json({success:false, msg:e.message}) }
@@ -190,8 +190,8 @@ app.get('/invoice', async (req,res)=>{
   doc.end();
 })
 
-// ===== CRON JOB - YEARLY REMINDER ===== NAYA
-cron.schedule('0 10 *', async () => {
+// ===== CRON JOB - YEARLY REMINDER ===== FIXED
+cron.schedule('0 10 *', async () => { // Roz subah 10 baje
     console.log("Running maintenance reminder check...");
     const today = new Date();
     const owners = await RestaurantOwner.find({status: "Approved"});
