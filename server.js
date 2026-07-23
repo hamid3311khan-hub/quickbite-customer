@@ -7,6 +7,7 @@ const http = require('http');
 const { Server } = require("socket.io");
 const PDFDocument = require('pdfkit');
 const multer = require('multer');
+const cron = require('node-cron'); // NAYA
 const upload = multer();
 
 const app = express();
@@ -24,8 +25,8 @@ mongoose.connect(process.env.MONGO_URL)
 .catch(err => { console.log('Mongo Error:', err); process.exit(1) });
 
 // ===== MODELS =====
-const MenuItem = mongoose.model('MenuItem', {
-    name: String, price: Number, category: String, desc: String,
+const MenuItem = mongoose.model('MenuItem', { 
+    name: String, price: Number, category: String, desc: String, 
     image: String, veg: Boolean, inStock: {type:Boolean, default:true}, offer: Number,
     restaurantId: {type: String, default: 'default-shop'}
 });
@@ -40,6 +41,8 @@ const RestaurantOwner = mongoose.model('RestaurantOwner', {
     password: String,
     status: {type: String, default: "Pending"},
     paymentStatus: {type: String, default: "Unpaid"},
+    lastPaymentDate: {type: Date, default: Date.now}, // NAYA
+    nextDueDate: {type: Date}, // NAYA
     createdAt: {type: Date, default: Date.now}
 });
 
@@ -60,16 +63,16 @@ io.on('connection', (socket) => {
 });
 
 // ===== API ROUTES =====
-app.get('/api/menu', async (req,res)=> {
+app.get('/api/menu', async (req,res)=> { 
     const shopId = req.query.shop || 'default-shop';
-    const items = await MenuItem.find({restaurantId: shopId});
-    res.json(items);
+    const items = await MenuItem.find({restaurantId: shopId}); 
+    res.json(items); 
 });
 
-app.get('/api/orders', async (req,res)=>{
+app.get('/api/orders', async (req,res)=>{ 
     const shop = req.query.shop;
     if(shop) return res.json(await Order.find({restaurantId: shop}).sort({createdAt:-1}));
-    res.json(await Order.find().sort({createdAt:-1}))
+    res.json(await Order.find().sort({createdAt:-1})) 
 });
 
 app.get('/api/restaurant/stats', async (req,res)=>{
@@ -97,13 +100,13 @@ app.post('/api/menu', upload.none(), async (req,res)=>{
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
 app.put('/api/menu/:id/stock', async (req,res)=>{ const item = await MenuItem.findById(req.params.id); item.inStock =!item.inStock; await item.save(); res.json({success:true}); });
 
-app.post('/api/orders', async (req,res)=>{
-    const trackId = 'QB' + Date.now();
-    const points = Math.floor(req.body.total / 10);
-    const newOrder = await new Order({...req.body, trackId, pointsEarned: points}).save();
+app.post('/api/orders', async (req,res)=>{ 
+    const trackId = 'QB' + Date.now(); 
+    const points = Math.floor(req.body.total / 10); 
+    const newOrder = await new Order({...req.body, trackId, pointsEarned: points}).save(); 
     const ownerData = await RestaurantOwner.findOne({restaurantId: newOrder.restaurantId});
     if(ownerData){ console.log(`Owner WA: https://wa.me/91${ownerData.mobile}?text=Naya Order: ${newOrder.trackId}`); }
-    res.json({success:true, trackId})
+    res.json({success:true, trackId}) 
 });
 
 app.get('/api/orders/track/:id', async (req,res)=>{ res.json(await Order.findOne({trackId:req.params.id})) });
@@ -117,7 +120,16 @@ app.post('/api/restaurant/register', async (req,res)=>{
         const {restaurantId, restaurantName, ownerName, mobile, email, address, password} = req.body;
         const exists = await RestaurantOwner.findOne({$or: [{mobile}, {email}, {restaurantId}]});
         if(exists) return res.json({success:false, msg: "Mobile/Email/ID pehle se hai"});
-        await new RestaurantOwner({restaurantId, restaurantName, ownerName, mobile, email, address, password, paymentStatus: "Paid"}).save();
+        
+        let nextYear = new Date(); // NAYA
+        nextYear.setFullYear(nextYear.getFullYear() + 1); // NAYA
+
+        await new RestaurantOwner({
+            restaurantId, restaurantName, ownerName, mobile, email, address, password, 
+            paymentStatus: "Paid",
+            lastPaymentDate: Date.now(), // NAYA
+            nextDueDate: nextYear // NAYA
+        }).save();
         res.json({success:true, msg: "Register ho gaya. Approval pending hai."})
     }catch(e){ res.json({success:false, msg:e.message}) }
 });
@@ -126,7 +138,7 @@ app.post('/api/restaurant/login', async (req,res)=>{
     const {email, password} = req.body;
     const owner = await RestaurantOwner.findOne({email, password});
     if(!owner) return res.json({success:false, msg: "Galat email ya password"});
-    if(owner.status!== "Approved") return res.json({success:false, msg: "Approval pending hai"});
+    if(owner.status !== "Approved") return res.json({success:false, msg: "Approval pending hai"});
     res.json({success:true, owner})
 });
 
@@ -145,7 +157,6 @@ app.get('/api/restaurants', async (req,res)=>{
     res.json(shops);
 });
 
-// BAAKI SAB SAME
 app.post('/api/rider/register', async (req,res)=>{ res.json({success:false, msg: 'Rider photo abhi file se hi jayegi.'}); });
 app.post('/api/rider/login', async (req,res)=>{ let rider = await Rider.findOne({mobile: req.body.mobile}); if(!rider) return res.json({success:false, msg:"Mobile register nahi hai"}); if(!['Approved','Online'].includes(rider.status)) return res.json({success:false, msg:"Approval pending hai"}); await Rider.findOneAndUpdate({mobile: req.body.mobile}, {status: "Online"}); res.json({success:true, rider}); });
 app.get('/api/rider/orders/:mobile', async (req,res)=>{ const orders = await Order.find({riderId: req.params.mobile, status: {$ne: 'Delivered'}}).sort({createdAt:-1}); res.json(orders); })
@@ -154,13 +165,7 @@ app.put('/api/rider/:id/approve', async (req,res)=>{ await Rider.findByIdAndUpda
 app.delete('/api/riders/:id', async (req,res)=>{ await Rider.findByIdAndDelete(req.params.id); res.json({success:true}); })
 app.get('/api/riders', async (req,res)=> res.json(await Rider.find()) );
 app.put('/api/order/assign', async (req,res)=>{ const busyOrder = await Order.findOne({ riderId: req.body.riderId, status: {$ne: 'Delivered'} }); if(busyOrder){ return res.json({success:false, msg:"Ye rider abhi busy hai."}) } await Order.findByIdAndUpdate(req.body.orderId, { riderId: req.body.riderId, status: 'Out for Delivery' }); res.json({success:true}) });
-
-// YE NAYI API ADD KI
-app.post('/api/order/delivered', async (req,res)=>{
-    await Order.findByIdAndUpdate(req.body.orderId, {status: 'Delivered'});
-    res.json({success:true, msg:"Order Delivered Marked"});
-});
-
+app.post('/api/order/delivered', async (req,res)=>{ await Order.findByIdAndUpdate(req.body.orderId, {status: 'Delivered'}); res.json({success:true, msg:"Order Delivered Marked"}); });
 app.get('/api/rider/check-busy/:mobile', async (req,res)=>{ const busy = await Order.findOne({riderId: req.params.mobile, status: {$ne: 'Delivered'}}); res.json({free:!busy}); })
 app.post('/api/coupon', async (req,res)=>{ await new Coupon(req.body).save(); res.json({success:true}) });
 app.post('/api/coupon/validate', async (req,res)=>{ const coupon = await Coupon.findOne({code:req.body.code}); if(coupon) { res.json({success:true,...coupon._doc}) } else { res.json({success:false}) } });
@@ -184,6 +189,30 @@ app.get('/invoice', async (req,res)=>{
   doc.moveDown().fontSize(14).text(`Grand Total: ₹${order.total}`);
   doc.end();
 })
+
+// ===== CRON JOB - YEARLY REMINDER ===== NAYA
+cron.schedule('0 10 *', async () => {
+    console.log("Running maintenance reminder check...");
+    const today = new Date();
+    const owners = await RestaurantOwner.find({status: "Approved"});
+
+    owners.forEach(async owner => {
+        if(!owner.nextDueDate) return;
+        const diffDays = Math.ceil((owner.nextDueDate - today) / (1000 * 60 * 60 * 24));
+
+        if(diffDays <= 20 && diffDays >= 1){
+            if(diffDays % 3 === 0 || diffDays <= 3){
+                const msg = `Namaste ${owner.ownerName} ji 🙏\nQuickBite Maintenance Renewal\nAapka ₹200 maintenance charge ${diffDays} din me due hai.\nDue Date: ${owner.nextDueDate.toDateString()}\n\n- QuickBite Team`;
+                console.log(`Reminder to: ${owner.mobile} - ${diffDays} days left`);
+                console.log(`https://wa.me/91${owner.mobile}?text=${encodeURIComponent(msg)}`);
+            }
+        }
+        if(diffDays < 0){
+            await RestaurantOwner.findByIdAndUpdate(owner._id, {status: "Suspended"});
+            console.log(`${owner.restaurantName} suspended due to non-payment`);
+        }
+    });
+});
 
 // ===== PAGE ROUTES =====
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
