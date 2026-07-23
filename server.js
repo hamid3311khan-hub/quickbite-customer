@@ -7,7 +7,7 @@ const http = require('http');
 const { Server } = require("socket.io");
 const PDFDocument = require('pdfkit');
 const multer = require('multer');
-const bcrypt = require('bcrypt'); // PASSWORD HASH KE LIYE
+const bcrypt = require('bcryptjs'); // <-- CHANGE KIYA
 const upload = multer();
 
 const app = express();
@@ -40,8 +40,8 @@ const RestaurantOwner = mongoose.model('RestaurantOwner', {
     email: {type: String, unique: true},
     address: String,
     password: String,
-    status: {type: String, default: "Pending"}, // Pending, Approved
-    plan_status: {type: String, default: "Trial"}, // Trial, Active, Expired
+    status: {type: String, default: "Pending"},
+    plan_status: {type: String, default: "Trial"},
     registration_fee_paid: {type: Number, default: 200},
     payment_proof: {type: String, default: null},
     trial_end_date: {type: Date},
@@ -50,8 +50,6 @@ const RestaurantOwner = mongoose.model('RestaurantOwner', {
     nextDueDate: {type: Date},
     createdAt: {type: Date, default: Date.now}
 });
-
-// ... baaki Rider, Order, Coupon models same rehne do
 
 const Rider = mongoose.model('Rider', {
     name:String, fatherName:String, aadhar:String, pan:String,
@@ -81,11 +79,7 @@ io.on('connection', (socket) => {
     });
 });
 
-// ===== API ROUTES =====
-// ... saare menu, order, rider wale API same rehne do ...
-
-// ===== RESTAURANT OWNER APIs =====
-
+// ===== MULTER =====
 const storage = multer.diskStorage({
   destination: './uploads/',
   filename: (req, file, cb) => {
@@ -94,21 +88,23 @@ const storage = multer.diskStorage({
 });
 const uploadFile = multer({ storage: storage });
 
-// CHANGE 1: REGISTER - PASSWORD HASH + TRIAL
+// ===== RESTAURANT OWNER APIs =====
+
+// REGISTER - PASSWORD HASH + 30 DIN TRIAL
 app.post('/api/restaurant/register', uploadFile.single('payment_proof'), async (req,res)=>{
     try{
         const {restaurantId, restaurantName, ownerName, mobile, email, address, password} = req.body;
         const exists = await RestaurantOwner.findOne({$or: [{mobile}, {email}, {restaurantId}]});
         if(exists) return res.json({success:false, msg: "Mobile/Email/ID pehle se hai"});
 
-        const hashedPassword = await bcrypt.hash(password, 10); // PASSWORD HASH
+        const hashedPassword = await bcrypt.hash(password, 10); // HASH
 
         let trialEnd = new Date();
         trialEnd.setDate(trialEnd.getDate() + 30); // 30 din ka trial
 
         await new RestaurantOwner({
             restaurantId, restaurantName, ownerName, mobile, email, address, 
-            password: hashedPassword, // HASHED PASSWORD
+            password: hashedPassword,
             status: "Pending",
             plan_status: "Trial",
             registration_fee_paid: 200,
@@ -119,18 +115,17 @@ app.post('/api/restaurant/register', uploadFile.single('payment_proof'), async (
     }catch(e){ res.json({success:false, msg:e.message}) }
 });
 
-// CHANGE 2: LOGIN - BCRYPT CHECK + SAARA DATA BHEJO
+// LOGIN - BCRYPT CHECK + DATA BHEJO
 app.post('/api/restaurant/login', async (req,res)=>{
     const {email, password} = req.body;
     const owner = await RestaurantOwner.findOne({email});
     if(!owner) return res.json({success:false, msg: "Galat email ya password"});
     
-    const isMatch = await bcrypt.compare(password, owner.password); // PASSWORD CHECK
+    const isMatch = await bcrypt.compare(password, owner.password); // CHECK
     if(!isMatch) return res.json({success:false, msg: "Galat email ya password"});
 
     if(owner.status!== "Approved" && owner.status!== "Trial") return res.json({success:false, msg: "Approval pending hai"});
     
-    // SAARA DATA BHEJO - BANNER KE LIYE
     res.json({success:true, owner: {
         _id: owner._id,
         restaurantId: owner.restaurantId,
@@ -141,11 +136,11 @@ app.post('/api/restaurant/login', async (req,res)=>{
     }}) 
 });
 
-// CHANGE 3: APPROVE - TRIAL HI RAHNE DO, ACTIVE MAT KARO
+// APPROVE - TRIAL HI RAHNE DO
 app.put('/api/restaurant/owner/:id/approve', async (req,res)=>{
     const owner = await RestaurantOwner.findByIdAndUpdate(req.params.id, {
         status: "Approved", 
-        plan_status: "Trial" // <-- YAHI GALTI THI. Active mat karo
+        plan_status: "Trial"
     }, {new:true});
     const exists = await Restaurant.findOne({id: owner.restaurantId});
     if(!exists){
@@ -154,14 +149,11 @@ app.put('/api/restaurant/owner/:id/approve', async (req,res)=>{
     res.json({success:true});
 });
 
-// ... baaki saare API same rehne do ...
 app.get('/api/restaurant/owners', async (req,res)=> res.json(await RestaurantOwner.find().sort({createdAt:-1})) );
 app.delete('/api/restaurant/owner/:id', async (req,res)=>{ await RestaurantOwner.findByIdAndDelete(req.params.id); res.json({success:true}); });
 
-// ... baaki saara code same ...
-
 // ===== PAGE ROUTES =====
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
-// ... saare page routes same ...
+// ... baaki ke saare page routes yaha daal dena ...
 
 server.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
