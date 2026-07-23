@@ -35,7 +35,7 @@ const RestaurantOwner = mongoose.model('RestaurantOwner', {
     restaurantName: String,
     ownerName: String,
     mobile: {type: String, unique: true},
-    email: {type: String, unique: true}, // UNIQUE ADD KIYA
+    email: {type: String, unique: true},
     address: String,
     password: String,
     status: {type: String, default: "Pending"},
@@ -66,17 +66,15 @@ app.get('/api/menu', async (req,res)=> {
     res.json(items); 
 });
 
-// FIX 1: SHOP FILTER ADD
 app.get('/api/orders', async (req,res)=>{ 
     const shop = req.query.shop;
     if(shop) return res.json(await Order.find({restaurantId: shop}).sort({createdAt:-1}));
     res.json(await Order.find().sort({createdAt:-1})) 
 });
 
-// FIX 2: STATS API ADD
 app.get('/api/restaurant/stats', async (req,res)=>{
     const shop = req.query.shop;
-    const today = new Date(); today.setHours(0,0,0,0);
+    const today = new; Date(); today.setHours(0,0,0,0);
     const orders = await Order.find({ restaurantId: shop, createdAt: {$gte: today} });
     const revenue = orders.reduce((a,b)=>a+b.total, 0);
     res.json({ orders: orders.length, revenue });
@@ -99,7 +97,6 @@ app.post('/api/menu', upload.none(), async (req,res)=>{
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
 app.put('/api/menu/:id/stock', async (req,res)=>{ const item = await MenuItem.findById(req.params.id); item.inStock =!item.inStock; await item.save(); res.json({success:true}); });
 
-// FIX 3: ORDER CREATE + OWNER NOTIFICATION
 app.post('/api/orders', async (req,res)=>{ 
     const trackId = 'QB' + Date.now(); 
     const points = Math.floor(req.body.total / 10); 
@@ -125,7 +122,6 @@ app.post('/api/restaurant/register', async (req,res)=>{
     }catch(e){ res.json({success:false, msg:e.message}) }
 });
 
-// FIX 4: EMAIL SE LOGIN
 app.post('/api/restaurant/login', async (req,res)=>{
     const {email, password} = req.body;
     const owner = await RestaurantOwner.findOne({email, password});
@@ -139,16 +135,15 @@ app.put('/api/restaurant/owner/:id/approve', async (req,res)=>{
     const owner = await RestaurantOwner.findByIdAndUpdate(req.params.id, {status: "Approved"}, {new:true});
     await new Restaurant({id: owner.restaurantId, name: owner.restaurantName, address: owner.address, image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=200&fit=crop"}).save();
     res.json({success:true});
-});
 app.delete('/api/restaurant/owner/:id', async (req,res)=>{ await RestaurantOwner.findByIdAndDelete(req.params.id); res.json({success:true}); });
 
+// YAHI FIX HAI - DEMO HATA DIYA
 app.get('/api/restaurants', async (req,res)=>{
     const shops = await Restaurant.find({status: "Active"});
-    if(shops.length === 0){ return res.json([{id: "moms-kitchen", name: "Moms Kitchen", address: "Chhapra, Bihar", image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=200&fit=crop"}]); }
-    res.json(shops);
+    res.json(shops); // Ab khali hoga to [] aayega, Moms Kitchen nahi
 });
 
-// BAAKI SAB RIDER + COUPON + STATS + PDF WALE ROUTE SAME
+// BAAKI SAB SAME
 app.post('/api/rider/register', async (req,res)=>{ res.json({success:false, msg: 'Rider photo abhi file se hi jayegi.'}); });
 app.post('/api/rider/login', async (req,res)=>{ let rider = await Rider.findOne({mobile: req.body.mobile}); if(!rider) return res.json({success:false, msg:"Mobile register nahi hai"}); if(!['Approved','Online'].includes(rider.status)) return res.json({success:false, msg:"Approval pending hai"}); await Rider.findOneAndUpdate({mobile: req.body.mobile}, {status: "Online"}); res.json({success:true, rider}); });
 app.get('/api/rider/orders/:mobile', async (req,res)=>{ const orders = await Order.find({riderId: req.params.mobile, status: {$ne: 'Delivered'}}).sort({createdAt:-1}); res.json(orders); })
