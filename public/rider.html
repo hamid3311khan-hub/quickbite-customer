@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8"><title>Rider Dashboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- LEAFLET MAP CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
 <style>
 body{font-family:Arial; background:#f4f4f4; margin:0; padding:20px;}
 .login-box, .dashboard{background:white; padding:20px; border-radius:12px; max-width:500px; margin:auto; box-shadow:0 2px 10px #ccc;}
@@ -12,7 +15,7 @@ button{width:100%; padding:14px; background:#ff5722; color:white; border:none; b
 .order{border:1px solid #ddd; padding:15px; margin:10px 0; border-radius:8px;}
 .top-bar{display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;}
 .logout-btn{background:#dc3545; width:auto; padding:8px 15px;}
-#map{height:250px; background:#eee; border-radius:8px; margin:10px 0;}
+#map{height:250px; background:#eee; border-radius:8px; margin:10px 0; z-index:1;} /* z-index add kiya */
 </style>
 </head>
 <body>
@@ -43,10 +46,14 @@ button{width:100%; padding:14px; background:#ff5722; color:white; border:none; b
   <div id="map">Location on karne ke liye Online ho jao</div>
 </div>
 
+<!-- LEAFLET MAP JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const API = '';
 let riderData = null;
 let locationInterval = null;
+let map = null; // Map variable
+let riderMarker = null; // Rider ka pin
 
 // Page load pe check karo login hai ya nahi
 window.onload = () => {
@@ -55,9 +62,18 @@ window.onload = () => {
         document.getElementById('loginBox').style.display = 'none';
         document.getElementById('dashboard').style.display = 'block';
         document.getElementById('riderName').innerText = `Hello, ${riderData.name}`;
+        initMap(); // Map load karo
         loadMyOrders();
         if(riderData.status === 'Online') goOnline();
     }
+}
+
+function initMap(){
+    // Chhapra ka center
+    map = L.map('map').setView([25.0968, 85.3131], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
 }
 
 async function riderLogin(){
@@ -98,13 +114,33 @@ async function goOffline(){
 
 function startLocationTracking(){
     if(navigator.geolocation){
+        // Pehle 1 baar turant location lo
+        navigator.geolocation.getCurrentPosition(updateRiderLocation);
+        
+        // Fir har 5 sec me update karo
         locationInterval = setInterval(() => {
-            navigator.geolocation.getCurrentPosition(pos => {
-                fetch(API+`/api/riderLocation`, {method:'POST', headers:{'Content-Type':'application/json'}, 
-                body:JSON.stringify({mobile: riderData.mobile, lat: pos.coords.latitude, lng: pos.coords.longitude})});
-            });
-        }, 5000); // Har 5 sec me location update
+            navigator.geolocation.getCurrentPosition(updateRiderLocation);
+        }, 5000);
+    } else {
+        alert('Browser location support nahi karta');
     }
+}
+
+function updateRiderLocation(pos){
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+
+    // 1. Map pe pin update karo
+    if(!riderMarker){
+        riderMarker = L.marker([lat, lng]).addTo(map).bindPopup("Aap yaha ho");
+        map.setView([lat, lng], 15); // Pehli baar zoom
+    } else {
+        riderMarker.setLatLng([lat, lng]);
+    }
+
+    // 2. Server pe location bhejo
+    fetch(API+`/api/riderLocation`, {method:'POST', headers:{'Content-Type':'application/json'}, 
+    body:JSON.stringify({mobile: riderData.mobile, lat: lat, lng: lng})});
 }
 
 async function loadMyOrders(){
