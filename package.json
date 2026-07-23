@@ -15,7 +15,7 @@
     "socket.io": "^4.7.5",
     "pdfkit": "^0.15.0",
     "node-cron": "^3.0.3",
-    "bcrypt": "^5.1.1"  // <-- YE LINE ADD KAR
+    "bcryptjs": "^2.4.3"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
