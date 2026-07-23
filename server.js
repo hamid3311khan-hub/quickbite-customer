@@ -18,6 +18,7 @@ app.use(cors({origin: "*"}));
 app.use(express.json({limit: '10mb'}));
 app.use(express.urlencoded({limit: '10mb', extended: true}));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static('uploads')); // CHANGE 1: payment proof dikhane ke liye
 
 mongoose.connect(process.env.MONGO_URL)
 .then(()=>console.log('✅ MongoDB Connected'))
@@ -30,6 +31,7 @@ const MenuItem = mongoose.model('MenuItem', {
     restaurantId: {type: String, default: 'default-shop'}
 });
 
+// CHANGE 2: MODEL UPDATE - naye 4 field add
 const RestaurantOwner = mongoose.model('RestaurantOwner', {
     restaurantId: {type: String, unique: true},
     restaurantName: String,
@@ -39,6 +41,10 @@ const RestaurantOwner = mongoose.model('RestaurantOwner', {
     address: String,
     password: String,
     status: {type: String, default: "Pending"},
+    plan_status: {type: String, default: "Trial"}, // NAYA
+    registration_fee_paid: {type: Number, default: 200}, // NAYA
+    payment_proof: {type: String, default: null}, // NAYA
+    trial_end_date: {type: Date}, // NAYA
     paymentStatus: {type: String, default: "Paid"},
     lastPaymentDate: {type: Date, default: Date.now},
     nextDueDate: {type: Date},
@@ -48,7 +54,7 @@ const RestaurantOwner = mongoose.model('RestaurantOwner', {
 const Rider = mongoose.model('Rider', {
     name:String, fatherName:String, aadhar:String, pan:String,
     mobile:{type:String, unique:true}, aadharImg: String, panImg: String, photoImg: String,
-    lat:Number, lng:Number, lastUpdate:Date, status:{type:String, default:"Pending"}, // Pending, Approved, Online, Offline
+    lat:Number, lng:Number, lastUpdate:Date, status:{type:String, default:"Pending"},
     restaurantId: {type: String}
 });
 
@@ -131,20 +137,32 @@ app.put('/api/orders/:id/status', async (req,res)=>{ const updated = await Order
 app.delete('/api/orders/:id', async (req,res)=>{ await Order.findByIdAndDelete(req.params.id); res.json({success:true}) });
 
 // ===== RESTAURANT OWNER APIs =====
-app.post('/api/restaurant/register', async (req,res)=>{
+
+// CHANGE 3: REGISTER ROUTE UPDATE - File upload + Trial
+const storage = multer.diskStorage({
+  destination: './uploads/',
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  }
+});
+const uploadFile = multer({ storage: storage });
+
+app.post('/api/restaurant/register', uploadFile.single('payment_proof'), async (req,res)=>{
     try{
         const {restaurantId, restaurantName, ownerName, mobile, email, address, password} = req.body;
         const exists = await RestaurantOwner.findOne({$or: [{mobile}, {email}, {restaurantId}]});
         if(exists) return res.json({success:false, msg: "Mobile/Email/ID pehle se hai"});
 
-        let nextYear = new Date();
-        nextYear.setFullYear(nextYear.getFullYear() + 1);
+        let trialEnd = new Date();
+        trialEnd.setDate(trialEnd.getDate() + 30); // 30 din ka trial
 
         await new RestaurantOwner({
             restaurantId, restaurantName, ownerName, mobile, email, address, password,
-            paymentStatus: "Paid",
-            lastPaymentDate: Date.now(),
-            nextDueDate: nextYear
+            status: "Pending", // Admin approve karega
+            plan_status: "Trial",
+            registration_fee_paid: 200,
+            payment_proof: req.file.filename,
+            trial_end_date: trialEnd
         }).save();
         res.json({success:true, msg: "Register ho gaya. Approval pending hai."})
     }catch(e){ res.json({success:false, msg:e.message}) }
@@ -155,13 +173,14 @@ app.post('/api/restaurant/login', async (req,res)=>{
     const owner = await RestaurantOwner.findOne({email, password});
     if(!owner) return res.json({success:false, msg: "Galat email ya password"});
     if(owner.status!== "Approved") return res.json({success:false, msg: "Approval pending hai"});
-    res.json({success:true, owner})
+    res.json({success:true, owner}) // owner me plan_status aur trial_end_date bhi jayega
 });
 
 app.get('/api/restaurant/owners', async (req,res)=> res.json(await RestaurantOwner.find().sort({createdAt:-1})) );
 
+// CHANGE 4: APPROVE ROUTE UPDATE - Active karo
 app.put('/api/restaurant/owner/:id/approve', async (req,res)=>{
-    const owner = await RestaurantOwner.findByIdAndUpdate(req.params.id, {status: "Approved"}, {new:true});
+    const owner = await RestaurantOwner.findByIdAndUpdate(req.params.id, {status: "Approved", plan_status: "Active"}, {new:true});
     const exists = await Restaurant.findOne({id: owner.restaurantId});
     if(!exists){
         await new Restaurant({id: owner.restaurantId, name: owner.restaurantName, address: owner.address, image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=200&fit=crop"}).save();
@@ -185,7 +204,6 @@ app.post('/api/rider/register', upload.none(), async (req,res)=>{
     }catch(e){ res.json({success:false, msg:e.message}) }
 });
 
-// NEW: Rider Login
 app.post('/api/rider/login', async (req,res)=>{
     let rider = await Rider.findOne({mobile: req.body.mobile});
     if(!rider) return res.json({success:false, msg:"Mobile register nahi hai"});
@@ -194,17 +212,14 @@ app.post('/api/rider/login', async (req,res)=>{
     res.json({success:true, rider});
 });
 
-// NEW: Rider Status Update - Online/Offline
 app.put('/api/rider/:id/status', async (req,res)=>{ 
     await Rider.findByIdAndUpdate(req.params.id, {status: req.body.status}); 
     res.json({success: true}); 
 })
 
-// NEW: Rider Location Update - Order me bhi update hoga
 app.post('/api/riderLocation', async (req,res)=>{ 
     const {mobile, lat, lng} = req.body;
     await Rider.findOneAndUpdate({mobile}, {lat, lng, lastUpdate: new Date()}); 
-    // Order me bhi location save karo taaki customer track kar sake
     await Order.updateMany({riderId: mobile, status: "Out for Delivery"}, {riderLat: lat, riderLng: lng});
     res.json({success: true}); 
 })
@@ -214,7 +229,6 @@ app.get('/api/rider/orders/:mobile', async (req,res)=>{
     res.json(orders);
 })
 
-// Sirf usi restaurant ke approved/online rider
 app.get('/api/riders/approved', async (req,res)=> {
     const shop = req.query.shop;
     res.json(await Rider.find({restaurantId: shop, status: {$in: ['Approved','Online']}}))
