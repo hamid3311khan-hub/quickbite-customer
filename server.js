@@ -6,7 +6,7 @@ const path = require('path');
 const http = require('http');
 const { Server } = require("socket.io");
 const PDFDocument = require('pdfkit');
-const multer = require('multer'); 
+const multer = require('multer');
 const upload = multer();
 
 const app = express();
@@ -24,8 +24,8 @@ mongoose.connect(process.env.MONGO_URL)
 .catch(err => { console.log('Mongo Error:', err); process.exit(1) });
 
 // ===== MODELS =====
-const MenuItem = mongoose.model('MenuItem', { 
-    name: String, price: Number, category: String, desc: String, 
+const MenuItem = mongoose.model('MenuItem', {
+    name: String, price: Number, category: String, desc: String,
     image: String, veg: Boolean, inStock: {type:Boolean, default:true}, offer: Number,
     restaurantId: {type: String, default: 'default-shop'}
 });
@@ -60,19 +60,18 @@ io.on('connection', (socket) => {
 });
 
 // ===== API ROUTES =====
-app.get('/api/menu', async (req,res)=> { 
+app.get('/api/menu', async (req,res)=> {
     const shopId = req.query.shop || 'default-shop';
-    const items = await MenuItem.find({restaurantId: shopId}); 
-    res.json(items); 
+    const items = await MenuItem.find({restaurantId: shopId});
+    res.json(items);
 });
 
-app.get('/api/orders', async (req,res)=>{ 
+app.get('/api/orders', async (req,res)=>{
     const shop = req.query.shop;
     if(shop) return res.json(await Order.find({restaurantId: shop}).sort({createdAt:-1}));
-    res.json(await Order.find().sort({createdAt:-1})) 
+    res.json(await Order.find().sort({createdAt:-1}))
 });
 
-// FIXED TYPO HERE
 app.get('/api/restaurant/stats', async (req,res)=>{
     const shop = req.query.shop;
     const today = new Date(); today.setHours(0,0,0,0);
@@ -98,13 +97,13 @@ app.post('/api/menu', upload.none(), async (req,res)=>{
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
 app.put('/api/menu/:id/stock', async (req,res)=>{ const item = await MenuItem.findById(req.params.id); item.inStock =!item.inStock; await item.save(); res.json({success:true}); });
 
-app.post('/api/orders', async (req,res)=>{ 
-    const trackId = 'QB' + Date.now(); 
-    const points = Math.floor(req.body.total / 10); 
-    const newOrder = await new Order({...req.body, trackId, pointsEarned: points}).save(); 
+app.post('/api/orders', async (req,res)=>{
+    const trackId = 'QB' + Date.now();
+    const points = Math.floor(req.body.total / 10);
+    const newOrder = await new Order({...req.body, trackId, pointsEarned: points}).save();
     const ownerData = await RestaurantOwner.findOne({restaurantId: newOrder.restaurantId});
     if(ownerData){ console.log(`Owner WA: https://wa.me/91${ownerData.mobile}?text=Naya Order: ${newOrder.trackId}`); }
-    res.json({success:true, trackId}) 
+    res.json({success:true, trackId})
 });
 
 app.get('/api/orders/track/:id', async (req,res)=>{ res.json(await Order.findOne({trackId:req.params.id})) });
@@ -127,25 +126,23 @@ app.post('/api/restaurant/login', async (req,res)=>{
     const {email, password} = req.body;
     const owner = await RestaurantOwner.findOne({email, password});
     if(!owner) return res.json({success:false, msg: "Galat email ya password"});
-    if(owner.status !== "Approved") return res.json({success:false, msg: "Approval pending hai"});
+    if(owner.status!== "Approved") return res.json({success:false, msg: "Approval pending hai"});
     res.json({success:true, owner})
 });
 
 app.get('/api/restaurant/owners', async (req,res)=> res.json(await RestaurantOwner.find().sort({createdAt:-1})) );
 
-// FIXED BRACE HERE
 app.put('/api/restaurant/owner/:id/approve', async (req,res)=>{
     const owner = await RestaurantOwner.findByIdAndUpdate(req.params.id, {status: "Approved"}, {new:true});
     await new Restaurant({id: owner.restaurantId, name: owner.restaurantName, address: owner.address, image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=200&fit=crop"}).save();
     res.json({success:true});
-}); // <-- ye brace add kiya
+});
 
 app.delete('/api/restaurant/owner/:id', async (req,res)=>{ await RestaurantOwner.findByIdAndDelete(req.params.id); res.json({success:true}); });
 
-// YAHI MAIN FIX HAI - DEMO HATA DIYA
 app.get('/api/restaurants', async (req,res)=>{
     const shops = await Restaurant.find({status: "Active"});
-    res.json(shops); // Ab DB khali = [] aayega
+    res.json(shops);
 });
 
 // BAAKI SAB SAME
@@ -157,6 +154,13 @@ app.put('/api/rider/:id/approve', async (req,res)=>{ await Rider.findByIdAndUpda
 app.delete('/api/riders/:id', async (req,res)=>{ await Rider.findByIdAndDelete(req.params.id); res.json({success:true}); })
 app.get('/api/riders', async (req,res)=> res.json(await Rider.find()) );
 app.put('/api/order/assign', async (req,res)=>{ const busyOrder = await Order.findOne({ riderId: req.body.riderId, status: {$ne: 'Delivered'} }); if(busyOrder){ return res.json({success:false, msg:"Ye rider abhi busy hai."}) } await Order.findByIdAndUpdate(req.body.orderId, { riderId: req.body.riderId, status: 'Out for Delivery' }); res.json({success:true}) });
+
+// YE NAYI API ADD KI
+app.post('/api/order/delivered', async (req,res)=>{
+    await Order.findByIdAndUpdate(req.body.orderId, {status: 'Delivered'});
+    res.json({success:true, msg:"Order Delivered Marked"});
+});
+
 app.get('/api/rider/check-busy/:mobile', async (req,res)=>{ const busy = await Order.findOne({riderId: req.params.mobile, status: {$ne: 'Delivered'}}); res.json({free:!busy}); })
 app.post('/api/coupon', async (req,res)=>{ await new Coupon(req.body).save(); res.json({success:true}) });
 app.post('/api/coupon/validate', async (req,res)=>{ const coupon = await Coupon.findOne({code:req.body.code}); if(coupon) { res.json({success:true,...coupon._doc}) } else { res.json({success:false}) } });
