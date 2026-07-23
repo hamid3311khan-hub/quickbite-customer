@@ -39,7 +39,7 @@ const RestaurantOwner = mongoose.model('RestaurantOwner', {
     address: String,
     password: String,
     status: {type: String, default: "Pending"},
-    paymentStatus: {type: String, default: "Unpaid"},
+    paymentStatus: {type: String, default: "Paid"},
     lastPaymentDate: {type: Date, default: Date.now},
     nextDueDate: {type: Date},
     createdAt: {type: Date, default: Date.now}
@@ -87,17 +87,12 @@ app.post('/api/restaurant/offer', async (req,res)=>{
     res.json({success:true, msg: "Offer Created!"});
 })
 
-// FIX 1: Image required hata di
 app.post('/api/menu', upload.none(), async (req,res)=>{
   try{
     const {name, price, desc, category, offer, image, restaurantId} = req.body;
     await new MenuItem({
-        name, 
-        price, 
-        desc, 
-        category, 
-        offer, 
-        image: image || '', // image nahi bhi ho to chalega
+        name, price, desc, category, offer, 
+        image: image || '',
         restaurantId: restaurantId || 'default-shop', 
         veg: req.body.veg === 'true', 
         inStock: true
@@ -148,14 +143,17 @@ app.post('/api/restaurant/login', async (req,res)=>{
     const owner = await RestaurantOwner.findOne({email, password});
     if(!owner) return res.json({success:false, msg: "Galat email ya password"});
     if(owner.status !== "Approved") return res.json({success:false, msg: "Approval pending hai"});
-    res.json({success:true, owner}) // owner object me restaurantId bhi aa raha hai
+    res.json({success:true, owner})
 });
 
 app.get('/api/restaurant/owners', async (req,res)=> res.json(await RestaurantOwner.find().sort({createdAt:-1})) );
 
 app.put('/api/restaurant/owner/:id/approve', async (req,res)=>{
     const owner = await RestaurantOwner.findByIdAndUpdate(req.params.id, {status: "Approved"}, {new:true});
-    await new Restaurant({id: owner.restaurantId, name: owner.restaurantName, address: owner.address, image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=200&fit=crop"}).save();
+    const exists = await Restaurant.findOne({id: owner.restaurantId});
+    if(!exists){
+        await new Restaurant({id: owner.restaurantId, name: owner.restaurantName, address: owner.address, image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=200&fit=crop"}).save();
+    }
     res.json({success:true});
 });
 
@@ -185,6 +183,7 @@ app.post('/api/broadcast', async (req,res)=>{ const {message, type, numbers} = r
 app.get('/invoice', async (req,res)=>{
   const { id } = req.query;
   const order = await Order.findOne({trackId:id});
+  if(!order) return res.status(404).send("Order not found");
   const doc = new PDFDocument({margin: 40});
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename=QuickBite-${id}.pdf`);
@@ -212,7 +211,7 @@ app.get('/restaurants', (req, res) => res.sendFile(path.join(__dirname, 'public'
 app.get('/restaurant-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-register.html')));
 app.get('/restaurant-login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-login.html')));
 app.get('/restaurant-dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-dashboard.html')));
-app.get('/restaurant-profile', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-dashboard.html')));
+app.get('/restaurant-profile', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-profile.html'))); // FIXED
 app.get('/admin-owners', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin-owners.html')));
 
 server.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
