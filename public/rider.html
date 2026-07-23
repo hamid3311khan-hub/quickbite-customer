@@ -12,12 +12,11 @@ button{width:100%; padding:14px; background:#ff5722; color:white; border:none; b
 .order{border:1px solid #ddd; padding:15px; margin:10px 0; border-radius:8px;}
 .top-bar{display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;}
 .logout-btn{background:#dc3545; width:auto; padding:8px 15px;}
-#map{height:250px; background:#eee; border-radius:8px; margin:10px 0; overflow:hidden;}
+#map{height:250px; background:#eee; border-radius:8px; margin:10px 0; overflow:hidden; display:flex; align-items:center; justify-content:center; color:#666;}
 </style>
 </head>
 <body>
 
-<!-- LOGIN BOX -->
 <div class="login-box" id="loginBox">
   <h2>🏍️ Rider Login</h2>
   <input id="riderMobile" placeholder="Registered Mobile Number" maxlength="10">
@@ -25,7 +24,6 @@ button{width:100%; padding:14px; background:#ff5722; color:white; border:none; b
   <p style="text-align:center; margin-top:10px;"><a href="/rider-register">Naya Rider Register Karo</a></p>
 </div>
 
-<!-- DASHBOARD -->
 <div class="dashboard" id="dashboard" style="display:none;">
   <div class="top-bar">
     <h2 id="riderName">Rider Panel</h2>
@@ -43,43 +41,41 @@ button{width:100%; padding:14px; background:#ff5722; color:white; border:none; b
   <div id="map">Location on karne ke liye Online ho jao</div>
 </div>
 
+<script src="/socket.io/socket.io.js"></script>
 <script>
 const API = '';
+const socket = io();
 let riderData = null;
 let locationInterval = null;
 
-// Page load pe check karo login hai ya nahi
 window.onload = () => {
     riderData = JSON.parse(localStorage.getItem('riderData'));
     if(riderData){
         document.getElementById('loginBox').style.display = 'none';
         document.getElementById('dashboard').style.display = 'block';
         document.getElementById('riderName').innerText = `Hello, ${riderData.name}`;
+        document.getElementById('riderStatus').innerText = riderData.status;
         loadMyOrders();
-        if(riderData.status === 'Online') goOnline();
+        if(riderData.status === 'Online') startLocationTracking();
     }
 }
 
 async function riderLogin(){
     const mobile = document.getElementById('riderMobile').value;
     if(!mobile) return alert('Mobile daalo');
-    
     const res = await fetch(API+'/api/rider/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({mobile})});
     const data = await res.json();
-    
     if(data.success){
         riderData = data.rider;
         localStorage.setItem('riderData', JSON.stringify(riderData));
         location.reload();
-    } else {
-        alert(data.msg);
-    }
+    } else alert(data.msg);
 }
 
 function riderLogout(){
     if(confirm('Pakka Logout karna hai?')){
-        localStorage.removeItem('riderData');
         clearInterval(locationInterval);
+        localStorage.removeItem('riderData');
         location.reload();
     }
 }
@@ -102,45 +98,26 @@ async function goOffline(){
 }
 
 function showMap(lat, lng){
-    document.getElementById('map').innerHTML = `<iframe 
-        width="100%" 
-        height="250" 
-        frameborder="0" 
-        style="border:0"
-        src="https://www.google.com/maps?q=${lat},${lng}&z=16&output=embed">
-    </iframe>`;
+    document.getElementById('map').innerHTML = `<iframe width="100%" height="250" frameborder="0" style="border:0" src="https://www.google.com/maps?q=${lat},${lng}&z=16&output=embed"></iframe>`;
 }
 
 function startLocationTracking(){
     if(navigator.geolocation){
-        navigator.geolocation.getCurrentPosition(pos => { // pehli baar turant
-            showMap(pos.coords.latitude, pos.coords.longitude);
-        });
+        navigator.geolocation.getCurrentPosition(pos => showMap(pos.coords.latitude, pos.coords.longitude));
         locationInterval = setInterval(() => {
             navigator.geolocation.getCurrentPosition(pos => {
-                showMap(pos.coords.latitude, pos.coords.longitude); // Map update
-                fetch(API+`/api/riderLocation`, {method:'POST', headers:{'Content-Type':'application/json'}, 
-                body:JSON.stringify({mobile: riderData.mobile, lat: pos.coords.latitude, lng: pos.coords.longitude})});
+                showMap(pos.coords.latitude, pos.coords.longitude);
+                socket.emit('riderLocation', {mobile: riderData.mobile, lat: pos.coords.latitude, lng: pos.coords.longitude});
             });
-        }, 5000); // Har 5 sec me location update
-    } else {
-        alert('Location permission allow karo');
-    }
+        }, 5000);
+    } else alert('Location permission allow karo');
 }
 
 async function loadMyOrders(){
     const res = await fetch(API+`/api/rider/orders/${riderData.mobile}`);
     const orders = await res.json();
     document.getElementById('myOrders').innerHTML = orders.length === 0 ? 'Koi order nahi hai' :
-    orders.map(o => `
-        <div class="order">
-            <b>${o.trackId}</b> - ₹${o.total} <br>
-            <small>${o.name} | ${o.phone}</small> <br>
-            <small>${o.address}</small> <br>
-            <b>Status:</b> ${o.status} <br>
-            <button onclick="markDelivered('${o._id}')">Delivered Mark Karo</button>
-        </div>
-    `).join('');
+    orders.map(o => `<div class="order"><b>${o.trackId}</b> - ₹${o.total} <br><small>${o.name} | ${o.phone}</small> <br><small>${o.address}</small> <br><b>Status:</b> ${o.status} <br><button onclick="markDelivered('${o._id}')">Delivered Mark Karo</button></div>`).join('');
 }
 
 async function markDelivered(orderId){
