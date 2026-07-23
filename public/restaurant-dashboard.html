@@ -26,7 +26,6 @@
 </nav>
 
 <div class="container mt-4">
-    <!-- STATS CARDS -->
     <div class="row mb-4">
         <div class="col-md-3"><div class="stat-card" style="background:#28a745;"><h6>Aaj ke Orders</h6><h3 id="todayOrders">0</h3></div></div>
         <div class="col-md-3"><div class="stat-card" style="background:#007bff;"><h6>Aaj ki Kamai</h6><h3 id="todayRevenue">₹0</h3></div></div>
@@ -34,7 +33,6 @@
         <div class="col-md-3"><div class="stat-card" style="background:#dc3545;"><h6>Pending Orders</h6><h3 id="pendingOrders">0</h3></div></div>
     </div>
 
-    <!-- TABS -->
     <ul class="nav nav-tabs mb-3">
         <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#menu">🍔 Menu</a></li>
         <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#orders">📦 Orders <span class="badge bg-danger" id="orderCount">0</span></a></li>
@@ -42,7 +40,6 @@
     </ul>
 
     <div class="tab-content">
-        <!-- TAB 1: MENU -->
         <div class="tab-pane fade show active" id="menu">
             <div class="row">
                 <div class="col-md-4">
@@ -61,7 +58,6 @@
                         <div id="msg" class="mt-2"></div>
                     </div>
                 </div>
-
                 <div class="col-md-8">
                     <div class="card shadow-sm p-3">
                         <h5>Your Menu Items</h5>
@@ -73,8 +69,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- TAB 2: ORDERS -->
         <div class="tab-pane fade" id="orders">
             <div class="card shadow-sm p-3">
                 <h5>New Orders</h5>
@@ -82,8 +76,6 @@
                 <div id="ordersList">Loading...</div>
             </div>
         </div>
-
-        <!-- TAB 3: OFFERS -->
         <div class="tab-pane fade" id="offers">
             <div class="card shadow-sm p-3">
                 <h5>Create Restaurant Offer</h5>
@@ -98,15 +90,17 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// IMPORTANT: restaurantOwner naam se save karna hai login me
 const owner = JSON.parse(localStorage.getItem('restaurantOwner'));
-if(!owner){ window.location.href = '/restaurant-login'; }
+console.log("Logged in Owner:", owner); // debug ke liye
+if(!owner ||!owner.restaurantId){
+    alert("Login info missing. Dubara login karo");
+    window.location.href = '/restaurant-login';
+}
 
 document.getElementById('resName').innerText = owner.restaurantName;
 const restaurantId = owner.restaurantId;
 let lastOrderCount = 0;
 
-// PHOTO PREVIEW
 document.getElementById('imageFile').addEventListener('change', function(e){
     const file = e.target.files[0];
     if(!file) return;
@@ -119,14 +113,13 @@ document.getElementById('imageFile').addEventListener('change', function(e){
     reader.readAsDataURL(file);
 });
 
-// 1. Item Add
 document.getElementById('itemForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
     const data = {
         name: document.getElementById('name').value,
         price: document.getElementById('price').value,
         category: document.getElementById('category').value,
-        desc: document.getElementById('desc').value, // desc hai, description nahi
+        desc: document.getElementById('desc').value,
         image: document.getElementById('imageBase64').value,
         restaurantId: restaurantId
     };
@@ -143,88 +136,66 @@ document.getElementById('itemForm').addEventListener('submit', async (e)=>{
     }
 });
 
-// 2. Menu Load
 async function loadMenu(){
-    const res = await fetch(`/api/menu?shop=${restaurantId}`);
-    const items = await res.json();
-    document.getElementById('totalItems').innerText = items.length;
-    let rows = '';
-    items.forEach(i=>{
-        rows += `<tr>
-            <td><img src="${i.image || 'https://via.placeholder.com/50'}" width="50" height="50" style="object-fit:cover; border-radius:5px;"></td>
-            <td>${i.name}</td>
-            <td>₹${i.price}</td>
-            <td><button class="btn btn-sm ${i.inStock?'btn-success':'btn-secondary'}" onclick="toggleStock('${i._id}')">${i.inStock?'ON':'OFF'}</button></td>
-            <td><button class="btn btn-sm btn-danger" onclick="deleteItem('${i._id}')">Delete</button></td>
-        </tr>`;
-    });
-    document.getElementById('menuList').innerHTML = rows || '<tr><td colspan="5">No items yet</td></tr>';
+    try{
+        const res = await fetch(`/api/menu?shop=${restaurantId}`);
+        const items = await res.json();
+        document.getElementById('totalItems').innerText = items.length;
+        let rows = '';
+        items.forEach(i=>{
+            rows += `<tr>
+                <td><img src="${i.image || 'https://via.placeholder.com/50'}" width="50" height="50" style="object-fit:cover; border-radius:5px;"></td>
+                <td>${i.name}</td>
+                <td>₹${i.price}</td>
+                <td><button class="btn btn-sm ${i.inStock?'btn-success':'btn-secondary'}" onclick="toggleStock('${i._id}')">${i.inStock?'ON':'OFF'}</button></td>
+                <td><button class="btn btn-sm btn-danger" onclick="deleteItem('${i._id}')">Delete</button></td>
+            </tr>`;
+        });
+        document.getElementById('menuList').innerHTML = rows || '<tr><td colspan="5">No items yet</td></tr>';
+    }catch(e){ console.log(e) }
 }
 
-async function toggleStock(id){
-    await fetch(`/api/menu/${id}/stock`, {method:'PUT'});
-    loadMenu();
-}
+async function toggleStock(id){ await fetch(`/api/menu/${id}/stock`, {method:'PUT'}); loadMenu(); }
+async function deleteItem(id){ if(confirm('Pakka Delete kare?')){ await fetch(`/api/menu/${id}`, {method:'DELETE'}); loadMenu(); loadStats(); } }
 
-async function deleteItem(id){
-    if(confirm('Pakka Delete kare?')){
-        await fetch(`/api/menu/${id}`, {method:'DELETE'});
-        loadMenu(); loadStats();
-    }
-}
-
-// 3. Orders Load
 async function loadOrders(){
-    const res = await fetch(`/api/orders?shop=${restaurantId}`);
-    const orders = await res.json();
-
-    if(orders.length > lastOrderCount && lastOrderCount!= 0){
-        document.getElementById('notifSound').play();
-        alert('🔔 Naya Order Aaya!');
-    }
-    lastOrderCount = orders.length;
-    document.getElementById('orderCount').innerText = orders.filter(o=>o.status=='Pending').length;
-    document.getElementById('pendingOrders').innerText = orders.filter(o=>o.status!='Delivered').length;
-
-    let html = '';
-    if(orders.length === 0) html = '<p class="text-center text-muted">Abhi koi order nahi hai</p>';
-
-    orders.forEach(o=>{
-        html += `<div class="border p-3 mb-2 rounded ${o.status=='Pending'?'new-order':''}">
-            <div class="d-flex justify-content-between">
-                <div><b>${o.trackId}</b> - ${o.name} <br><small>${o.phone}</small></div>
-                <h5 class="text-success">₹${o.total}</h5>
-            </div>
-            <p class="mb-1"><b>Address:</b> ${o.address}</p>
-            <p class="mb-1"><b>Items:</b> ${o.items? o.items.map(i=>i.name+' x'+i.qty).join(', ') : ''}</p>
-            <div class="d-flex gap-2 align-items-center">
-                <b>Status:</b>
+    try{
+        const res = await fetch(`/api/orders?shop=${restaurantId}`);
+        const orders = await res.json();
+        if(orders.length > lastOrderCount && lastOrderCount!= 0){ document.getElementById('notifSound').play(); alert('🔔 Naya Order Aaya!'); }
+        lastOrderCount = orders.length;
+        document.getElementById('orderCount').innerText = orders.filter(o=>o.status=='Pending').length;
+        document.getElementById('pendingOrders').innerText = orders.filter(o=>o.status!='Delivered').length;
+        let html = '';
+        if(orders.length === 0) html = '<p class="text-center text-muted">Abhi koi order nahi hai</p>';
+        orders.forEach(o=>{
+            html += `<div class="border p-3 mb-2 rounded ${o.status=='Pending'?'new-order':''}">
+                <div class="d-flex justify-content-between"><div><b>${o.trackId}</b> - ${o.name} <br><small>${o.phone}</small></div><h5 class="text-success">₹${o.total}</h5></div>
+                <p class="mb-1"><b>Address:</b> ${o.address}</p>
+                <p class="mb-1"><b>Items:</b> ${o.items? o.items.map(i=>i.name+' x'+i.qty).join(', ') : ''}</p>
+                <div class="d-flex gap-2 align-items-center"><b>Status:</b>
                 <select onchange="updateOrderStatus('${o._id}', this.value)" class="form-select form-select-sm" style="width:200px;">
                     <option ${o.status=='Pending'?'selected':''}>Pending</option>
                     <option ${o.status=='Preparing'?'selected':''}>Preparing</option>
                     <option ${o.status=='Ready'?'selected':''}>Ready for Pickup</option>
                     <option ${o.status=='Delivered'?'selected':''}>Delivered</option>
-                </select>
-            </div>
-        </div>`;
-    });
-    document.getElementById('ordersList').innerHTML = html;
+                </select></div></div>`;
+        });
+        document.getElementById('ordersList').innerHTML = html;
+    }catch(e){ console.log(e) }
 }
 
-async function updateOrderStatus(id, status){
-    await fetch(`/api/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})});
-    loadOrders(); loadStats();
-}
+async function updateOrderStatus(id, status){ await fetch(`/api/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})}); loadOrders(); loadStats(); }
 
-// 4. Stats Load
 async function loadStats(){
-    const res = await fetch(`/api/restaurant/stats?shop=${restaurantId}`);
-    const data = await res.json();
-    document.getElementById('todayOrders').innerText = data.orders;
-    document.getElementById('todayRevenue').innerText = '₹' + data.revenue;
+    try{
+        const res = await fetch(`/api/restaurant/stats?shop=${restaurantId}`);
+        const data = await res.json();
+        document.getElementById('todayOrders').innerText = data.orders;
+        document.getElementById('todayRevenue').innerText = '₹' + data.revenue;
+    }catch(e){ console.log(e) }
 }
 
-// 5. Offer Add
 async function addOffer(){
     const body = {code: offerCode.value, discount: +offerDiscount.value, restaurantId: restaurantId};
     const res = await fetch('/api/restaurant/offer', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
@@ -234,15 +205,9 @@ async function addOffer(){
     setTimeout(()=>document.getElementById('offerMsg').innerHTML='', 3000);
 }
 
-function logout(){
-    localStorage.removeItem('restaurantOwner');
-    window.location.href = '/restaurant-login';
-}
+function logout(){ localStorage.removeItem('restaurantOwner'); window.location.href = '/restaurant-login'; }
 
-// Initial Load
-loadMenu();
-loadOrders();
-loadStats();
+loadMenu(); loadOrders(); loadStats();
 setInterval(loadOrders, 10000);
 setInterval(loadStats, 60000);
 </script>
