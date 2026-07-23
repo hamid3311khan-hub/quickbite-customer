@@ -24,7 +24,12 @@ async function loadRestaurants(){
     const shops = await res.json();
     const list = document.getElementById('restaurantList');
     list.innerHTML = '';
-    
+
+    if(shops.length === 0){
+        list.innerHTML = '<p class="text-center">Abhi koi restaurant approved nahi hai</p>';
+        return;
+    }
+
     shops.forEach(shop => {
         list.innerHTML += `
         <div class="col-md-4">
