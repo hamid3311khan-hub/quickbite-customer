@@ -7,7 +7,7 @@ const http = require('http');
 const { Server } = require("socket.io");
 const PDFDocument = require('pdfkit');
 const multer = require('multer');
-const cron = require('node-cron'); 
+// const cron = require('node-cron');  // HATA DIYA
 const upload = multer();
 
 const app = express();
@@ -190,28 +190,7 @@ app.get('/invoice', async (req,res)=>{
   doc.end();
 })
 
-// ===== CRON JOB - YEARLY REMINDER ===== TESTED 5 FIELDS
-cron.schedule('0 10 *', async () => { // Roz subah 10:00 baje
-    console.log("Running maintenance reminder check...");
-    const today = new Date();
-    const owners = await RestaurantOwner.find({status: "Approved"});
-
-    for(const owner of owners) {
-        if(!owner.nextDueDate) continue;
-        const diffDays = Math.ceil((owner.nextDueDate - today) / (1000 * 60 * 60 * 24));
-
-        if(diffDays <= 20 && diffDays >= 1){
-            if(diffDays % 3 === 0 || diffDays <= 3){
-                const msg = `Namaste ${owner.ownerName} ji 🙏\nQuickBite Maintenance Renewal\nAapka ₹200 maintenance charge ${diffDays} din me due hai.\nDue Date: ${owner.nextDueDate.toDateString()}\n\n- QuickBite Team`;
-                console.log(`Reminder to: ${owner.mobile} - ${diffDays} days left`);
-            }
-        }
-        if(diffDays < 0){
-            await RestaurantOwner.findByIdAndUpdate(owner._id, {status: "Suspended"});
-            console.log(`${owner.restaurantName} suspended due to non-payment`);
-        }
-    }
-});
+// ===== CRON JOB HATA DIYA HAI DEPLOY KE LIYE =====
 
 // ===== PAGE ROUTES =====
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
