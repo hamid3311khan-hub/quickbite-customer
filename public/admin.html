@@ -6,23 +6,23 @@
 <title>QuickBite Admin</title>
 <style>
     body{font-family:Arial; background:#f4f4f4; padding:20px;}
-   .top-bar{display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;}
-   .top-buttons a{padding:10px 15px; border-radius:5px; text-decoration:none; color:white; margin-left:10px; font-weight:bold;}
-   .btn-admin{background:#333;}.btn-owner{background:orange;}
-  .card{background:white; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 5px #ccc;}
+  .top-bar{display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;}
+  .top-buttons a{padding:10px 15px; border-radius:5px; text-decoration:none; color:white; margin-left:10px; font-weight:bold;}
+  .btn-admin{background:#333;}.btn-owner{background:orange;}
+ .card{background:white; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 5px #ccc;}
     input, select, button, textarea{padding:10px; margin:5px; border-radius:5px; border:1px solid #ccc; width:calc(100% - 22px);}
     button{background:#ff5722; color:white; border:none; cursor:pointer;}
     button:hover{opacity:0.9;}
-  .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;}
-  .stat-card{background:#ff5722; color:white; text-align:center; padding:20px;}
-  .stat-card h2{margin:0; font-size:30px;}
-  .order,.menu-item,.rider-item,.owner-item{border:1px solid #ddd; padding:10px; margin:10px 0; border-radius:5px;}
-  .btn-green{background:#25D366;}.btn-red{background:#dc3545;}.btn-blue{background:#007bff;}.btn-orange{background:orange;}
-  .report-result p{margin:5px 0; font-size:16px;}
-  .logout-btn{background:#6c757d; padding:8px 15px; width:auto;}
+ .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;}
+ .stat-card{background:#ff5722; color:white; text-align:center; padding:20px;}
+ .stat-card h2{margin:0; font-size:30px;}
+ .order,.menu-item,.rider-item,.owner-item{border:1px solid #ddd; padding:10px; margin:10px 0; border-radius:5px;}
+ .btn-green{background:#25D366;}.btn-red{background:#dc3545;}.btn-blue{background:#007bff;}.btn-orange{background:orange;}
+ .report-result p{margin:5px 0; font-size:16px;}
+ .logout-btn{background:#6c757d; padding:8px 15px; width:auto;}
     small{color:#666; font-size:12px;}
-  .rider-docs img{width:70px; height:70px; object-fit:cover; border:1px solid #ccc; border-radius:5px; margin:3px;}
-  .menu-item img{width:80px; height:80px; object-fit:cover; border-radius:5px; float:left; margin-right:10px;}
+ .rider-docs img{width:70px; height:70px; object-fit:cover; border:1px solid #ccc; border-radius:5px; margin:3px;}
+ .menu-item img{width:80px; height:80px; object-fit:cover; border-radius:5px; float:left; margin-right:10px;}
 </style>
 </head>
 <body>
@@ -40,7 +40,6 @@
     <div class="card stat-card" style="background:#007bff;"><h3>Total Customers</h3><h2 id="totalCustomers">0</h2></div>
 </div>
 
-<!-- NAYA CARD: RESTAURANT APPROVAL -->
 <div class="card">
     <h2>🏪 Pending Restaurant Approvals</h2>
     <div id="pendingOwnersList">Loading...</div>
@@ -105,7 +104,6 @@
 
 <script>
 const API = '';
-let riders = [];
 let allRiders = [];
 
 const ADMIN_PASSWORD = 'admin123';
@@ -132,8 +130,9 @@ document.getElementById('itemImg').addEventListener('change', function(e){
     reader.readAsDataURL(file);
 });
 
-async function loadRiders(){
-    const res = await fetch(API+'/api/riders/approved');
+// FIX: Sirf usi restaurant ke free rider laao
+async function loadRidersForShop(shopId){
+    const res = await fetch(API+`/api/riders/approved?shop=${shopId}`);
     const ridersData = await res.json();
     const freeRiders = [];
     for(let r of ridersData){
@@ -141,10 +140,9 @@ async function loadRiders(){
         const data = await check.json();
         if(data.free) freeRiders.push(r);
     }
-    riders = freeRiders;
+    return freeRiders;
 }
 
-// NAYA FUNCTION: RESTAURANT LOAD KARNE KE LIYE
 async function loadOwners(){
     const res = await fetch(API+'/api/restaurant/owners');
     const owners = await res.json();
@@ -164,23 +162,16 @@ async function approveOwner(id){ await fetch(API+`/api/restaurant/owner/${id}/ap
 async function rejectOwner(id){ if(confirm('Pakka Reject karna hai?')){ await fetch(API+`/api/restaurant/owner/${id}`, {method:'DELETE'}); alert('Reject kiya'); loadData(); } }
 
 async function loadData(){
-    await loadOwners(); // Yaha call kiya
+    await loadOwners();
 
     const allRiderRes = await fetch(API+'/api/riders'); allRiders = await allRiderRes.json();
-    await loadRiders();
 
     const pending = allRiders.filter(r => r.status && r.status.toLowerCase() === 'pending');
     document.getElementById('pendingRidersList').innerHTML = pending.length === 0? 'Koi pending rider nahi hai' :
     pending.map(r => `
         <div class="rider-item">
             <b>${r.name}</b> - ${r.mobile} <br>
-            <small>Father: ${r.fatherName} | Aadhar: ${r.aadhar} | PAN: ${r.pan}</small> <br>
-            <div class="rider-docs">
-                <b>Docs:</b><br>
-                <img src="${r.aadharImg || 'https://via.placeholder.com/70'}" title="Aadhar">
-                <img src="${r.panImg || 'https://via.placeholder.com/70'}" title="PAN">
-                <img src="${r.photoImg || 'https://via.placeholder.com/70'}" title="Photo">
-            </div>
+            <small>Restaurant: ${r.restaurantId} | Father: ${r.fatherName} | Aadhar: ${r.aadhar}</small> <br>
             <button class="btn-green" onclick="approveRider('${r._id}')">✅ Approve Karo</button>
             <button class="btn-red" onclick="rejectRider('${r._id}')">❌ Reject</button>
         </div>
@@ -201,32 +192,41 @@ async function loadData(){
     `).join('');
 
     const orders = await fetch(API+'/api/orders').then(r=>r.json());
-    document.getElementById('ordersList').innerHTML = orders.map(o=>`
-        <div class="order">
-            <b>${o.trackId}</b> - ${o.name} - ₹${o.total} <br>
-            <b>Payment:</b> ${o.payment} | <b>Status:</b> ${o.status} | <b>Points:</b> ${o.pointsEarned || 0} <br>
-            <small>${o.phone} | ${o.address}</small> <br>
-            <select id="rider-${o._id}" style="margin-top:8px;">
-                <option value="">-- Rider Select Karo --</option>
-                ${riders.map(r => `<option value="${r.mobile}" ${o.riderId==r.mobile?'selected':''}>${r.name} - ${r.mobile}</option>`).join('')}
-            </select>
-            <button class="btn-green" onclick="assignRider('${o._id}')">Rider Assign</button>
-            <a href="/invoice?id=${o.trackId}" target="_blank" style="display:inline-block; background:#ff5722; color:white; padding:8px 12px; border-radius:5px; text-decoration:none; font-size:13px; margin:5px 0;">📄 Invoice</a>
-            <div style="display:flex; gap:5px; margin-top:5px;">
-                <input type="text" id="lat-${o._id}" placeholder="Rider Lat" value="${o.riderLat || ''}" style="width:45%">
-                <input type="text" id="lng-${o._id}" placeholder="Rider Lng" value="${o.riderLng || ''}" style="width:45%">
+
+    let orderHtml = '';
+    for(let o of orders){
+        const riders = await loadRidersForShop(o.restaurantId); // Sirf is restaurant ke rider
+
+        orderHtml += `
+            <div class="order">
+                <b>${o.trackId}</b> - ${o.name} - ₹${o.total} <br>
+                <small>Restaurant: ${o.restaurantId} | ${o.phone} | ${o.address}</small> <br>
+                <b>Payment:</b> ${o.payment} | <b>Status:</b> ${o.status} | <b>Points:</b> ${o.pointsEarned || 0} <br>
+
+                <select id="rider-${o._id}" style="margin-top:8px;">
+                    <option value="">-- Rider Select Karo --</option>
+                    ${riders.map(r => `<option value="${r.mobile}" ${o.riderId==r.mobile?'selected':''}>${r.name} - ${r.mobile}</option>`).join('')}
+                </select>
+                <button class="btn-green" onclick="assignRider('${o._id}')">Rider Assign</button>
+
+                <a href="/invoice?id=${o.trackId}" target="_blank" style="display:inline-block; background:#ff5722; color:white; padding:8px 12px; border-radius:5px; text-decoration:none; font-size:13px; margin:5px 0;">📄 Invoice</a>
+                <div style="display:flex; gap:5px; margin-top:5px;">
+                    <input type="text" id="lat-${o._id}" placeholder="Rider Lat" value="${o.riderLat || ''}" style="width:45%">
+                    <input type="text" id="lng-${o._id}" placeholder="Rider Lng" value="${o.riderLng || ''}" style="width:45%">
+                </div>
+                <select onchange="updateStatus('${o._id}', this.value)">
+                    <option ${o.status=='Pending'?'selected':''}>Pending</option>
+                    <option ${o.status=='Preparing'?'selected':''}>Preparing</option>
+                    <option ${o.status=='Out for Delivery'?'selected':''}>Out for Delivery</option>
+                    <option ${o.status=='Delivered'?'selected':''}>Delivered</option>
+                </select>
+                <button class="btn-blue" onclick="updateLocation('${o._id}')">📍 Location Save</button>
+                <a href="/track?id=${o.trackId}" target="_blank"><button class="btn-blue">Track</button></a>
+                <button class="btn-red" onclick="delOrder('${o._id}')">Delete</button>
             </div>
-            <select onchange="updateStatus('${o._id}', this.value)">
-                <option ${o.status=='Pending'?'selected':''}>Pending</option>
-                <option ${o.status=='Preparing'?'selected':''}>Preparing</option>
-                <option ${o.status=='Out for Delivery'?'selected':''}>Out for Delivery</option>
-                <option ${o.status=='Delivered'?'selected':''}>Delivered</option>
-            </select>
-            <button class="btn-blue" onclick="updateLocation('${o._id}')">📍 Location Save</button>
-            <a href="/track?id=${o.trackId}" target="_blank"><button class="btn-blue">Track</button></a>
-            <button class="btn-red" onclick="delOrder('${o._id}')">Delete</button>
-        </div>
-    `).join('');
+        `;
+    }
+    document.getElementById('ordersList').innerHTML = orderHtml;
 }
 
 async function approveRider(id){ await fetch(API+`/api/rider/${id}/approve`, {method:'PUT'}); alert('Rider Approved!'); loadData(); }
@@ -250,7 +250,7 @@ async function addItem(){
         name: itemName.value, price: itemPrice.value, desc: itemDesc.value,
         category: itemCategory.value, offer: itemOffer.value,
         image: document.getElementById('itemImageBase64').value,
-        restaurantId: 'default-shop' // Admin default shop me add karega
+        restaurantId: 'default-shop'
     };
     if(!body.image) return alert('Photo select karo');
     await fetch(API+'/api/menu', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
