@@ -48,7 +48,7 @@ const RestaurantOwner = mongoose.model('RestaurantOwner', {
 const Rider = mongoose.model('Rider', {
     name:String, fatherName:String, aadhar:String, pan:String,
     mobile:{type:String, unique:true}, aadharImg: String, panImg: String, photoImg: String,
-    lat:Number, lng:Number, status:{type:String, default:"Pending"}, // Pending, Approved, Online, Offline
+    lat:Number, lng:Number, lastUpdate:Date, status:{type:String, default:"Pending"}, // Pending, Approved, Online, Offline
     restaurantId: {type: String}
 });
 
@@ -190,7 +190,6 @@ app.post('/api/rider/login', async (req,res)=>{
     let rider = await Rider.findOne({mobile: req.body.mobile});
     if(!rider) return res.json({success:false, msg:"Mobile register nahi hai"});
     if(rider.status === "Pending") return res.json({success:false, msg:"Approval pending hai"});
-    // Login karte hi status Online kar do
     rider = await Rider.findOneAndUpdate({mobile: req.body.mobile}, {status: "Online"}, {new:true});
     res.json({success:true, rider});
 });
@@ -201,9 +200,12 @@ app.put('/api/rider/:id/status', async (req,res)=>{
     res.json({success: true}); 
 })
 
-// NEW: Rider Location Update
+// NEW: Rider Location Update - Order me bhi update hoga
 app.post('/api/riderLocation', async (req,res)=>{ 
-    await Rider.findOneAndUpdate({mobile: req.body.mobile}, {lat: req.body.lat, lng: req.body.lng}); 
+    const {mobile, lat, lng} = req.body;
+    await Rider.findOneAndUpdate({mobile}, {lat, lng, lastUpdate: new Date()}); 
+    // Order me bhi location save karo taaki customer track kar sake
+    await Order.updateMany({riderId: mobile, status: "Out for Delivery"}, {riderLat: lat, riderLng: lng});
     res.json({success: true}); 
 })
 
