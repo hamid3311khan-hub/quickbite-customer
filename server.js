@@ -7,7 +7,6 @@ const http = require('http');
 const { Server } = require("socket.io");
 const PDFDocument = require('pdfkit');
 const multer = require('multer');
-// const cron = require('node-cron');  // HATA DIYA
 const upload = multer();
 
 const app = express();
@@ -190,8 +189,6 @@ app.get('/invoice', async (req,res)=>{
   doc.end();
 })
 
-// ===== CRON JOB HATA DIYA HAI DEPLOY KE LIYE =====
-
 // ===== PAGE ROUTES =====
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
 app.get('/index', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
@@ -205,6 +202,7 @@ app.get('/restaurants', (req, res) => res.sendFile(path.join(__dirname, 'public'
 app.get('/restaurant-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-register.html')));
 app.get('/restaurant-login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-login.html')));
 app.get('/restaurant-dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-dashboard.html')));
+app.get('/restaurant-profile', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-dashboard.html'))); // NAYA ROUTE
 app.get('/admin-owners', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin-owners.html')));
 
 server.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
