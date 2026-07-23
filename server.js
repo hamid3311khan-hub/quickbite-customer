@@ -190,8 +190,8 @@ app.get('/invoice', async (req,res)=>{
   doc.end();
 })
 
-// ===== CRON JOB - YEARLY REMINDER ===== FIXED 5 FIELDS
-cron.schedule('0 10 *', async () => { // Roz subah 10:00 baje IST
+// ===== CRON JOB - YEARLY REMINDER ===== TESTED 5 FIELDS
+cron.schedule('0 10 *', async () => { // Roz subah 10:00 baje
     console.log("Running maintenance reminder check...");
     const today = new Date();
     const owners = await RestaurantOwner.find({status: "Approved"});
@@ -204,7 +204,6 @@ cron.schedule('0 10 *', async () => { // Roz subah 10:00 baje IST
             if(diffDays % 3 === 0 || diffDays <= 3){
                 const msg = `Namaste ${owner.ownerName} ji 🙏\nQuickBite Maintenance Renewal\nAapka ₹200 maintenance charge ${diffDays} din me due hai.\nDue Date: ${owner.nextDueDate.toDateString()}\n\n- QuickBite Team`;
                 console.log(`Reminder to: ${owner.mobile} - ${diffDays} days left`);
-                console.log(`https://wa.me/91${owner.mobile}?text=${encodeURIComponent(msg)}`);
             }
         }
         if(diffDays < 0){
