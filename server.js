@@ -87,11 +87,21 @@ app.post('/api/restaurant/offer', async (req,res)=>{
     res.json({success:true, msg: "Offer Created!"});
 })
 
+// FIX 1: Image required hata di
 app.post('/api/menu', upload.none(), async (req,res)=>{
   try{
     const {name, price, desc, category, offer, image, restaurantId} = req.body;
-    if(!image) return res.json({success:false, msg:"Image nahi mili"});
-    await new MenuItem({name, price, desc, category, offer, image, restaurantId: restaurantId || 'default-shop', veg: req.body.veg === 'true', inStock: true}).save();
+    await new MenuItem({
+        name, 
+        price, 
+        desc, 
+        category, 
+        offer, 
+        image: image || '', // image nahi bhi ho to chalega
+        restaurantId: restaurantId || 'default-shop', 
+        veg: req.body.veg === 'true', 
+        inStock: true
+    }).save();
     res.json({success:true});
   }catch(e){ res.json({success:false, msg:e.message}) }
 });
@@ -138,7 +148,7 @@ app.post('/api/restaurant/login', async (req,res)=>{
     const owner = await RestaurantOwner.findOne({email, password});
     if(!owner) return res.json({success:false, msg: "Galat email ya password"});
     if(owner.status !== "Approved") return res.json({success:false, msg: "Approval pending hai"});
-    res.json({success:true, owner})
+    res.json({success:true, owner}) // owner object me restaurantId bhi aa raha hai
 });
 
 app.get('/api/restaurant/owners', async (req,res)=> res.json(await RestaurantOwner.find().sort({createdAt:-1})) );
@@ -202,7 +212,7 @@ app.get('/restaurants', (req, res) => res.sendFile(path.join(__dirname, 'public'
 app.get('/restaurant-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-register.html')));
 app.get('/restaurant-login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-login.html')));
 app.get('/restaurant-dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-dashboard.html')));
-app.get('/restaurant-profile', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-dashboard.html'))); // NAYA ROUTE
+app.get('/restaurant-profile', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-dashboard.html')));
 app.get('/admin-owners', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin-owners.html')));
 
 server.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
