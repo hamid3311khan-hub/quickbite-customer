@@ -7,21 +7,21 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
     body{background:#f8f9fa}
-    .badge-pending{background:#ffc107}
-    .badge-paid{background:#0dcaf0}
-    .badge-approved{background:#198754}
+   .badge-pending{background:#ffc107}
+   .badge-paid{background:#0dcaf0}
+   .badge-approved{background:#198754}
 </style>
 </head>
 <body>
 
 <nav class="navbar bg-dark navbar-dark px-3">
-    <span class="navbar-brand">QuickBite Admin Panel</span>
+    <a class="navbar-brand" href="/admin">← Back to Admin</a>
 </nav>
 
 <div class="container mt-4">
-    <h3>Restaurant Approval Requests</h3>
+    <h3>🏪 Restaurant Approval Requests</h3>
     <p class="text-muted">Payment karne wale owners yahan dikhenge. Approve karne ke baad hi wo login kar payenge.</p>
-    
+
     <table class="table table-bordered bg-white shadow-sm">
         <thead class="table-dark">
             <tr>
@@ -29,41 +29,45 @@
                 <th>Owner</th>
                 <th>Email</th>
                 <th>Mobile</th>
+                <th>Restaurant ID</th>
                 <th>Status</th>
                 <th>Action</th>
             </tr>
         </thead>
         <tbody id="ownersTable">
-            <tr><td colspan="6" class="text-center">Loading...</td></tr>
+            <tr><td colspan="7" class="text-center">Loading...</td></tr>
         </tbody>
     </table>
 </div>
 
 <script>
+const API = '';
+
 async function loadOwners(){
-    const res = await fetch('/api/admin/owners');
+    const res = await fetch(API+'/api/restaurant/owners');
     const owners = await res.json();
-    
+
     if(owners.length === 0){
-        document.getElementById('ownersTable').innerHTML = `<tr><td colspan="6" class="text-center">Koi request nahi hai</td></tr>`;
+        document.getElementById('ownersTable').innerHTML = `<tr><td colspan="7" class="text-center">Koi request nahi hai</td></tr>`;
         return;
     }
 
     let rows = '';
     owners.forEach(o => {
-        let badge = o.status === 'Pending' ? 'badge-pending' : o.status === 'Paid' ? 'badge-paid' : 'badge-approved';
-        let actionBtn = o.status === 'Paid' 
-            ? `<button class="btn btn-sm btn-success" onclick="approveOwner('${o._id}')">Approve</button>` 
-            : o.status === 'Approved' 
-            ? `<span class="text-success">Approved</span>` 
-            : `<span class="text-muted">Payment Pending</span>`;
+        let badge = o.status === 'Pending'? 'badge-pending' : o.status === 'Paid'? 'badge-paid' : 'badge-approved';
+        let actionBtn = o.status === 'Pending'
+           ? `<button class="btn btn-sm btn-success" onclick="approveOwner('${o._id}')">✅ Approve</button> <button class="btn btn-sm btn-danger" onclick="rejectOwner('${o._id}')">❌ Reject</button>`
+            : o.status === 'Approved'
+           ? `<span class="text-success fw-bold">Approved</span>`
+            : `<span class="text-muted">Pending</span>`;
 
         rows += `
         <tr>
-            <td>${o.restaurantName}</td>
-            <td>${o.name}</td>
+            <td><b>${o.restaurantName}</b></td>
+            <td>${o.ownerName}</td>
             <td>${o.email}</td>
             <td>${o.mobile}</td>
+            <td><code>${o.restaurantId}</code></td>
             <td><span class="badge ${badge}">${o.status}</span></td>
             <td>${actionBtn}</td>
         </tr>`;
@@ -73,16 +77,27 @@ async function loadOwners(){
 
 async function approveOwner(id){
     if(!confirm('Pakka Approve karna hai?')) return;
-    const res = await fetch(`/api/admin/approve-owner/${id}`, {method:'PUT'});
+    const res = await fetch(API+`/api/restaurant/owner/${id}/approve`, {method:'PUT'});
     const result = await res.json();
     if(result.success){
         alert('Restaurant Approved ho gaya!');
+        loadOwners();
+    } else {
+        alert('Error: '+result.msg);
+    }
+}
+
+async function rejectOwner(id){
+    if(!confirm('Pakka Reject karna hai?')) return;
+    const res = await fetch(API+`/api/restaurant/owner/${id}`, {method:'DELETE'});
+    const result = await res.json();
+    if(result.success){
+        alert('Restaurant Reject kiya gaya!');
         loadOwners();
     }
 }
 
 loadOwners();
 </script>
-
 </body>
 </html>
