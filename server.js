@@ -72,9 +72,10 @@ app.get('/api/orders', async (req,res)=>{
     res.json(await Order.find().sort({createdAt:-1})) 
 });
 
+// FIXED TYPO HERE
 app.get('/api/restaurant/stats', async (req,res)=>{
     const shop = req.query.shop;
-    const today = new; Date(); today.setHours(0,0,0,0);
+    const today = new Date(); today.setHours(0,0,0,0);
     const orders = await Order.find({ restaurantId: shop, createdAt: {$gte: today} });
     const revenue = orders.reduce((a,b)=>a+b.total, 0);
     res.json({ orders: orders.length, revenue });
@@ -131,16 +132,20 @@ app.post('/api/restaurant/login', async (req,res)=>{
 });
 
 app.get('/api/restaurant/owners', async (req,res)=> res.json(await RestaurantOwner.find().sort({createdAt:-1})) );
+
+// FIXED BRACE HERE
 app.put('/api/restaurant/owner/:id/approve', async (req,res)=>{
     const owner = await RestaurantOwner.findByIdAndUpdate(req.params.id, {status: "Approved"}, {new:true});
     await new Restaurant({id: owner.restaurantId, name: owner.restaurantName, address: owner.address, image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=200&fit=crop"}).save();
     res.json({success:true});
+}); // <-- ye brace add kiya
+
 app.delete('/api/restaurant/owner/:id', async (req,res)=>{ await RestaurantOwner.findByIdAndDelete(req.params.id); res.json({success:true}); });
 
-// YAHI FIX HAI - DEMO HATA DIYA
+// YAHI MAIN FIX HAI - DEMO HATA DIYA
 app.get('/api/restaurants', async (req,res)=>{
     const shops = await Restaurant.find({status: "Active"});
-    res.json(shops); // Ab khali hoga to [] aayega, Moms Kitchen nahi
+    res.json(shops); // Ab DB khali = [] aayega
 });
 
 // BAAKI SAB SAME
