@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <title>Track Order - QuickBite</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- LEAFLET MAP CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 *{margin:0;font-family:Arial}
 nav{background:#ff5722;color:white;padding:15px;text-align:center;font-size:20px;font-weight:bold}
@@ -16,12 +18,14 @@ nav{background:#ff5722;color:white;padding:15px;text-align:center;font-size:20px
 .step.active .dot{background:#28a745}.step.active p{font-weight:bold; color:#28a745}
 .btn{padding:12px;margin:5px 0;width:100%;border:none;border-radius:8px;font-size:16px;cursor:pointer;color:white;background:#25D366; text-decoration:none; display:block; text-align:center; font-weight:bold;}
 .error{border:2px solid red;background:#ffe6e6;padding:15px;border-radius:10px}
+#map{height:300px; background:#eee; border-radius:8px; margin:15px 0; z-index:1; border:2px solid #ff6600}
 </style>
 </head>
 <body>
 <nav>🔥 QuickBite Live Tracking</nav>
 <div class="container">
 <div id="orderBox" class="card">Loading Order...</div>
+
 <div id="trackingBox" class="card">
     <h3>🚚 Order Status</h3>
     <p><b>Current Status:</b> <span id="currentStatus">Pending</span></p>
@@ -31,46 +35,92 @@ nav{background:#ff5722;color:white;padding:15px;text-align:center;font-size:20px
         <div class="step" id="s3"><div class="dot">3</div><p>Out for Delivery</p></div>
         <div class="step" id="s4"><div class="dot">4</div><p>Delivered</p></div>
     </div>
-    <p style="text-align:center; color:#666; margin-top:10px;">* Page har 10 sec me auto refresh hota hai</p>
+    
+    <h3 style="margin-top:15px;">📍 Live Tracking Map</h3>
+    <div id="map">Map Loading...</div>
+    <p style="text-align:center; color:#666; margin-top:10px;">* Map har 5 sec me auto update hota hai</p>
 </div>
 
 <a id="invoiceBtn" href="#" target="_blank" class="btn" style="background:#ff5722; margin-bottom:10px;">📄 Download Invoice PDF</a>
 <a id="waBtn" href="#" target="_blank" class="btn" style="background:#25D366;">📞 Contact Us on WhatsApp</a>
 </div>
 
+<!-- LEAFLET MAP JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const API = '';
 const urlParams = new URLSearchParams(window.location.search);
 const trackId = urlParams.get('id');
 
+let map = null;
+let shopMarker = null;
+let riderMarker = null;
+let custMarker = null;
+
+function initMap(){
+    map = L.map('map').setView([25.0968, 85.3131], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+}
+
 async function loadOrder(){
     if(!trackId) return document.getElementById('orderBox').innerHTML="<div class='error'><h3>Invalid Order ID</h3></div>";
     try{
-        const res = await fetch(`${API}/api/track/${trackId}`);
-        const data = await res.json();
-        if(!data.success) return document.getElementById('orderBox').innerHTML="<div class='error'><h3>Order not found</h3></div>";
-
-        const o = data.order;
+        const res = await fetch(`${API}/api/orders/track/${trackId}`);
+        const o = await res.json();
+        if(!o) return document.getElementById('orderBox').innerHTML="<div class='error'><h3>Order not found</h3></div>";
 
         document.getElementById('orderBox').innerHTML = `<h2>Order: ${o.trackId}</h2><p><b>Name:</b> ${o.name}</p><p><b>Phone:</b> ${o.phone}</p><p><b>Address:</b> ${o.address}</p><p><b>Total Paid:</b> ₹${o.total}</p><hr style="margin:10px 0"><p><b>Items:</b><br> ${o.items ? o.items.map(i=>`• ${i.name} x${i.qty} - ₹${i.price}`).join('<br>') : 'N/A'}</p>`;
 
         document.getElementById('currentStatus').innerText = o.status;
         const steps = ['Pending', 'Preparing', 'Out for Delivery', 'Delivered'];
         const index = steps.indexOf(o.status);
-        for(let i=1; i<=4; i++) {
-            if(i <= index+1) document.getElementById('s'+i).classList.add('active');
+        document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+        for(let i=1; i<=index+1; i++) {
+            document.getElementById('s'+i).classList.add('active');
         }
 
         document.getElementById('invoiceBtn').href = `/invoice?id=${o.trackId}`;
         document.getElementById('waBtn').href = `https://wa.me/91${o.phone}?text=Hi QuickBite, mera Order ID: ${o.trackId} - Status: ${o.status}`;
+
+        updateMap(o); // Map update karo
 
     } catch(e){
         document.getElementById('orderBox').innerHTML="<div class='error'><h3>Server Error. Refresh karo</h3></div>";
     }
 }
 
-loadOrder();
-setInterval(loadOrder, 10000); // Har 10 sec me refresh
+function updateMap(order){
+    // 1. Shop ka pin
+    if(!shopMarker){
+        shopMarker = L.marker([order.shopLat, order.shopLng]).addTo(map).bindPopup("🏪 Shop");
+    }
+
+    // 2. Customer ka pin
+    if(order.custLat && order.custLng && !custMarker){
+        custMarker = L.marker([order.custLat, order.custLng]).addTo(map).bindPopup("📍 Delivery Address");
+    }
+
+    // 3. Rider ka pin - sirf Out for Delivery me
+    if(order.status === 'Out for Delivery' && order.riderLat && order.riderLng){
+        if(!riderMarker){
+            riderMarker = L.marker([order.riderLat, order.riderLng]).addTo(map).bindPopup("🏍️ Rider");
+            const group = new L.featureGroup([shopMarker, riderMarker]);
+            map.fitBounds(group.getBounds().pad(0.3));
+        } else {
+            riderMarker.setLatLng([order.riderLat, order.riderLng]);
+        }
+    } else {
+        if(riderMarker){ riderMarker.remove(); riderMarker = null; }
+    }
+}
+
+window.onload = () => {
+    initMap();
+    loadOrder();
+    setInterval(loadOrder, 5000); // 5 sec me update
+}
 </script>
 </body>
 </html>
