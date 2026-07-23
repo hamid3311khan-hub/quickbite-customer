@@ -11,11 +11,11 @@ body{font-family:Arial; background:#f4f4f4; margin:0; padding:20px;}
 .login-box, .dashboard{background:white; padding:20px; border-radius:12px; max-width:500px; margin:auto; box-shadow:0 2px 10px #ccc;}
 h2{text-align:center; color:#ff5722;}
 input{width:100%; padding:12px; margin:8px 0; border-radius:6px; border:1px solid #ccc; box-sizing:border-box;}
-button{width:100%; padding:14px; background:#ff5722; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;}
+button{width:100%; padding:14px; background:#ff5722; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; margin:5px 0;}
 .order{border:1px solid #ddd; padding:15px; margin:10px 0; border-radius:8px;}
 .top-bar{display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;}
 .logout-btn{background:#dc3545; width:auto; padding:8px 15px;}
-#map{height:250px; background:#eee; border-radius:8px; margin:10px 0; z-index:1;} /* z-index add kiya */
+#map{height:250px; background:#eee; border-radius:8px; margin:10px 0; z-index:1;}
 </style>
 </head>
 <body>
@@ -43,7 +43,7 @@ button{width:100%; padding:14px; background:#ff5722; color:white; border:none; b
   <div id="myOrders">Loading...</div>
   
   <h3>📍 Live Location</h3>
-  <div id="map">Location on karne ke liye Online ho jao</div>
+  <div id="map"></div>
 </div>
 
 <!-- LEAFLET MAP JS -->
@@ -52,8 +52,8 @@ button{width:100%; padding:14px; background:#ff5722; color:white; border:none; b
 const API = '';
 let riderData = null;
 let locationInterval = null;
-let map = null; // Map variable
-let riderMarker = null; // Rider ka pin
+let map = null; 
+let riderMarker = null;
 
 // Page load pe check karo login hai ya nahi
 window.onload = () => {
@@ -64,7 +64,8 @@ window.onload = () => {
         document.getElementById('riderName').innerText = `Hello, ${riderData.name}`;
         initMap(); // Map load karo
         loadMyOrders();
-        if(riderData.status === 'Online') goOnline();
+        document.getElementById('riderStatus').innerText = riderData.status;
+        if(riderData.status === 'Online') startLocationTracking();
     }
 }
 
@@ -102,6 +103,8 @@ function riderLogout(){
 
 async function goOnline(){
     await fetch(API+`/api/rider/${riderData._id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'Online'})});
+    riderData.status = 'Online';
+    localStorage.setItem('riderData', JSON.stringify(riderData));
     document.getElementById('riderStatus').innerText = 'Online';
     startLocationTracking();
 }
@@ -109,7 +112,16 @@ async function goOnline(){
 async function goOffline(){
     clearInterval(locationInterval);
     await fetch(API+`/api/rider/${riderData._id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'Approved'})});
+    riderData.status = 'Approved';
+    localStorage.setItem('riderData', JSON.stringify(riderData));
     document.getElementById('riderStatus').innerText = 'Offline';
+    
+    // Pin hata do aur map Chhapra pe le jao
+    if(riderMarker){
+        riderMarker.remove();
+        riderMarker = null;
+    }
+    map.setView([25.0968, 85.3131], 13);
 }
 
 function startLocationTracking(){
@@ -132,7 +144,7 @@ function updateRiderLocation(pos){
 
     // 1. Map pe pin update karo
     if(!riderMarker){
-        riderMarker = L.marker([lat, lng]).addTo(map).bindPopup("Aap yaha ho");
+        riderMarker = L.marker([lat, lng]).addTo(map).bindPopup("🏍️ Aap yaha ho");
         map.setView([lat, lng], 15); // Pehli baar zoom
     } else {
         riderMarker.setLatLng([lat, lng]);
