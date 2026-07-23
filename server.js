@@ -191,13 +191,13 @@ app.get('/invoice', async (req,res)=>{
 })
 
 // ===== CRON JOB - YEARLY REMINDER ===== FIXED 5 FIELDS
-cron.schedule('0 10 *', async () => { // Roz subah 10:00 baje
+cron.schedule('0 10 *', async () => { // Roz subah 10:00 baje IST
     console.log("Running maintenance reminder check...");
     const today = new Date();
     const owners = await RestaurantOwner.find({status: "Approved"});
 
-    owners.forEach(async owner => {
-        if(!owner.nextDueDate) return;
+    for(const owner of owners) {
+        if(!owner.nextDueDate) continue;
         const diffDays = Math.ceil((owner.nextDueDate - today) / (1000 * 60 * 60 * 24));
 
         if(diffDays <= 20 && diffDays >= 1){
@@ -211,7 +211,7 @@ cron.schedule('0 10 *', async () => { // Roz subah 10:00 baje
             await RestaurantOwner.findByIdAndUpdate(owner._id, {status: "Suspended"});
             console.log(`${owner.restaurantName} suspended due to non-payment`);
         }
-    });
+    }
 });
 
 // ===== PAGE ROUTES =====
