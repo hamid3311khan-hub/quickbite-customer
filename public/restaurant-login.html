@@ -7,9 +7,9 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
     body{background:linear-gradient(135deg,#ff6600,#ff3300); min-height:100vh; display:flex; align-items:center;}
-    .card{max-width:450px; margin:auto; border-radius:15px; border:none;}
-    .logo{font-size:28px; font-weight:bold; color:#ff5722; text-align:center; margin-bottom:20px}
-    .back-home{position:absolute; top:20px; left:20px; color:white; text-decoration:none; font-weight:bold;}
+   .card{max-width:450px; margin:auto; border-radius:15px; border:none;}
+   .logo{font-size:28px; font-weight:bold; color:#ff5722; text-align:center; margin-bottom:20px}
+   .back-home{position:absolute; top:20px; left:20px; color:white; text-decoration:none; font-weight:bold;}
 </style>
 </head>
 <body>
@@ -54,29 +54,35 @@ document.getElementById('loginForm').addEventListener('submit', async (e)=>{
         password: document.getElementById('password').value
     };
 
-    const res = await fetch('/api/restaurant/login', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(data)
-    });
-    const result = await res.json();
+    try{
+        const res = await fetch('/api/restaurant/login', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
 
-    if(result.success){
-        if(result.owner.status !== 'Approved'){
-            document.getElementById('msg').innerHTML = `<div class="alert alert-warning">⚠️ Tumhara restaurant abhi Admin se approve nahi hua. Thoda wait karo.</div>`;
+        if(result.success){
+            if(result.owner.status!== 'Approved'){
+                document.getElementById('msg').innerHTML = `<div class="alert alert-warning">⚠️ Tumhara restaurant abhi Admin se approve nahi hua. Thoda wait karo.</div>`;
+                btn.disabled = false;
+                btn.innerText = "Login";
+                return;
+            }
+            // IMPORTANT: restaurantOwner naam se save karna hai
+            localStorage.setItem('restaurantOwner', JSON.stringify(result.owner));
+            window.location.href = '/restaurant-dashboard';
+        } else {
+            document.getElementById('msg').innerHTML = `<div class="alert alert-danger">${result.msg}</div>`;
             btn.disabled = false;
             btn.innerText = "Login";
-            return;
         }
-        localStorage.setItem('owner', JSON.stringify(result.owner));
-        window.location.href = '/restaurant-dashboard';
-    } else {
-        document.getElementById('msg').innerHTML = `<div class="alert alert-danger">${result.msg}</div>`;
+    }catch(err){
+        document.getElementById('msg').innerHTML = `<div class="alert alert-danger">Server Error: ${err.message}</div>`;
         btn.disabled = false;
         btn.innerText = "Login";
     }
 });
 </script>
-
 </body>
 </html>
