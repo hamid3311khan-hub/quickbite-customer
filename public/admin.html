@@ -23,6 +23,7 @@
     small{color:#666; font-size:12px;}
  .rider-docs img{width:70px; height:70px; object-fit:cover; border:1px solid #ccc; border-radius:5px; margin:3px;}
  .menu-item img{width:80px; height:80px; object-fit:cover; border-radius:5px; float:left; margin-right:10px;}
+ .rider-map{height:200px; margin-top:10px; border-radius:8px; overflow:hidden; background:#eee;} /* NAYA */
 </style>
 </head>
 <body>
@@ -30,7 +31,6 @@
 <div class="top-bar">
     <h1>🔥 QuickBite Admin Panel</h1>
     <div class="top-buttons">
-        <a href="/admin-owners" class="btn-owner">🏪 Approve Restaurants</a>
         <button class="logout-btn" onclick="logout()">🚪 Logout</button>
     </div>
 </div>
@@ -41,71 +41,12 @@
 </div>
 
 <div class="card">
-    <h2>🏪 Pending Restaurant Approvals</h2>
-    <div id="pendingOwnersList">Loading...</div>
-</div>
-
-<div class="card">
-    <h2>🏍️ Pending Rider Approvals</h2>
-    <div id="pendingRidersList">Loading...</div>
-</div>
-
-<div class="card">
-    <h2>📊 Sales Report</h2>
-    <div style="display:flex; gap:10px;">
-        <input type="date" id="startDate">
-        <input type="date" id="endDate">
-    </div>
-    <button class="btn-blue" onclick="getReport()">Get Report</button>
-    <div id="reportResult" class="report-result"></div>
-</div>
-
-<div class="card">
-    <h2>📢 WhatsApp Broadcast</h2>
-    <textarea id="broadcastMsg" placeholder="Offer: 50% OFF on First Order" rows="3"></textarea>
-    <div style="display:flex; gap:10px; flex-wrap:wrap;">
-        <button class="btn-green" onclick="sendBroadcast('all')">Send to All Customers</button>
-        <button class="btn-blue" onclick="sendBroadcast('new')">Send to New Customers</button>
-    </div>
-    <div style="margin-top:15px; padding-top:15px; border-top:1px dashed #ddd;">
-        <h4>Send to Selected Numbers</h4>
-        <input type="text" id="manualNumbers" placeholder="7061840674, 8507317931, 9876543210">
-        <small>Comma se alag karo. 91 lagane ki zarurat nahi</small>
-        <button class="btn-green" onclick="sendBroadcast('manual')">Send to Selected</button>
-    </div>
-</div>
-
-<div class="card">
-    <h2>🎟️ Add Coupon</h2>
-    <input type="text" id="couponCode" placeholder="Code: FIRST50">
-    <input type="number" id="couponDiscount" placeholder="Discount: 50">
-    <select id="couponType"><option value="FLAT">FLAT</option><option value="PERCENT">PERCENT</option></select>
-    <button onclick="addCoupon()">Add Coupon</button>
-</div>
-
-<div class="card">
-    <h2>🍔 Add New Menu Item - Default Shop</h2>
-    <input type="text" id="itemName" placeholder="Item Name">
-    <input type="number" id="itemPrice" placeholder="Price">
-    <input type="text" id="itemDesc" placeholder="Description">
-    <input type="text" id="itemCategory" placeholder="Category: Pizza, Burger">
-    <input type="number" id="itemOffer" placeholder="Offer %">
-    <input type="file" id="itemImg" accept="image/*">
-    <input type="hidden" id="itemImageBase64">
-    <img id="previewImg" style="width:100px; height:100px; object-fit:cover; margin:10px 0; display:none; border-radius:5px;">
-    <button onclick="addItem()">Add Item</button>
-    <div id="menuList"></div>
-</div>
-
-<div class="card">
     <h2>📦 Orders</h2>
     <div id="ordersList">Loading...</div>
 </div>
 
 <script>
 const API = '';
-let allRiders = [];
-
 const ADMIN_PASSWORD = 'admin123';
 
 function checkLogin(){
@@ -118,162 +59,46 @@ function checkLogin(){
 function logout(){ sessionStorage.removeItem('adminLoggedIn'); alert("Logout ho gaye"); window.location = '/'; }
 checkLogin();
 
-document.getElementById('itemImg').addEventListener('change', function(e){
-    const file = e.target.files[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = function(event){
-        document.getElementById('itemImageBase64').value = event.target.result;
-        document.getElementById('previewImg').src = event.target.result;
-        document.getElementById('previewImg').style.display = 'block';
-    }
-    reader.readAsDataURL(file);
-});
-
-// FIX: Sirf usi restaurant ke free rider laao
-async function loadRidersForShop(shopId){
-    const res = await fetch(API+`/api/riders/approved?shop=${shopId}`);
-    const ridersData = await res.json();
-    const freeRiders = [];
-    for(let r of ridersData){
-        const check = await fetch(API+`/api/rider/check-busy/${r.mobile}`);
-        const data = await check.json();
-        if(data.free) freeRiders.push(r);
-    }
-    return freeRiders;
-}
-
-async function loadOwners(){
-    const res = await fetch(API+'/api/restaurant/owners');
-    const owners = await res.json();
-    const pending = owners.filter(o => o.status === 'Pending');
-    document.getElementById('pendingOwnersList').innerHTML = pending.length === 0? 'Koi pending restaurant nahi hai' :
-    pending.map(o => `
-        <div class="owner-item">
-            <b>${o.restaurantName}</b> - ${o.ownerName} <br>
-            <small>ID: ${o.restaurantId} | Mobile: ${o.mobile} | ${o.address}</small> <br>
-            <button class="btn-green" onclick="approveOwner('${o._id}')">✅ Approve</button>
-            <button class="btn-red" onclick="rejectOwner('${o._id}')">❌ Reject</button>
-        </div>
-    `).join('');
-}
-
-async function approveOwner(id){ await fetch(API+`/api/restaurant/owner/${id}/approve`, {method:'PUT'}); alert('Restaurant Approved!'); loadData(); }
-async function rejectOwner(id){ if(confirm('Pakka Reject karna hai?')){ await fetch(API+`/api/restaurant/owner/${id}`, {method:'DELETE'}); alert('Reject kiya'); loadData(); } }
-
 async function loadData(){
-    await loadOwners();
-
-    const allRiderRes = await fetch(API+'/api/riders'); allRiders = await allRiderRes.json();
-
-    const pending = allRiders.filter(r => r.status && r.status.toLowerCase() === 'pending');
-    document.getElementById('pendingRidersList').innerHTML = pending.length === 0? 'Koi pending rider nahi hai' :
-    pending.map(r => `
-        <div class="rider-item">
-            <b>${r.name}</b> - ${r.mobile} <br>
-            <small>Restaurant: ${r.restaurantId} | Father: ${r.fatherName} | Aadhar: ${r.aadhar}</small> <br>
-            <button class="btn-green" onclick="approveRider('${r._id}')">✅ Approve Karo</button>
-            <button class="btn-red" onclick="rejectRider('${r._id}')">❌ Reject</button>
-        </div>
-    `).join('');
-
-    const stats = await fetch(API+'/api/stats').then(r=>r.json());
+    const stats = await fetch(API+'/api/stats').then(r=>r.json()).catch(()=>({orders:0, customers:0}));
     document.getElementById('totalOrders').innerText = stats.orders;
     document.getElementById('totalCustomers').innerText = stats.customers;
-
-    const menu = await fetch(API+'/api/menu').then(r=>r.json());
-    document.getElementById('menuList').innerHTML = menu.map(i=>`
-        <div class="menu-item">
-            <img src="${i.image || 'https://via.placeholder.com/80'}" onerror="this.src='https://via.placeholder.com/80?text=No+Img'">
-            <b>${i.name}</b> - ₹${i.price} - ${i.inStock? 'In Stock' : 'Out of Stock'}
-            <button onclick="toggleStock('${i._id}')">${i.inStock? 'OFF' : 'ON'}</button>
-            <button class="btn-red" onclick="delItem('${i._id}')">Delete</button>
-        </div>
-    `).join('');
 
     const orders = await fetch(API+'/api/orders').then(r=>r.json());
 
     let orderHtml = '';
     for(let o of orders){
-        const riders = await loadRidersForShop(o.restaurantId); // Sirf is restaurant ke rider
-
         orderHtml += `
             <div class="order">
                 <b>${o.trackId}</b> - ${o.name} - ₹${o.total} <br>
-                <small>Restaurant: ${o.restaurantId} | ${o.phone} | ${o.address}</small> <br>
-                <b>Payment:</b> ${o.payment} | <b>Status:</b> ${o.status} | <b>Points:</b> ${o.pointsEarned || 0} <br>
-
-                <select id="rider-${o._id}" style="margin-top:8px;">
-                    <option value="">-- Rider Select Karo --</option>
-                    ${riders.map(r => `<option value="${r.mobile}" ${o.riderId==r.mobile?'selected':''}>${r.name} - ${r.mobile}</option>`).join('')}
-                </select>
-                <button class="btn-green" onclick="assignRider('${o._id}')">Rider Assign</button>
-
-                <a href="/invoice?id=${o.trackId}" target="_blank" style="display:inline-block; background:#ff5722; color:white; padding:8px 12px; border-radius:5px; text-decoration:none; font-size:13px; margin:5px 0;">📄 Invoice</a>
-                <div style="display:flex; gap:5px; margin-top:5px;">
-                    <input type="text" id="lat-${o._id}" placeholder="Rider Lat" value="${o.riderLat || ''}" style="width:45%">
-                    <input type="text" id="lng-${o._id}" placeholder="Rider Lng" value="${o.riderLng || ''}" style="width:45%">
-                </div>
+                <small>${o.phone} | ${o.address}</small> <br>
+                <b>Status:</b> ${o.status} | <b>Rider:</b> ${o.riderId || 'Nahi hai'} <br>
                 <select onchange="updateStatus('${o._id}', this.value)">
                     <option ${o.status=='Pending'?'selected':''}>Pending</option>
-                    <option ${o.status=='Preparing'?'selected':''}>Preparing</option>
                     <option ${o.status=='Out for Delivery'?'selected':''}>Out for Delivery</option>
                     <option ${o.status=='Delivered'?'selected':''}>Delivered</option>
                 </select>
-                <button class="btn-blue" onclick="updateLocation('${o._id}')">📍 Location Save</button>
                 <a href="/track?id=${o.trackId}" target="_blank"><button class="btn-blue">Track</button></a>
-                <button class="btn-red" onclick="delOrder('${o._id}')">Delete</button>
+                <!-- MAP YAHI DIKHEGA -->
+                ${o.riderLat && o.riderLng ? `
+                <div class="rider-map">
+                    <iframe width="100%" height="200" frameborder="0" 
+                    src="https://www.google.com/maps?q=${o.riderLat},${o.riderLng}&z=15&output=embed"></iframe>
+                </div>` : ''}
             </div>
         `;
     }
-    document.getElementById('ordersList').innerHTML = orderHtml;
+    document.getElementById('ordersList').innerHTML = orderHtml || 'Koi order nahi';
 }
 
-async function approveRider(id){ await fetch(API+`/api/rider/${id}/approve`, {method:'PUT'}); alert('Rider Approved!'); loadData(); }
-async function rejectRider(id){ if(confirm('Pakka Reject karna hai?')){ await fetch(API+`/api/riders/${id}`, {method:'DELETE'}); alert('Rider Reject kiya'); loadData(); } }
-
-async function getReport(){ let s = document.getElementById('startDate').value; let e = document.getElementById('endDate').value; if(!s ||!e) return alert('Start aur End date select karo'); const d = await fetch(`${API}/api/report?start=${s}&end=${e}`).then(r=>r.json()); document.getElementById('reportResult').innerHTML = `<p><b>Total Revenue:</b> ₹${d.totalRevenue}</p><p><b>Total Orders:</b> ${d.totalOrders}</p>` }
-
-async function sendBroadcast(type){
-    const message = document.getElementById('broadcastMsg').value;
-    if(!message) return alert('Message likho');
-    let body = {message, type};
-    if(type === 'manual'){ const numbers = document.getElementById('manualNumbers').value; if(!numbers) return alert('Number bhi daalo'); body.numbers = numbers; }
-    const res = await fetch(API+'/api/broadcast', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
-    const data = await res.json(); alert(`${data.count} logo ko link ban gaye`); if(data.links) data.links.forEach(link => window.open(link, '_blank'));
-}
-
-async function addCoupon(){ const body = {code:couponCode.value, discount:+couponDiscount.value, type:couponType.value}; await fetch(API+'/api/coupon', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}); alert('Coupon Added'); couponCode.value=''; }
-
-async function addItem(){
-    const body = {
-        name: itemName.value, price: itemPrice.value, desc: itemDesc.value,
-        category: itemCategory.value, offer: itemOffer.value,
-        image: document.getElementById('itemImageBase64').value,
-        restaurantId: 'default-shop'
-    };
-    if(!body.image) return alert('Photo select karo');
-    await fetch(API+'/api/menu', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
-    alert('Item Added'); loadData();
-    itemName.value=''; itemPrice.value=''; itemDesc.value=''; itemCategory.value=''; itemOffer.value=''; itemImg.value='';
-    document.getElementById('itemImageBase64').value=''; document.getElementById('previewImg').style.display='none';
-}
-
-async function toggleStock(id){ await fetch(API+`/api/menu/${id}/stock`, {method:'PUT'}); loadData(); }
-async function delItem(id){ if(confirm('Delete?')){ await fetch(API+`/api/menu/${id}`, {method:'DELETE'}); loadData(); }}
-async function updateLocation(id){ const riderLat = document.getElementById(`lat-${id}`).value; const riderLng = document.getElementById(`lng-${id}`).value; await fetch(API+`/api/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status: 'Out for Delivery', riderLat, riderLng})}); alert('📍 Location Save ho gayi'); loadData(); }
-async function updateStatus(id, status){ const riderLat = document.getElementById(`lat-${id}`).value; const riderLng = document.getElementById(`lng-${id}`).value; const res = await fetch(API+`/api/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status, riderLat, riderLng})}); const data = await res.json(); if(data.customerWaLink) window.open(data.customerWaLink, '_blank'); alert("Status Updated: " + status); loadData(); }
-async function delOrder(id){ if(confirm('Pakka Delete karna hai?')){ await fetch(API+`/api/orders/${id}`, {method:'DELETE'}); alert("Order Delete ho gaya"); loadData(); } }
-async function assignRider(orderId){
-    const riderMobile = document.getElementById(`rider-${orderId}`).value;
-    if(!riderMobile) return alert('Pehle Rider select karo');
-    const res = await fetch(API+`/api/order/assign`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({orderId, riderId: riderMobile})});
-    const data = await res.json();
-    if(data.success){ alert('Rider Assign ho gaya!'); } else { alert('❌ ' + data.msg); }
-    loadData();
+async function updateStatus(id, status){ 
+    await fetch(API+`/api/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})}); 
+    alert("Status Updated: " + status); 
+    loadData(); 
 }
 
 loadData();
+setInterval(loadData, 10000); // 10 sec me auto refresh
 </script>
 </body>
 </html>
