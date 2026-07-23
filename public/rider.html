@@ -21,7 +21,6 @@ button{width:100%; padding:14px; background:#ff5722; color:white; border:none; b
   <h2>🏍️ Rider Login</h2>
   <input id="riderMobile" placeholder="Registered Mobile Number" maxlength="10">
   <button onclick="riderLogin()">Login Karo</button>
-  <p style="text-align:center; margin-top:10px;"><a href="/rider-register">Naya Rider Register Karo</a></p>
 </div>
 
 <div class="dashboard" id="dashboard" style="display:none;">
@@ -41,10 +40,8 @@ button{width:100%; padding:14px; background:#ff5722; color:white; border:none; b
   <div id="map">Location on karne ke liye Online ho jao</div>
 </div>
 
-<script src="/socket.io/socket.io.js"></script>
 <script>
 const API = '';
-const socket = io();
 let riderData = null;
 let locationInterval = null;
 
@@ -107,7 +104,7 @@ function startLocationTracking(){
         locationInterval = setInterval(() => {
             navigator.geolocation.getCurrentPosition(pos => {
                 showMap(pos.coords.latitude, pos.coords.longitude);
-                socket.emit('riderLocation', {mobile: riderData.mobile, lat: pos.coords.latitude, lng: pos.coords.longitude});
+                fetch(API+`/api/riderLocation`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({mobile: riderData.mobile, lat: pos.coords.latitude, lng: pos.coords.longitude})});
             });
         }, 5000);
     } else alert('Location permission allow karo');
