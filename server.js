@@ -77,7 +77,7 @@ app.get('/api/orders', async (req,res)=>{
 
 app.get('/api/restaurant/stats', async (req,res)=>{
     const shop = req.query.shop;
-    const today = new Date(); today.setHours(0,0,0,0); // FIXED
+    const today = new Date(); today.setHours(0,0,0,0);
     const orders = await Order.find({ restaurantId: shop, createdAt: {$gte: today} });
     const revenue = orders.reduce((a,b)=>a+b.total, 0);
     res.json({ orders: orders.length, revenue });
@@ -190,8 +190,8 @@ app.get('/invoice', async (req,res)=>{
   doc.end();
 })
 
-// ===== CRON JOB - YEARLY REMINDER ===== FIXED
-cron.schedule('0 10 *', async () => { // Roz subah 10 baje
+// ===== CRON JOB - YEARLY REMINDER ===== FIXED 5 FIELDS
+cron.schedule('0 10 *', async () => { // Roz subah 10:00 baje
     console.log("Running maintenance reminder check...");
     const today = new Date();
     const owners = await RestaurantOwner.find({status: "Approved"});
