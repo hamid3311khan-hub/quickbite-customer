@@ -48,8 +48,8 @@ const RestaurantOwner = mongoose.model('RestaurantOwner', {
 const Rider = mongoose.model('Rider', {
     name:String, fatherName:String, aadhar:String, pan:String,
     mobile:{type:String, unique:true}, aadharImg: String, panImg: String, photoImg: String,
-    lat:Number, lng:Number, status:{type:String, default:"Pending"},
-    restaurantId: {type: String} // Har rider kis restaurant ka hai
+    lat:Number, lng:Number, status:{type:String, default:"Pending"}, // Pending, Approved, Online, Offline
+    restaurantId: {type: String}
 });
 
 const OrderSchema = new mongoose.Schema({
@@ -67,7 +67,7 @@ const Restaurant = mongoose.model('Restaurant', {id:String, name:String, address
 // ===== SOCKET.IO =====
 io.on('connection', (socket) => {
     socket.on('riderLocation', async (data) => {
-        await Rider.findOneAndUpdate({mobile: data.mobile}, {lat: data.lat, lng: data.lng, status: "Online"});
+        await Rider.findOneAndUpdate({mobile: data.mobile}, {lat: data.lat, lng: data.lng});
         await Order.updateMany({riderId: data.mobile, status: "Out for Delivery"}, {riderLat: data.lat, riderLng: data.lng});
         io.emit('locationUpdate');
     });
@@ -176,7 +176,7 @@ app.get('/api/restaurants', async (req,res)=>{
     res.json(shops);
 });
 
-// FIX: Rider Register with restaurantId
+// ===== RIDER APIs with LOGIN-LOGOUT =====
 app.post('/api/rider/register', upload.none(), async (req,res)=>{
     try{
         const {name, fatherName, aadhar, pan, mobile, restaurantId} = req.body;
@@ -185,20 +185,34 @@ app.post('/api/rider/register', upload.none(), async (req,res)=>{
     }catch(e){ res.json({success:false, msg:e.message}) }
 });
 
+// NEW: Rider Login
 app.post('/api/rider/login', async (req,res)=>{
     let rider = await Rider.findOne({mobile: req.body.mobile});
     if(!rider) return res.json({success:false, msg:"Mobile register nahi hai"});
-    if(!['Approved','Online'].includes(rider.status)) return res.json({success:false, msg:"Approval pending hai"});
-    await Rider.findOneAndUpdate({mobile: req.body.mobile}, {status: "Online"});
+    if(rider.status === "Pending") return res.json({success:false, msg:"Approval pending hai"});
+    // Login karte hi status Online kar do
+    rider = await Rider.findOneAndUpdate({mobile: req.body.mobile}, {status: "Online"}, {new:true});
     res.json({success:true, rider});
 });
+
+// NEW: Rider Status Update - Online/Offline
+app.put('/api/rider/:id/status', async (req,res)=>{ 
+    await Rider.findByIdAndUpdate(req.params.id, {status: req.body.status}); 
+    res.json({success: true}); 
+})
+
+// NEW: Rider Location Update
+app.post('/api/riderLocation', async (req,res)=>{ 
+    await Rider.findOneAndUpdate({mobile: req.body.mobile}, {lat: req.body.lat, lng: req.body.lng}); 
+    res.json({success: true}); 
+})
 
 app.get('/api/rider/orders/:mobile', async (req,res)=>{
     const orders = await Order.find({riderId: req.params.mobile, status: {$ne: 'Delivered'}}).sort({createdAt:-1});
     res.json(orders);
 })
 
-// FIX: Sirf usi restaurant ke approved rider
+// Sirf usi restaurant ke approved/online rider
 app.get('/api/riders/approved', async (req,res)=> {
     const shop = req.query.shop;
     res.json(await Rider.find({restaurantId: shop, status: {$in: ['Approved','Online']}}))
