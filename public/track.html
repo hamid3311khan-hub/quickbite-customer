@@ -35,14 +35,9 @@ nav{background:#ff5722;color:white;padding:15px;text-align:center;font-size:20px
     <small style="color:#666">* Orange line = Route, Bike = Rider</small>
 </div>
 
-<!-- INVOICE + WHATSAPP BUTTON -->
-<a id="invoiceBtn" href="#" target="_blank" class="btn" style="background:#ff5722; margin-bottom:10px;">
-   📄 Download Invoice PDF
-</a>
-<a id="waBtn" href="#" target="_blank" class="btn" style="background:#25D366;">
-   📞 Contact Us on WhatsApp
-</a>
-</div> <!-- YE DIV BAND KIYA -->
+<a id="invoiceBtn" href="#" target="_blank" class="btn" style="background:#ff5722; margin-bottom:10px;">📄 Download Invoice PDF</a>
+<a id="waBtn" href="#" target="_blank" class="btn" style="background:#25D366;">📞 Contact Us on WhatsApp</a>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
@@ -68,7 +63,6 @@ async function loadOrder(){
 
         initMap(o.shopLat, o.shopLng, o.custLat, o.custLng, o.riderLat, o.riderLng);
 
-        // YE NAYA ADD KIYA - DYNAMIC LINK
         document.getElementById('invoiceBtn').href = `/invoice?id=${o.trackId}`;
         document.getElementById('waBtn').href = `https://wa.me/91${o.phone}?text=Hi QuickBite, mera Order ID: ${o.trackId} - Status: ${o.status}`;
 
@@ -100,7 +94,7 @@ function initMap(sLat, sLng, cLat, cLng, rLat, rLng) {
 
 loadOrder();
 setInterval(loadOrder, 10000);
-const socket = io('https://quickbite-ymqk.onrender.com');
+const socket = io(); // FIX: Hardcoded URL hata diya
 socket.on('locationUpdate', ()=> loadOrder());
 </script>
 </body></html>
