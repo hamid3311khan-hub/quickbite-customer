@@ -8,8 +8,9 @@
 <style>
     body{background:#f8f9fa}
    .badge-pending{background:#ffc107}
-   .badge-paid{background:#0dcaf0}
-   .badge-approved{background:#198754}
+   .badge-trial{background:#0dcaf0} /* CHANGE 1: NAYA BADGE */
+   .badge-active{background:#198754} /* CHANGE 2: NAME CHANGE */
+   .proof-img{width:80px; cursor:pointer} /* NAYA CSS */
 </style>
 </head>
 <body>
@@ -20,7 +21,7 @@
 
 <div class="container mt-4">
     <h3>🏪 Restaurant Approval Requests</h3>
-    <p class="text-muted">Payment karne wale owners yahan dikhenge. Approve karne ke baad hi wo login kar payenge.</p>
+    <p class="text-muted">₹200 dene wale owners yahan dikhenge. Approve karne ke baad 30 din ka trial start hoga.</p> <!-- CHANGE 3 -->
 
     <table class="table table-bordered bg-white shadow-sm">
         <thead class="table-dark">
@@ -29,13 +30,14 @@
                 <th>Owner</th>
                 <th>Email</th>
                 <th>Mobile</th>
-                <th>Restaurant ID</th>
+                <th>₹200 Proof</th> <!-- CHANGE 4: NAYA COLUMN -->
+                <th>Trial End</th> <!-- CHANGE 5: NAYA COLUMN -->
                 <th>Status</th>
                 <th>Action</th>
             </tr>
         </thead>
         <tbody id="ownersTable">
-            <tr><td colspan="7" class="text-center">Loading...</td></tr>
+            <tr><td colspan="8" class="text-center">Loading...</td></tr> <!-- CHANGE 6: colspan 8 -->
         </tbody>
     </table>
 </div>
@@ -48,18 +50,22 @@ async function loadOwners(){
     const owners = await res.json();
 
     if(owners.length === 0){
-        document.getElementById('ownersTable').innerHTML = `<tr><td colspan="7" class="text-center">Koi request nahi hai</td></tr>`;
+        document.getElementById('ownersTable').innerHTML = `<tr><td colspan="8" class="text-center">Koi request nahi hai</td></tr>`; // CHANGE 7
         return;
     }
 
     let rows = '';
     owners.forEach(o => {
-        let badge = o.status === 'Pending'? 'badge-pending' : o.status === 'Paid'? 'badge-paid' : 'badge-approved';
-        let actionBtn = o.status === 'Pending'
+        let badge = o.plan_status === 'Trial'? 'badge-trial' : o.plan_status === 'Active'? 'badge-active' : 'badge-pending'; // CHANGE 8
+        let actionBtn = o.plan_status === 'Trial'
            ? `<button class="btn btn-sm btn-success" onclick="approveOwner('${o._id}')">✅ Approve</button> <button class="btn btn-sm btn-danger" onclick="rejectOwner('${o._id}')">❌ Reject</button>`
-            : o.status === 'Approved'
-           ? `<span class="text-success fw-bold">Approved</span>`
+            : o.plan_status === 'Active'
+           ? `<span class="text-success fw-bold">Active</span>` // CHANGE 9
             : `<span class="text-muted">Pending</span>`;
+
+        let proofLink = o.payment_proof ? `<a href="/uploads/${o.payment_proof}" target="_blank"><img src="/uploads/${o.payment_proof}" class="proof-img"></a>` : '-'; // CHANGE 10
+        
+        let trialEnd = o.trial_end_date ? new Date(o.trial_end_date).toLocaleDateString('hi-IN') : '-'; // CHANGE 11
 
         rows += `
         <tr>
@@ -67,8 +73,9 @@ async function loadOwners(){
             <td>${o.ownerName}</td>
             <td>${o.email}</td>
             <td>${o.mobile}</td>
-            <td><code>${o.restaurantId}</code></td>
-            <td><span class="badge ${badge}">${o.status}</span></td>
+            <td>${proofLink}</td> <!-- CHANGE 12 -->
+            <td>${trialEnd}</td> <!-- CHANGE 13 -->
+            <td><span class="badge ${badge}">${o.plan_status}</span></td> <!-- CHANGE 14 -->
             <td>${actionBtn}</td>
         </tr>`;
     });
@@ -76,11 +83,11 @@ async function loadOwners(){
 }
 
 async function approveOwner(id){
-    if(!confirm('Pakka Approve karna hai?')) return;
+    if(!confirm('Pakka Approve karna hai? 30 Din ka trial start ho jayega.')) return; // CHANGE 15
     const res = await fetch(API+`/api/restaurant/owner/${id}/approve`, {method:'PUT'});
     const result = await res.json();
     if(result.success){
-        alert('Restaurant Approved ho gaya!');
+        alert('Restaurant Approved ho gaya! Trial Active');
         loadOwners();
     } else {
         alert('Error: '+result.msg);
