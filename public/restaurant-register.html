@@ -34,7 +34,7 @@
             </div>
             <div class="mb-3">
                 <label class="form-label">Mobile Number</label>
-                <input type="tel" id="mobile" class="form-control" required>
+                <input type="tel" id="mobile" class="form-control" pattern="[0-9]{10}" maxlength="10" required>
             </div>
             <div class="mb-3">
                 <label class="form-label">Restaurant Ka Naam</label>
@@ -59,9 +59,10 @@ document.getElementById('registerForm').addEventListener('submit', async (e)=>{
     const btn = e.target.querySelector('button');
     btn.disabled = true;
     btn.innerText = "Registering...";
+    document.getElementById('msg').innerHTML = '';
 
     const data = {
-        name: document.getElementById('name').value,
+        ownerName: document.getElementById('name').value,
         email: document.getElementById('email').value,
         password: document.getElementById('password').value,
         mobile: document.getElementById('mobile').value,
@@ -70,31 +71,26 @@ document.getElementById('registerForm').addEventListener('submit', async (e)=>{
         restaurantId: document.getElementById('restaurantName').value.toLowerCase().replace(/ /g,'-') // moms-kitchen
     };
 
-    // Step 1: Register
-    const res = await fetch('/api/restaurant/register', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(data)
-    });
-    const result = await res.json();
+    try {
+        const res = await fetch('/api/restaurant/register', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
 
-    if(result.success){
-        // Step 2: Payment Link. Yahan apna Razorpay/UPI link daal
-        // Demo ke liye direct "Paid" kar rahe. Baad me Razorpay lagana
-        const payment = confirm("₹2000 Pay karne ke liye OK dabao. Demo me direct Paid ho jayega");
-        
-        if(payment){
-            await fetch('/api/restaurant/payment-success', {
-                method: 'POST',
-                headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({email: data.email})
-            });
-            document.getElementById('msg').innerHTML = `<div class="alert alert-success">Payment ho gaya! Ab Admin ke Approval ka wait karo. Approve hote hi login kar payoge.</div>`;
+        if(result.success){
+            document.getElementById('msg').innerHTML = `<div class="alert alert-success">✅ Register ho gaya! 
+            Fee: ₹2000 + ₹200/year maintenance. 
+            Ab Admin ke Approval ka wait karo. Approve hote hi login kar payoge.</div>`;
             document.getElementById('registerForm').reset();
+        } else {
+            document.getElementById('msg').innerHTML = `<div class="alert alert-danger">❌ ${result.msg}</div>`;
         }
-    } else {
-        document.getElementById('msg').innerHTML = `<div class="alert alert-danger">${result.msg}</div>`;
+    } catch(err) {
+        document.getElementById('msg').innerHTML = `<div class="alert alert-danger">Server Error: ${err.message}</div>`;
     }
+
     btn.disabled = false;
     btn.innerText = "Register & Pay ₹2000";
 });
