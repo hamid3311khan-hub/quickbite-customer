@@ -150,7 +150,7 @@ app.post('/api/orders', async (req,res)=>{
         trackId,
         ...bill, 
         total: bill.grand_total,
-        custLat: req.body.custLat || null,  // MAP KE LIYE ADD KIYA
+        custLat: req.body.custLat || null,  
         custLng: req.body.custLng || null
     }).save();
     res.json({success:true, trackId, bill})
@@ -334,6 +334,7 @@ app.get('/restaurants', (req, res) => res.sendFile(path.join(__dirname, 'public'
 app.get('/restaurant-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-register.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('/admin-owners', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin-owners.html')));
-app.get('/track', (req, res) => res.sendFile(path.join(__dirname, 'public', 'track.html'))); // NAYA
+app.get('/track', (req, res) => res.sendFile(path.join(__dirname, 'public', 'track.html')));
+app.get('/cart', (req, res) => res.sendFile(path.join(__dirname, 'public', 'cart.html'))); // FIXED
 
 server.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
