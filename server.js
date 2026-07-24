@@ -142,7 +142,7 @@ app.get('/api/restaurants', async (req,res)=>{
 })
 
 app.post('/api/orders', async (req,res)=>{
-    const trackId = 'EB' + Date.now(); // QB se EB kiya
+    const trackId = 'EB' + Date.now();
     const item_total = req.body.items.reduce((a,b)=>a+(b.price*b.qty), 0);
     const bill = calculateBill(item_total);
     const newOrder = await new Order({
@@ -275,6 +275,56 @@ app.delete('/api/restaurant/owner/:id', async (req,res)=>{
     res.json({success:true, msg:"Rejected"})
 })
 
+// ===== NEW ADMIN APIs ADDED =====
+app.get('/api/riders', async (req,res)=> res.json(await Rider.find().sort({createdAt:-1})))
+
+app.get('/api/riders/approved', async (req,res)=> {
+    const shop = req.query.shop;
+    res.json(await Rider.find({status:"Online", restaurantId: shop}))
+})
+
+app.get('/api/rider/check-busy/:mobile', async (req,res)=> {
+    const busy = await Order.findOne({ riderId: req.params.mobile, status: {$ne: 'Delivered'} });
+    res.json({free: !busy})
+})
+
+app.put('/api/rider/:id/approve', async (req,res)=>{ 
+    await Rider.findByIdAndUpdate(req.params.id, {status: "Online"}); 
+    res.json({success: true}); 
+})
+
+app.delete('/api/rider/:id', async (req,res)=>{ 
+    await Rider.findByIdAndDelete(req.params.id); 
+    res.json({success: true}); 
+})
+
+app.get('/api/stats', async (req,res)=>{
+    const orders = await Order.countDocuments();
+    const customers = await Order.distinct('phone').then(p=>p.length);
+    res.json({orders, customers})
+})
+
+app.get('/api/report', async (req,res)=>{
+    const orders = await Order.find({createdAt: {$gte: new Date(req.query.start), $lte: new Date(req.query.end)}});
+    const totalRevenue = orders.reduce((a,b)=>a+b.total, 0);
+    res.json({totalRevenue, totalOrders: orders.length})
+})
+
+app.post('/api/coupon', async (req,res)=>{ 
+    await new Offer(req.body).save(); 
+    res.json({success:true}) 
+})
+
+app.post('/api/broadcast', async (req,res)=>{ 
+    res.json({success:true, count: 10, links:[]}) 
+})
+
+app.delete('/api/orders/:id', async (req,res)=>{ 
+    await Order.findByIdAndDelete(req.params.id); 
+    res.json({success:true}) 
+})
+// ===== END NEW APIs =====
+
 app.get('/api/rider/orders/:mobile', async (req,res)=>{
     res.json(await Order.find({riderId: req.params.mobile, status: {$ne: 'Delivered'}}).sort({createdAt:-1}));
 })
@@ -309,8 +359,8 @@ app.get('/invoice', async (req,res)=>{
   const { id } = req.query; const order = await Order.findOne({trackId:id});
   if(!order) return res.status(404).send("Order not found");
   const doc = new PDFDocument({margin: 40}); res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename=Eat4Bite-${id}.pdf`); doc.pipe(res); // CHANGE 1
-  doc.fontSize(22).text('EAT4BITE™', {align: 'center'}); // CHANGE 2
+  res.setHeader('Content-Disposition', `attachment; filename=Eat4Bite-${id}.pdf`); doc.pipe(res);
+  doc.fontSize(22).text('EAT4BITE™', {align: 'center'});
   doc.fontSize(10).text(`Order ID: ${order.trackId} | Date: ${new Date(order.createdAt).toLocaleDateString()}`, {align: 'center'}); doc.moveDown();
   doc.text('-------------------------------------------');
   order.items.forEach(i=>{ doc.text(`${i.name} x ${i.qty} ₹${i.price*i.qty}`); });
@@ -335,6 +385,6 @@ app.get('/restaurant-register', (req, res) => res.sendFile(path.join(__dirname, 
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('/admin-owners', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin-owners.html')));
 app.get('/track', (req, res) => res.sendFile(path.join(__dirname, 'public', 'track.html')));
-app.get('/cart', (req, res) => res.sendFile(path.join(__dirname, 'public', 'cart.html'))); // FIXED
+app.get('/cart', (req, res) => res.sendFile(path.join(__dirname, 'public', 'cart.html')));
 
 server.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
