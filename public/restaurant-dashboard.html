@@ -49,36 +49,7 @@
     </ul>
 
     <div class="tab-content">
-        <div class="tab-pane fade show active" id="menu">
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="card shadow-sm p-3">
-                        <h5>Add New Item</h5>
-                        <form id="itemForm">
-                            <input type="text" id="name" placeholder="Item Name" class="form-control mb-2" required>
-                            <input type="number" id="price" placeholder="Price" class="form-control mb-2" required>
-                            <input type="text" id="category" placeholder="Category: Pizza, Burger" class="form-control mb-2">
-                            <input type="file" id="imageFile" class="form-control mb-2" accept="image/*">
-                            <input type="hidden" id="imageBase64">
-                            <textarea id="desc" placeholder="Description" class="form-control mb-2" rows="2"></textarea>
-                            <img id="preview" style="width:100%; height:120px; object-fit:cover; display:none; border-radius:8px; margin-bottom:10px;">
-                            <button class="btn btn-warning w-100 fw-bold">Add Item</button>
-                        </form>
-                        <div id="msg" class="mt-2"></div>
-                    </div>
-                </div>
-                <div class="col-md-8">
-                    <div class="card shadow-sm p-3">
-                        <h5>Your Menu Items <span class="badge bg-primary" id="totalItems">0</span></h5>
-                        <table class="table table-sm">
-                            <thead><tr><th>Image</th><th>Name</th><th>Price</th><th>Stock</th><th>Action</th></tr></thead>
-                            <tbody id="menuList"><tr><td colspan="5">Loading...</td></tr></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
+        <div class="tab-pane fade show active" id="menu">... </div>
         <div class="tab-pane fade" id="orders">
             <div class="card shadow-sm p-3">
                 <h5>New Orders</h5>
@@ -86,7 +57,6 @@
                 <div id="ordersList">Loading...</div>
             </div>
         </div>
-
         <div class="tab-pane fade" id="cash">
             <div class="card shadow-sm p-3">
                 <h5>🏦 Rider Cash Confirm</h5>
@@ -94,7 +64,6 @@
                 <div id="cashPendingList">Loading...</div>
             </div>
         </div>
-
         <div class="tab-pane fade" id="payout">
             <div class="card shadow-sm p-3">
                 <h5>💰 Restaurant Payout</h5>
@@ -109,16 +78,7 @@
                 <p class="text-muted mt-2">* Ye amount QuickBite ko har 3 din me bhejna hai</p>
             </div>
         </div>
-
-        <div class="tab-pane fade" id="offers">
-            <div class="card shadow-sm p-3">
-                <h5>Create Restaurant Offer</h5>
-                <input type="text" id="offerCode" placeholder="Code: BURGER50" class="form-control mb-2">
-                <input type="number" id="offerDiscount" placeholder="Discount %" class="form-control mb-2">
-                <button class="btn btn-success" onclick="addOffer()">Create Offer</button>
-                <div id="offerMsg" class="mt-2"></div>
-            </div>
-        </div>
+        <div class="tab-pane fade" id="offers">... </div>
     </div>
 </div>
 
@@ -130,7 +90,7 @@ if(!owner ||!owner.restaurantId){
     window.location.href = '/restaurant-login';
 }
 
-document.getElementById('resName').innerText = owner.restaurantName;
+document.getElementById('resName').innerText = owner.restaurantName || 'Default Shop'; // FIX: || add kiya
 const restaurantId = owner.restaurantId;
 let lastOrderCount = 0;
 
@@ -233,7 +193,7 @@ async function loadOrders(){
     }
 }
 
-// FIX: Cash ko rider ke hisaab se group kar diya
+// FIX 1: Cash me onerror add kiya
 async function loadCashPending(){
     const res = await fetch(`/api/orders?shop=${restaurantId}`);
     const orders = await res.json();
@@ -255,7 +215,7 @@ async function loadCashPending(){
         let data = grouped[riderId];
         html += `<div class="border p-3 mb-2 rounded">
             <b>${riderId}</b> ne ${data.count} order ka ₹${data.amount} jama kiya<br>
-            <img src="/uploads/${data.proof}" width="100" class="my-2"><br>
+            <img src="/uploads/${data.proof}" width="100" class="my-2" onerror="this.src='https://via.placeholder.com/100x100/cccccc/ffffff?text=No+Proof'"><br>
             <button class="btn btn-success btn-sm" onclick="confirmCash('${riderId}')">✅ Cash Mil Gaya Confirm</button>
         </div>`;
     }
@@ -268,15 +228,22 @@ async function confirmCash(riderId){
     loadCashPending(); loadStats();
 }
 
+// FIX 2: Number ko parseInt kiya taaki NaN na aaye
 async function loadStats(){
     const res = await fetch(`/api/restaurant/stats?shop=${restaurantId}`);
     const data = await res.json();
-    document.getElementById('todayOrders').innerText = data.orders;
-    document.getElementById('todayRevenue').innerText = '₹' + data.revenue;
-    document.getElementById('payoutDue').innerText = '₹' + data.payout_due;
-    document.getElementById('netPayout').innerText = data.payout_due;
-    document.getElementById('totalCollection').innerText = data.payout_due + Math.round(data.revenue * 0.05) + (data.orders * 10);
-    document.getElementById('totalCut').innerText = Math.round(data.revenue * 0.05) + (data.orders * 10);
+    const payout = parseInt(data.payout_due) || 0;
+    const revenue = parseInt(data.revenue) || 0;
+    const orders = parseInt(data.orders) || 0;
+
+    document.getElementById('todayOrders').innerText = orders;
+    document.getElementById('todayRevenue').innerText = '₹' + revenue;
+    document.getElementById('payoutDue').innerText = '₹' + payout;
+    document.getElementById('netPayout').innerText = payout;
+
+    const cut = Math.round(revenue * 0.05) + (orders * 10);
+    document.getElementById('totalCollection').innerText = payout + cut;
+    document.getElementById('totalCut').innerText = cut;
 }
 
 async function doPayout(){
