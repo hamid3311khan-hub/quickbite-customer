@@ -48,7 +48,7 @@ nav{background:#ff6600;color:white;padding:15px;text-align:center;font-size:20px
 <!-- LEAFLET MAP JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const API = 'https://eat4bite-ymqk.onrender.com'; // <- Yaha change
+const API = 'https://eat4bite-ymqk.onrender.com'; // <- SAHI HAI
 const urlParams = new URLSearchParams(window.location.search);
 const trackId = urlParams.get('id');
 
@@ -58,7 +58,7 @@ let riderMarker = null;
 let custMarker = null;
 
 function initMap(){
-    map = L.map('map').setView([25.0968, 85.3131], 12);
+    map = L.map('map').setView([25.0968, 85.3131], 12); // Barh, Bihar default
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap'
     }).addTo(map);
@@ -67,7 +67,7 @@ function initMap(){
 async function loadOrder(){
     if(!trackId) return document.getElementById('orderBox').innerHTML="<div class='error'><h3>Invalid Order ID</h3></div>";
     try{
-        const res = await fetch(`${API}/api/orders/track/${trackId}`);
+        const res = await fetch(`${API}/api/orders/track/${trackId}`); // API LAGA HUA
         const o = await res.json();
         if(!o) return document.getElementById('orderBox').innerHTML="<div class='error'><h3>Order not found</h3></div>";
 
@@ -81,19 +81,20 @@ async function loadOrder(){
             document.getElementById('s'+i).classList.add('active');
         }
 
-        document.getElementById('invoiceBtn').href = `/invoice?id=${o.trackId}`;
+        document.getElementById('invoiceBtn').href = `${API}/api/invoice?id=${o.trackId}`; // FIX: API LAGAYA
         document.getElementById('waBtn').href = `https://wa.me/91${o.phone}?text=Hi Eat4Bite™, mera Order ID: ${o.trackId} - Status: ${o.status}`;
 
         updateMap(o); // Map update karo
 
     } catch(e){
         document.getElementById('orderBox').innerHTML="<div class='error'><h3>Server Error. Refresh karo</h3></div>";
+        console.error(e)
     }
 }
 
 function updateMap(order){
     // 1. Shop ka pin
-    if(!shopMarker){
+    if(order.shopLat && order.shopLng && !shopMarker){
         shopMarker = L.marker([order.shopLat, order.shopLng]).addTo(map).bindPopup("🏪 Shop");
     }
 
@@ -106,7 +107,7 @@ function updateMap(order){
     if(order.status === 'Out for Delivery' && order.riderLat && order.riderLng){
         if(!riderMarker){
             riderMarker = L.marker([order.riderLat, order.riderLng]).addTo(map).bindPopup("🏍️ Rider");
-            const group = new L.featureGroup([shopMarker, riderMarker]);
+            const group = new L.featureGroup([shopMarker, riderMarker].filter(Boolean));
             map.fitBounds(group.getBounds().pad(0.3));
         } else {
             riderMarker.setLatLng([order.riderLat, order.riderLng]);
