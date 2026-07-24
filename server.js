@@ -7,7 +7,6 @@ const http = require('http');
 const { Server } = require("socket.io");
 const PDFDocument = require('pdfkit');
 const multer = require('multer');
-const cron = require('node-cron');
 const upload = multer();
 const bcrypt = require('bcryptjs');
 
@@ -64,9 +63,7 @@ const OrderSchema = new mongoose.Schema({
     is_peak: {type: Boolean, default: false}
 }, {timestamps: true});
 const Order = mongoose.model('Order', OrderSchema);
-const Coupon = mongoose.model('Coupon', {code:String, discount:Number, type:String});
 const Offer = mongoose.model('Offer', {code:String, discount:Number, type:{type:String, default:"PERCENT"}, restaurantId:String, createdAt:{type:Date, default:Date.now}});
-const Restaurant = mongoose.model('Restaurant', {id:String, name:String, address:String, image:String, status:{type:String, default:"Active"}});
 
 // ===== SOCKET.IO =====
 io.on('connection', (socket) => {
@@ -189,6 +186,8 @@ app.post('/api/rider/login', async (req,res)=>{
     if(rider.status === "Pending") return res.json({success:false, msg:"Approval pending hai"});
     rider = await Rider.findOneAndUpdate({mobile: req.body.mobile}, {status: "Online"}, {new:true});
     res.json({success:true, rider});
+}); // FIX: BRACKET BAND
+
 app.post('/api/riderLocation', async (req,res)=>{
     const {mobile, lat, lng} = req.body;
     await Rider.findOneAndUpdate({mobile}, {lat, lng, lastUpdate: new Date()});
@@ -199,7 +198,7 @@ app.put('/api/rider/:id/status', async (req,res)=>{ await Rider.findByIdAndUpdat
 app.post('/api/menu', upload.none(), async (req,res)=>{
   await new MenuItem({...req.body, image: req.body.image || '', restaurantId: req.body.restaurantId || 'default-shop', veg: req.body.veg === 'true'}).save();
   res.json({success:true});
-}); // FIX: BRACKET BAND
+});
 
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
 app.put('/api/menu/:id/stock', async (req,res)=>{ const item = await MenuItem.findById(req.params.id); item.inStock =!item.inStock; await item.save(); res.json({success:true}); });
@@ -207,26 +206,8 @@ app.get('/api/orders/track/:id', async (req,res)=>{ res.json(await Order.findOne
 app.put('/api/orders/:id/status', async (req,res)=>{ await Order.findByIdAndUpdate(req.params.id, req.body); res.json({success:true}) });
 app.post('/api/restaurant/offer', async (req,res)=>{ await new Offer(req.body).save(); res.json({success:true, msg: "Offer Created!"}); })
 
-// ===== CRON FIX - 5 PART WALA =====
-cron.schedule('0 0 * * *', async () => { // Raat 12 baje
-    console.log("Running Auto Settlement...");
-    const owners = await RestaurantOwner.find({status: "Approved"});
-    for(let owner of owners){
-        const today_orders = await Order.find({restaurantId: owner.restaurantId, createdAt: {$gte: new Date(new Date().setHours(0,0,0,0))}});
-        let cut = today_orders.reduce((a,b)=>a+b.commission_5+b.platform_fee, 0);
-        await RestaurantOwner.findByIdAndUpdate(owner._id, {$inc: {payout_due: -cut}});
-    }
-});
-
-cron.schedule('0 0 * 1', async () => { // Har Somvaar
-    console.log("Running Weekly Bonus...");
-    const riders = await Rider.find();
-    for(let rider of riders){
-        let bonus = 0;
-        if(rider.weekly_orders >= 30) bonus += 50;
-        await Rider.findByIdAndUpdate(rider._id, { $set: {weekly_orders: 0, weekly_bonus: bonus} });
-    }
-});
+// ===== CRON HATA DIYA TEMPORARY =====
+// Baad me jab chal jaye tab add karenge
 
 // ===== BILL PDF =====
 app.get('/invoice', async (req,res)=>{
