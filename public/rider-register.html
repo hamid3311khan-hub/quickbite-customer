@@ -2,22 +2,22 @@
 <html lang="hi">
 <head>
 <meta charset="UTF-8">
-<title>Rider Registration</title>
+<title>Rider Registration - Eat4Bite™</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 body{font-family:Arial; background:#f4f4f4; padding:20px; margin:0;}
 .card{background:white; padding:20px; border-radius:12px; max-width:420px; margin:auto; box-shadow:0 2px 10px rgba(0,0,0,0.1);}
-h2{text-align:center; color:#ff5722;}
+h2{text-align:center; color:#ff6600;}
 input,select{width:100%; padding:12px; margin:8px 0; border-radius:6px; border:1px solid #ccc; box-sizing:border-box;}
 label{font-weight:bold; font-size:14px;}
-button{width:100%; padding:14px; margin-top:10px; border-radius:6px; border:none; background:#ff5722; color:white; font-size:16px; font-weight:bold; cursor:pointer;}
+button{width:100%; padding:14px; margin-top:10px; border-radius:6px; border:none; background:#ff6600; color:white; font-size:16px; font-weight:bold; cursor:pointer;}
 button:disabled{background:#ccc; cursor:not-allowed;}
 #msg{text-align:center; margin-top:10px; font-weight:bold;}
 </style>
 </head>
 <body>
 <div class="card">
-  <h2>🏍️ QuickBite Rider Join</h2>
+  <h2>🏍️ Eat4Bite™ Rider Join</h2>
   <label>Kis Restaurant ke liye?</label>
   <select id="restaurantId" required>
     <option value="">-- Restaurant Select Kare --</option>
@@ -35,11 +35,11 @@ button:disabled{background:#ccc; cursor:not-allowed;}
 </div>
 
 <script>
-const API = '';
+const API = 'https://eat4bite-ymqk.onrender.com'; // <- Yaha change
 
 async function loadRestaurants(){
     try{
-        const res = await fetch('/api/restaurants');
+        const res = await fetch(API+'/api/restaurants'); // <- Yaha bhi
         const shops = await res.json();
         const select = document.getElementById('restaurantId');
         select.innerHTML = '<option value="">-- Restaurant Select Kare --</option>'; // reset
