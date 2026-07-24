@@ -1,18 +1,18 @@
-<!DOCTYPE html><html lang="hi"><head><meta charset="UTF-8"><title>Rider Dashboard</title>
+<!DOCTYPE html><html lang="hi"><head><meta charset="UTF-8"><title>Rider Dashboard - Eat4Bite™</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 body{font-family:Arial; background:#f4f4f4; margin:0; padding:20px;}
 .login-box,.dashboard{background:white; padding:20px; border-radius:12px; max-width:500px; margin:auto; box-shadow:0 2px 10px #ccc;}
-h2{text-align:center; color:#ff5722;} input{width:100%; padding:12px; margin:8px 0; border-radius:6px; border:1px solid #ccc;}
-button{width:100%; padding:14px; background:#ff5722; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; margin:5px 0;}
+h2{text-align:center; color:#ff6600;} input{width:100%; padding:12px; margin:8px 0; border-radius:6px; border:1px solid #ccc;}
+button{width:100%; padding:14px; background:#ff6600; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; margin:5px 0;}
 .order{border:1px solid #ddd; padding:15px; margin:10px 0; border-radius:8px;}.top-bar{display:flex; justify-content:space-between;}
 .logout-btn{background:#dc3545; width:auto; padding:8px 15px;} #map{height:250px; background:#eee; border-radius:8px; margin:10px 0;}
-.tabs{display:flex; gap:10px; margin:15px 0;}.tab-btn{flex:1; background:#eee; color:#333;}.tab-btn.active{background:#ff5722; color:white;}
+.tabs{display:flex; gap:10px; margin:15px 0;}.tab-btn{flex:1; background:#eee; color:#333;}.tab-btn.active{background:#ff6600; color:white;}
 .alert{background:#ffcccc; color:#a00; padding:12px; border-radius:8px; font-weight:bold; margin-bottom:10px; text-align:center;}
 .hisab-box{background:#e8f5e9; padding:15px; border-radius:8px; margin:10px 0;}
 </style></head><body>
-<div class="login-box" id="loginBox"><h2>🏍️ Rider Login</h2>
+<div class="login-box" id="loginBox"><h2>🏍️ Eat4Bite™ Rider Login</h2>
 <input id="riderMobile" placeholder="Registered Mobile Number" maxlength="10">
 <button onclick="riderLogin()">Login Karo</button></div>
 
@@ -31,18 +31,99 @@ button{width:100%; padding:14px; background:#ff5722; color:white; border:none; b
 <input type="file" id="cashProof" accept="image/*"><button onclick="depositCash()">📤 Jama Karein</button></div></div></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
-const API = ''; let riderData = null; let locationInterval = null; let map = null; let riderMarker = null;
-window.onload = () => { riderData = JSON.parse(localStorage.getItem('riderData')); if(riderData){document.getElementById('loginBox').style.display = 'none'; document.getElementById('dashboard').style.display = 'block'; document.getElementById('riderName').innerText = `Hello, ${riderData.name}`; initMap(); loadMyOrders(); loadHisab(); document.getElementById('riderStatus').innerText = riderData.status; if(riderData.status === 'Online') startLocationTracking();}}
+const API = 'https://eat4bite-ymqk.onrender.com'; // <- Yaha change
+let riderData = null; let locationInterval = null; let map = null; let riderMarker = null;
+
+window.onload = () => {
+  riderData = JSON.parse(localStorage.getItem('riderData'));
+  if(riderData){
+    document.getElementById('loginBox').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    document.getElementById('riderName').innerText = `Hello, ${riderData.name}`;
+    initMap(); loadMyOrders(); loadHisab();
+    document.getElementById('riderStatus').innerText = riderData.status;
+    if(riderData.status === 'Online') startLocationTracking();
+  }
+}
+
 function initMap(){ map = L.map('map').setView([25.0968, 85.3131], 13); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);}
 function showTab(tab){ document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); event.target.classList.add('active'); ['orders','hisab','cash'].forEach(t=>document.getElementById('tab-'+t).style.display='none'); document.getElementById('tab-'+tab).style.display='block';}
-async function riderLogin(){ const mobile = document.getElementById('riderMobile').value; const res = await fetch(API+'/api/rider/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({mobile})}); const data = await res.json(); if(data.success){ riderData = data.rider; localStorage.setItem('riderData', JSON.stringify(riderData)); location.reload(); } else { alert(data.msg); }}
+
+async function riderLogin(){
+  const mobile = document.getElementById('riderMobile').value;
+  const res = await fetch(API+'/api/rider/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({mobile})});
+  const data = await res.json();
+  if(data.success){
+    riderData = data.rider;
+    localStorage.setItem('riderData', JSON.stringify(riderData));
+    location.reload();
+  } else { alert(data.msg); }
+}
+
 function riderLogout(){ localStorage.removeItem('riderData'); clearInterval(locationInterval); location.reload();}
-async function goOnline(){ await fetch(API+`/api/rider/${riderData._id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'Online'})}); riderData.status = 'Online'; localStorage.setItem('riderData', JSON.stringify(riderData)); document.getElementById('riderStatus').innerText = 'Online'; startLocationTracking();}
-async function goOffline(){ clearInterval(locationInterval); await fetch(API+`/api/rider/${riderData._id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'Approved'})}); riderData.status = 'Approved'; localStorage.setItem('riderData', JSON.stringify(riderData)); document.getElementById('riderStatus').innerText = 'Offline';}
-function startLocationTracking(){ if(navigator.geolocation){ navigator.geolocation.getCurrentPosition(updateRiderLocation); locationInterval = setInterval(() => { navigator.geolocation.getCurrentPosition(updateRiderLocation); }, 5000); }}
-function updateRiderLocation(pos){ const lat = pos.coords.latitude; const lng = pos.coords.longitude; if(!riderMarker){ riderMarker = L.marker([lat, lng]).addTo(map); map.setView([lat, lng], 15); } else { riderMarker.setLatLng([lat, lng]); } fetch(API+`/api/riderLocation`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({mobile: riderData.mobile, lat: lat, lng: lng})});}
-async function loadHisab(){ const res = await fetch(API+`/api/rider/orders/${riderData.mobile}`); const orders = await res.json(); const today = new Date().toDateString(); const todayOrders = orders.filter(o => new Date(o.createdAt).toDateString() === today && o.status === 'Delivered'); document.getElementById('todayOrders').innerText = todayOrders.length; document.getElementById('todayEarning').innerText = todayOrders.length * 30; document.getElementById('cashPending').innerText = riderData.cash_balance || 0; document.getElementById('depositAmount').innerText = riderData.cash_balance || 0; if((riderData.cash_balance || 0) >= 500){ document.getElementById('cashAlert').style.display = 'block'; }}
-async function loadMyOrders(){ const res = await fetch(API+`/api/rider/orders/${riderData.mobile}`); const orders = await res.json(); document.getElementById('myOrders').innerHTML = orders.length === 0? 'Koi order nahi hai' : orders.map(o => `<div class="order"><b>${o.trackId}</b> - ₹${o.total} <br><small>${o.name}</small> <br><b>Status:</b> ${o.status} <br><button onclick="markDelivered('${o._id}')">Delivered</button><a href="/invoice?id=${o.trackId}" target="_blank">📄 Bill</a></div>`).join('');}
-async function markDelivered(orderId){ await fetch(API+'/api/order/delivered', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({orderId})}); alert('Delivered!'); loadMyOrders(); loadHisab();}
-async function depositCash(){ const file = document.getElementById('cashProof').files[0]; if(!file) return alert('Photo upload karein'); const amount = riderData.cash_balance; const formData = new FormData(); formData.append('proof', file); formData.append('riderId', riderData.mobile); formData.append('amount', amount); const res = await fetch(API+'/api/rider/cash-deposit', {method:'POST', body:formData}); alert((await res.json()).msg); loadHisab(); }
+
+async function goOnline(){
+  await fetch(API+`/api/rider/${riderData._id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'Online'})});
+  riderData.status = 'Online';
+  localStorage.setItem('riderData', JSON.stringify(riderData));
+  document.getElementById('riderStatus').innerText = 'Online';
+  startLocationTracking();
+}
+
+async function goOffline(){
+  clearInterval(locationInterval);
+  await fetch(API+`/api/rider/${riderData._id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'Approved'})});
+  riderData.status = 'Approved';
+  localStorage.setItem('riderData', JSON.stringify(riderData));
+  document.getElementById('riderStatus').innerText = 'Offline';
+}
+
+function startLocationTracking(){
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(updateRiderLocation);
+    locationInterval = setInterval(() => { navigator.geolocation.getCurrentPosition(updateRiderLocation); }, 5000);
+  }
+}
+
+function updateRiderLocation(pos){
+  const lat = pos.coords.latitude; const lng = pos.coords.longitude;
+  if(!riderMarker){ riderMarker = L.marker([lat, lng]).addTo(map); map.setView([lat, lng], 15); }
+  else { riderMarker.setLatLng([lat, lng]); }
+  fetch(API+`/api/riderLocation`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({mobile: riderData.mobile, lat: lat, lng: lng})});
+}
+
+async function loadHisab(){
+  const res = await fetch(API+`/api/rider/orders/${riderData.mobile}`);
+  const orders = await res.json();
+  const today = new Date().toDateString();
+  const todayOrders = orders.filter(o => new Date(o.createdAt).toDateString() === today && o.status === 'Delivered');
+  document.getElementById('todayOrders').innerText = todayOrders.length;
+  document.getElementById('todayEarning').innerText = todayOrders.length * 30;
+  document.getElementById('cashPending').innerText = riderData.cash_balance || 0;
+  document.getElementById('depositAmount').innerText = riderData.cash_balance || 0;
+  if((riderData.cash_balance || 0) >= 500){ document.getElementById('cashAlert').style.display = 'block'; }
+}
+
+async function loadMyOrders(){
+  const res = await fetch(API+`/api/rider/orders/${riderData.mobile}`);
+  const orders = await res.json();
+  document.getElementById('myOrders').innerHTML = orders.length === 0? 'Koi order nahi hai' : orders.map(o => `<div class="order"><b>${o.trackId}</b> - ₹${o.total} <br><small>${o.name}</small> <br><b>Status:</b> ${o.status} <br><button onclick="markDelivered('${o._id}')">Delivered</button><a href="/invoice?id=${o.trackId}" target="_blank">📄 Bill</a></div>`).join('');
+}
+
+async function markDelivered(orderId){
+  await fetch(API+'/api/order/delivered', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({orderId})});
+  alert('Delivered!'); loadMyOrders(); loadHisab();
+}
+
+async function depositCash(){
+  const file = document.getElementById('cashProof').files[0];
+  if(!file) return alert('Photo upload karein');
+  const amount = riderData.cash_balance;
+  const formData = new FormData();
+  formData.append('proof', file);
+  formData.append('riderId', riderData.mobile);
+  formData.append('amount', amount);
+  const res = await fetch(API+'/api/rider/cash-deposit', {method:'POST', body:formData});
+  alert((await res.json()).msg); loadHisab();
+}
 </script></body></html>
