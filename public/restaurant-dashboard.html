@@ -8,7 +8,7 @@
 <style>
     body{background:#f8f9fa}
 .navbar-brand{color:#ff5722!important; font-weight:bold}
-.nav-tabs.nav-link.active{background:#ff5722; color:white; border:none;}
+.nav-tabs.nav-link.active{background:#ff5722; color:white; border:none;} /*.nav-tabs.nav-link thik kiya */
 .stat-card{border-radius:15px; color:white; padding:20px; box-shadow:0 4px 10px rgba(0,0,0,0.1)}
 .stat-card h3{font-size:28px; margin:0;}
 .new-order{animation: blink 1.5s infinite; border-left:5px solid #ff5722;}
@@ -49,7 +49,25 @@
     </ul>
 
     <div class="tab-content">
-        <div class="tab-pane fade show active" id="menu">... </div>
+        <div class="tab-pane fade show active" id="menu">
+            <div class="card shadow-sm p-3">
+                <h5>Add New Item</h5>
+                <form id="itemForm">
+                    <input id="name" class="form-control mb-2" placeholder="Item Name" required>
+                    <input id="price" type="number" class="form-control mb-2" placeholder="Price" required>
+                    <input id="category" class="form-control mb-2" placeholder="Category">
+                    <textarea id="desc" class="form-control mb-2" placeholder="Description"></textarea>
+                    <input type="file" id="imageFile" class="form-control mb-2">
+                    <input type="hidden" id="imageBase64">
+                    <img id="preview" style="display:none; width:100px; margin:10px 0;">
+                    <button class="btn btn-success w-100">Add Item</button>
+                </form>
+                <div id="msg" class="mt-2"></div>
+                <hr>
+                <h5>Your Menu: <span id="totalItems">0</span> items</h5>
+                <table class="table"><tbody id="menuList"></tbody></table>
+            </div>
+        </div>
         <div class="tab-pane fade" id="orders">
             <div class="card shadow-sm p-3">
                 <h5>New Orders</h5>
@@ -78,20 +96,31 @@
                 <p class="text-muted mt-2">* Ye amount QuickBite ko har 3 din me bhejna hai</p>
             </div>
         </div>
-        <div class="tab-pane fade" id="offers">... </div>
+        <div class="tab-pane fade" id="offers">
+            <div class="card shadow-sm p-3">
+                <h5>Add Offer</h5>
+                <input id="offerCode" class="form-control mb-2" placeholder="Coupon Code: FLAT50">
+                <input id="offerDiscount" type="number" class="form-control mb-2" placeholder="Discount % or ₹">
+                <button onclick="addOffer()" class="btn btn-warning">Create Offer</button>
+                <div id="offerMsg" class="mt-2"></div>
+            </div>
+        </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-const owner = JSON.parse(localStorage.getItem('restaurantOwner'));
-if(!owner ||!owner.restaurantId){
+// FIX: PEHLE NAYA WALA CHECK KARENGE PHIR PURANA WALA
+const restaurantId = localStorage.getItem('restaurantId') || JSON.parse(localStorage.getItem('restaurantOwner') || '{}').restaurantId;
+const restaurantName = localStorage.getItem('restaurantName') || JSON.parse(localStorage.getItem('restaurantOwner') || '{}').restaurantName;
+const owner = JSON.parse(localStorage.getItem('restaurantOwner') || '{}');
+
+if(!restaurantId){
     alert("Login info missing. Dubara login karo");
     window.location.href = '/restaurant-login';
 }
 
-document.getElementById('resName').innerText = owner.restaurantName || 'Default Shop'; // FIX: || add kiya
-const restaurantId = owner.restaurantId;
+document.getElementById('resName').innerText = restaurantName || 'Default Shop';
 let lastOrderCount = 0;
 
 function checkTrial(){
@@ -193,19 +222,16 @@ async function loadOrders(){
     }
 }
 
-// FIX 1: Cash me onerror add kiya
 async function loadCashPending(){
     const res = await fetch(`/api/orders?shop=${restaurantId}`);
     const orders = await res.json();
     const pending = orders.filter(o=>o.cash_deposited === true && o.status=='Delivered');
-
     const grouped = {};
     pending.forEach(o=>{
         if(!grouped[o.riderId]) grouped[o.riderId] = {amount: 0, proof: o.cash_deposit_proof, count: 0};
         grouped[o.riderId].amount += o.cash_to_restaurant;
         grouped[o.riderId].count += 1;
     });
-
     if(Object.keys(grouped).length === 0) {
         document.getElementById('cashPendingList').innerHTML = '<p class="text-muted">Koi cash pending nahi</p>';
         return;
@@ -228,19 +254,16 @@ async function confirmCash(riderId){
     loadCashPending(); loadStats();
 }
 
-// FIX 2: Number ko parseInt kiya taaki NaN na aaye
 async function loadStats(){
     const res = await fetch(`/api/restaurant/stats?shop=${restaurantId}`);
     const data = await res.json();
     const payout = parseInt(data.payout_due) || 0;
     const revenue = parseInt(data.revenue) || 0;
     const orders = parseInt(data.orders) || 0;
-
     document.getElementById('todayOrders').innerText = orders;
     document.getElementById('todayRevenue').innerText = '₹' + revenue;
     document.getElementById('payoutDue').innerText = '₹' + payout;
     document.getElementById('netPayout').innerText = payout;
-
     const cut = Math.round(revenue * 0.05) + (orders * 10);
     document.getElementById('totalCollection').innerText = payout + cut;
     document.getElementById('totalCut').innerText = cut;
@@ -265,7 +288,12 @@ async function addOffer(){
     setTimeout(()=>document.getElementById('offerMsg').innerHTML='', 3000);
 }
 
-function logout(){ localStorage.removeItem('restaurantOwner'); window.location.href = '/restaurant-login'; }
+function logout(){
+    localStorage.removeItem('restaurantId');
+    localStorage.removeItem('restaurantName');
+    localStorage.removeItem('restaurantOwner');
+    window.location.href = '/restaurant-login';
+}
 
 checkTrial();
 loadMenu(); loadOrders(); loadStats(); loadCashPending();
