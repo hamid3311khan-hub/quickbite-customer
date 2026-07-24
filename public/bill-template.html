@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bill - QuickBite</title>
+<style>
+    body{font-family: 'Arial', sans-serif; background:#f4f4f4; padding:20px;}
+    .bill-box{max-width:350px; margin:auto; background:white; padding:20px; border:1px dashed #333; border-radius:8px;}
+    .center{text-align:center;}
+    .logo{font-size:24px; font-weight:bold; color:#ff5722;}
+    hr{border: none; border-top: 1px dashed #999; margin:10px 0;}
+    .row{display:flex; justify-content:space-between; margin:4px 0;}
+    .total{font-size:18px; font-weight:bold;}
+    @media print{.no-print{display:none;}}
+    button{width:100%; padding:12px; background:#ff5722; color:white; border:none; border-radius:6px; margin-top:15px; cursor:pointer;}
+</style>
+</head>
+<body>
+
+<div class="bill-box" id="bill">
+    <div class="center">
+        <div class="logo">QUICKBITE</div>
+        <small>Order ID: <span id="orderId"></span></small><br>
+        <small>Date: <span id="orderDate"></span></small>
+    </div>
+    <hr>
+    
+    <div class="center"><b id="resName">Bawarchi Restaurant</b></div>
+    <hr>
+
+    <div id="itemList">
+        <!-- Items yahan JS se aayenge -->
+    </div>
+
+    <hr>
+    <div class="row"><span>Sub Total</span> <span>₹<span id="subTotal">0</span></span></div>
+    <div class="row"><span>GST 5%</span> <span>₹<span id="gst">0</span></span></div>
+    <div class="row"><span>Delivery Fee</span> <span>₹<span id="delivery">30</span></span></div>
+    <div class="row"><span>Platform Fee</span> <span>₹<span id="platform">10</span></span></div>
+    
+    <hr>
+    <div class="row total"><span>Grand Total</span> <span>₹<span id="grandTotal">0</span></span></div>
+    <hr>
+
+    <div class="center">
+        <small>Payment: <span id="paymentMode">CASH</span></small><br>
+        <small>Rider: <span id="riderId"></span></small><br><br>
+        <small>Thank You! Rate us on App ⭐</small>
+    </div>
+</div>
+
+<div class="center no-print">
+    <button onclick="window.print()">🖨️ Print Bill</button>
+    <button onclick="downloadPDF()" style="background:#28a745;">📄 Download PDF</button>
+</div>
+
+<script>
+// URL se orderId lega: /bill-template.html?id=QB123
+const params = new URLSearchParams(window.location.search);
+const orderId = params.get('id');
+
+async function loadBill(){
+    const res = await fetch('/api/orders/track/' + orderId);
+    const order = await res.json();
+    if(!order) return alert('Order nahi mila');
+
+    document.getElementById('orderId').innerText = order.trackId;
+    document.getElementById('orderDate').innerText = new Date(order.createdAt).toLocaleString();
+    document.getElementById('paymentMode').innerText = order.payment;
+    document.getElementById('riderId').innerText = order.riderId || 'N/A';
+    
+    let itemsHTML = '';
+    order.items.forEach(i=>{
+        itemsHTML += `<div class="row"><span>${i.name} x ${i.qty}</span> <span>₹${i.price * i.qty}</span></div>`;
+    });
+    document.getElementById('itemList').innerHTML = itemsHTML;
+
+    document.getElementById('subTotal').innerText = order.item_total;
+    document.getElementById('gst').innerText = order.commission_5;
+    document.getElementById('delivery').innerText = order.delivery_fee;
+    document.getElementById('platform').innerText = order.platform_fee;
+    document.getElementById('grandTotal').innerText = order.total;
+}
+
+function downloadPDF(){
+    window.location.href = '/invoice?id=' + orderId; // server wala PDF
+}
+
+loadBill();
+</script>
+
+</body>
+</html>
