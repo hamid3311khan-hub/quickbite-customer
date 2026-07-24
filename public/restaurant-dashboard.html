@@ -34,10 +34,10 @@
     </div>
 
     <div class="row mb-4">
-        <div class="col-md-3"><div class="stat-card" style="background:#28a745;"><h6>Aaj ke Orders</h6><h3 id="todayOrders">0</h3></div></div>
-        <div class="col-md-3"><div class="stat-card" style="background:#007bff;"><h6>Aaj ki Kamai</h6><h3 id="todayRevenue">₹0</h3></div></div>
-        <div class="col-md-3"><div class="stat-card" style="background:#ffc107; color:#000;"><h6>Payout Due</h6><h3 id="payoutDue">₹0</h3></div></div>
-        <div class="col-md-3"><div class="stat-card" style="background:#dc3545;"><h6>Pending Orders</h6><h3 id="pendingOrders">0</h3></div></div>
+        <div class="col-md-3 col-6 mb-3"><div class="stat-card" style="background:#28a745;"><h6>Aaj ke Orders</h6><h3 id="todayOrders">0</h3></div></div>
+        <div class="col-md-3 col-6 mb-3"><div class="stat-card" style="background:#007bff;"><h6>Aaj ki Kamai</h6><h3 id="todayRevenue">₹0</h3></div></div>
+        <div class="col-md-3 col-6 mb-3"><div class="stat-card" style="background:#ffc107; color:#000;"><h6>Payout Due</h6><h3 id="payoutDue">₹0</h3></div></div>
+        <div class="col-md-3 col-6 mb-3"><div class="stat-card" style="background:#dc3545;"><h6>Pending Orders</h6><h3 id="pendingOrders">0</h3></div></div>
     </div>
 
     <ul class="nav nav-tabs mb-3">
@@ -69,7 +69,7 @@
                 </div>
                 <div class="col-md-8">
                     <div class="card shadow-sm p-3">
-                        <h5>Your Menu Items <span class="badge bg-primary" id="totalItems">0</span></h5> <!-- FIX: ID ADD -->
+                        <h5>Your Menu Items <span class="badge bg-primary" id="totalItems">0</span></h5>
                         <table class="table table-sm">
                             <thead><tr><th>Image</th><th>Name</th><th>Price</th><th>Stock</th><th>Action</th></tr></thead>
                             <tbody id="menuList"><tr><td colspan="5">Loading...</td></tr></tbody>
@@ -183,7 +183,7 @@ document.getElementById('itemForm').addEventListener('submit', async (e)=>{
 async function loadMenu(){
     const res = await fetch(`/api/menu?shop=${restaurantId}`);
     const items = await res.json();
-    document.getElementById('totalItems').innerText = items.length; // FIX
+    document.getElementById('totalItems').innerText = items.length;
     let rows = '';
     items.forEach(i=>{
         rows += `<tr>
@@ -201,30 +201,36 @@ async function toggleStock(id){ await fetch(`/api/menu/${id}/stock`, {method:'PU
 async function deleteItem(id){ if(confirm('Pakka Delete kare?')){ await fetch(`/api/menu/${id}`, {method:'DELETE'}); loadMenu(); loadStats(); } }
 
 async function loadOrders(){
-    const res = await fetch(`/api/orders?shop=${restaurantId}`);
-    const orders = await res.json();
-    if(orders.length > lastOrderCount && lastOrderCount!= 0){ document.getElementById('notifSound').play(); }
-    lastOrderCount = orders.length;
-    document.getElementById('orderCount').innerText = orders.filter(o=>o.status=='Pending').length;
-    document.getElementById('pendingOrders').innerText = orders.filter(o=>o.status!='Delivered').length;
-    let html = '';
-    if(orders.length === 0) html = '<p class="text-center text-muted">Abhi koi order nahi hai</p>';
-    orders.forEach(o=>{
-        html += `<div class="border p-3 mb-2 rounded ${o.status=='Pending'?'new-order':''}">
-            <div class="d-flex justify-content-between"><div><b>${o.trackId}</b> - ${o.name} <br><small>${o.phone}</small></div><h5 class="text-success">₹${o.total}</h5></div>
-            <p class="mb-1"><b>Items:</b> ${o.items? o.items.map(i=>i.name+' x'+i.qty).join(', ') : ''}</p>
-            <p class="mb-1"><b>Hisab:</b> Item ₹${o.item_total} | Tumhara Cut: ₹${o.commission_5+o.platform_fee}</p>
-            <div class="d-flex gap-2 align-items-center mb-2"><b>Status:</b>
-            <select onchange="updateOrderStatus('${o._id}', this.value)" class="form-select form-select-sm" style="width:200px;">
-                <option ${o.status=='Pending'?'selected':''}>Pending</option>
-                <option ${o.status=='Preparing'?'selected':''}>Preparing</option>
-                <option ${o.status=='Ready'?'selected':''}>Ready for Pickup</option>
-                <option ${o.status=='Delivered'?'selected':''}>Delivered</option>
-            </select></div>
-            <a href="/bill-template.html?id=${o.trackId}" target="_blank" class="btn btn-sm btn-outline-primary">📄 Bill Print</a> <!-- NAYA -->
-            </div>`;
-    });
-    document.getElementById('ordersList').innerHTML = html;
+    try{
+        const res = await fetch(`/api/orders?shop=${restaurantId}`);
+        const orders = await res.json();
+        if(orders.length > lastOrderCount && lastOrderCount!= 0){ document.getElementById('notifSound').play().catch(()=>{}); }
+        lastOrderCount = orders.length;
+        document.getElementById('orderCount').innerText = orders.filter(o=>o.status=='Pending').length;
+        document.getElementById('pendingOrders').innerText = orders.filter(o=>o.status!='Delivered').length;
+        let html = '';
+        if(orders.length === 0) html = '<p class="text-center text-muted">Abhi koi order nahi hai</p>';
+        orders.forEach(o=>{
+            html += `<div class="border p-3 mb-2 rounded ${o.status=='Pending'?'new-order':''}">
+                <div class="d-flex justify-content-between"><div><b>${o.trackId}</b> - ${o.name} <br><small>${o.phone}</small></div><h5 class="text-success">₹${o.total}</h5></div>
+                <p class="mb-1"><b>Items:</b> ${o.items? o.items.map(i=>i.name+' x'+i.qty).join(', ') : ''}</p>
+                <p class="mb-1"><b>Hisab:</b> Item ₹${o.item_total} | Tumhara Cut: ₹${o.commission_5+o.platform_fee}</p>
+                <div class="d-flex gap-2 align-items-center mb-2"><b>Status:</b>
+                <select onchange="updateOrderStatus('${o._id}', this.value)" class="form-select form-select-sm" style="width:200px;">
+                    <option ${o.status=='Pending'?'selected':''}>Pending</option>
+                    <option ${o.status=='Preparing'?'selected':''}>Preparing</option>
+                    <option ${o.status=='Ready'?'selected':''}>Ready for Pickup</option>
+                    <option ${o.status=='Out for Delivery'?'selected':''}>Out for Delivery</option>
+                    <option ${o.status=='Delivered'?'selected':''}>Delivered</option>
+                </select></div>
+                <a href="/bill-template.html?id=${o.trackId}" target="_blank" class="btn btn-sm btn-outline-primary">📄 Bill Print</a>
+                </div>`;
+        });
+        document.getElementById('ordersList').innerHTML = html;
+    }catch(err){
+        document.getElementById('ordersList').innerHTML = '<p class="text-danger">Orders load nahi hue. Refresh karo</p>';
+        console.log(err)
+    }
 }
 
 // FIX: Cash ko rider ke hisaab se group kar diya
@@ -284,11 +290,11 @@ async function doPayout(){
 async function updateOrderStatus(id, status){ await fetch(`/api/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})}); loadOrders(); loadStats(); }
 
 async function addOffer(){
-    const body = {code: offerCode.value, discount: +offerDiscount.value, restaurantId: restaurantId};
+    const body = {code: document.getElementById('offerCode').value, discount: +document.getElementById('offerDiscount').value, restaurantId: restaurantId};
     const res = await fetch('/api/restaurant/offer', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
     const data = await res.json();
     document.getElementById('offerMsg').innerHTML = `<div class="alert alert-success">${data.msg}</div>`;
-    offerCode.value=''; offerDiscount.value='';
+    document.getElementById('offerCode').value=''; document.getElementById('offerDiscount').value='';
     setTimeout(()=>document.getElementById('offerMsg').innerHTML='', 3000);
 }
 
