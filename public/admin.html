@@ -3,32 +3,32 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QuickBite Admin</title>
+<title>Eat4Bite™ Admin</title>
 <style>
     body{font-family:Arial; background:#f4f4f4; padding:20px;}
-  .top-bar{display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;}
-  .top-buttons a{padding:10px 15px; border-radius:5px; text-decoration:none; color:white; margin-left:10px; font-weight:bold;}
-  .btn-admin{background:#333;}.btn-owner{background:orange;}
- .card{background:white; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 5px #ccc;}
+ .top-bar{display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;}
+ .top-buttons a{padding:10px 15px; border-radius:5px; text-decoration:none; color:white; margin-left:10px; font-weight:bold;}
+ .btn-admin{background:#333;}.btn-owner{background:orange;}
+.card{background:white; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 5px #ccc;}
     input, select, button, textarea{padding:10px; margin:5px; border-radius:5px; border:1px solid #ccc; width:calc(100% - 22px);}
     button{background:#ff5722; color:white; border:none; cursor:pointer;}
     button:hover{opacity:0.9;}
- .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;}
- .stat-card{background:#ff5722; color:white; text-align:center; padding:20px;}
- .stat-card h2{margin:0; font-size:30px;}
- .order,.menu-item,.rider-item,.owner-item{border:1px solid #ddd; padding:10px; margin:10px 0; border-radius:5px;}
- .btn-green{background:#25D366;}.btn-red{background:#dc3545;}.btn-blue{background:#007bff;}.btn-orange{background:orange;}
- .report-result p{margin:5px 0; font-size:16px;}
- .logout-btn{background:#6c757d; padding:8px 15px; width:auto;}
+.grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;}
+.stat-card{background:#ff5722; color:white; text-align:center; padding:20px;}
+.stat-card h2{margin:0; font-size:30px;}
+.order,.menu-item,.rider-item,.owner-item{border:1px solid #ddd; padding:10px; margin:10px 0; border-radius:5px;}
+.btn-green{background:#25D366;}.btn-red{background:#dc3545;}.btn-blue{background:#007bff;}.btn-orange{background:orange;}
+.report-result p{margin:5px 0; font-size:16px;}
+.logout-btn{background:#6c757d; padding:8px 15px; width:auto;}
     small{color:#666; font-size:12px;}
- .rider-docs img{width:70px; height:70px; object-fit:cover; border:1px solid #ccc; border-radius:5px; margin:3px;}
- .menu-item img{width:80px; height:80px; object-fit:cover; border-radius:5px; float:left; margin-right:10px;}
+.rider-docs img{width:70px; height:70px; object-fit:cover; border:1px solid #ccc; border-radius:5px; margin:3px;}
+.menu-item img{width:80px; height:80px; object-fit:cover; border-radius:5px; float:left; margin-right:10px;}
 </style>
 </head>
 <body>
 
 <div class="top-bar">
-    <h1>🔥 QuickBite Admin Panel</h1>
+    <h1>🍴 Eat4Bite™ Admin Panel</h1>
     <div class="top-buttons">
         <a href="/admin-owners" class="btn-owner">🏪 Approve Restaurants</a>
         <button class="logout-btn" onclick="logout()">🚪 Logout</button>
@@ -130,7 +130,6 @@ document.getElementById('itemImg').addEventListener('change', function(e){
     reader.readAsDataURL(file);
 });
 
-// FIX: Sirf usi restaurant ke free rider laao
 async function loadRidersForShop(shopId){
     const res = await fetch(API+`/api/riders/approved?shop=${shopId}`);
     const ridersData = await res.json();
@@ -195,7 +194,7 @@ async function loadData(){
 
     let orderHtml = '';
     for(let o of orders){
-        const riders = await loadRidersForShop(o.restaurantId); // Sirf is restaurant ke rider
+        const riders = await loadRidersForShop(o.restaurantId);
 
         orderHtml += `
             <div class="order">
