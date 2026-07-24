@@ -109,6 +109,7 @@ app.get('/api/orders', async (req,res)=>{
 
 app.put('/api/order/assign', async (req,res)=>{
     const rider = await Rider.findOne({mobile: req.body.riderId});
+    if(!rider) return res.json({success:false, msg:"Rider nahi mila"})
     if(rider.cash_balance >= 500){ return res.json({success:false, msg:"⚠️ ₹500 cash pending. Pehle jama karein."}) }
     const busyOrder = await Order.findOne({ riderId: req.body.riderId, status: {$ne: 'Delivered'} });
     if(busyOrder){ return res.json({success:false, msg:"Ye rider abhi busy hai."}) }
@@ -118,6 +119,7 @@ app.put('/api/order/assign', async (req,res)=>{
 
 app.post('/api/order/delivered', async (req,res)=>{
     const order = await Order.findById(req.body.orderId);
+    if(!order) return res.json({success:false});
     await Order.findByIdAndUpdate(req.body.orderId, {status: 'Delivered'});
     await Rider.findOneAndUpdate({mobile: order.riderId}, {$inc: {cash_balance: order.delivery_fee, weekly_orders: 1}});
     res.json({success:true, msg:"Order Delivered Marked"});
@@ -136,6 +138,7 @@ app.post('/api/rider/cash-deposit', uploadFile.single('proof'), async (req,res)=
 app.post('/api/restaurant/cash-confirm', async (req,res)=>{
     const {riderId} = req.body;
     const orders = await Order.find({riderId, cash_deposited: true});
+    if(orders.length === 0) return res.json({success:false, msg:"Koi order nahi mila"});
     let total_cash = orders.reduce((a,b)=>a+b.cash_to_restaurant, 0);
     await RestaurantOwner.findOneAndUpdate({restaurantId: orders[0].restaurantId}, {$inc: {payout_due: total_cash}});
     res.json({success:true, msg:`₹${total_cash} confirm ho gaya`})
@@ -186,7 +189,6 @@ app.post('/api/rider/login', async (req,res)=>{
     if(rider.status === "Pending") return res.json({success:false, msg:"Approval pending hai"});
     rider = await Rider.findOneAndUpdate({mobile: req.body.mobile}, {status: "Online"}, {new:true});
     res.json({success:true, rider});
-});
 app.post('/api/riderLocation', async (req,res)=>{
     const {mobile, lat, lng} = req.body;
     await Rider.findOneAndUpdate({mobile}, {lat, lng, lastUpdate: new Date()});
@@ -197,14 +199,17 @@ app.put('/api/rider/:id/status', async (req,res)=>{ await Rider.findByIdAndUpdat
 app.post('/api/menu', upload.none(), async (req,res)=>{
   await new MenuItem({...req.body, image: req.body.image || '', restaurantId: req.body.restaurantId || 'default-shop', veg: req.body.veg === 'true'}).save();
   res.json({success:true});
+}); // FIX: BRACKET BAND
+
 app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
 app.put('/api/menu/:id/stock', async (req,res)=>{ const item = await MenuItem.findById(req.params.id); item.inStock =!item.inStock; await item.save(); res.json({success:true}); });
 app.get('/api/orders/track/:id', async (req,res)=>{ res.json(await Order.findOne({trackId:req.params.id})) });
 app.put('/api/orders/:id/status', async (req,res)=>{ await Order.findByIdAndUpdate(req.params.id, req.body); res.json({success:true}) });
 app.post('/api/restaurant/offer', async (req,res)=>{ await new Offer(req.body).save(); res.json({success:true, msg: "Offer Created!"}); })
 
-// ===== CRON =====
-cron.schedule('0 0 *', async () => {
+// ===== CRON FIX - 5 PART WALA =====
+cron.schedule('0 0 * * *', async () => { // Raat 12 baje
+    console.log("Running Auto Settlement...");
     const owners = await RestaurantOwner.find({status: "Approved"});
     for(let owner of owners){
         const today_orders = await Order.find({restaurantId: owner.restaurantId, createdAt: {$gte: new Date(new Date().setHours(0,0,0,0))}});
@@ -213,9 +218,20 @@ cron.schedule('0 0 *', async () => {
     }
 });
 
+cron.schedule('0 0 * 1', async () => { // Har Somvaar
+    console.log("Running Weekly Bonus...");
+    const riders = await Rider.find();
+    for(let rider of riders){
+        let bonus = 0;
+        if(rider.weekly_orders >= 30) bonus += 50;
+        await Rider.findByIdAndUpdate(rider._id, { $set: {weekly_orders: 0, weekly_bonus: bonus} });
+    }
+});
+
 // ===== BILL PDF =====
 app.get('/invoice', async (req,res)=>{
   const { id } = req.query; const order = await Order.findOne({trackId:id});
+  if(!order) return res.status(404).send("Order not found");
   const doc = new PDFDocument({margin: 40}); res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename=QuickBite-${id}.pdf`); doc.pipe(res);
   doc.fontSize(22).text('QUICKBITE', {align: 'center'});
