@@ -7,6 +7,7 @@ const http = require('http');
 const { Server } = require("socket.io");
 const PDFDocument = require('pdfkit');
 const multer = require('multer');
+const fs = require('fs');
 const upload = multer();
 const bcrypt = require('bcryptjs');
 
@@ -14,6 +15,9 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: {origin: "*"} });
 const PORT = process.env.PORT || 10000;
+
+// Uploads folder banado agar nahi hai
+if (!fs.existsSync('./uploads')){ fs.mkdirSync('./uploads'); }
 
 app.use(cors({origin: "*"}));
 app.use(express.json({limit: '10mb'}));
@@ -64,6 +68,7 @@ const OrderSchema = new mongoose.Schema({
 }, {timestamps: true});
 const Order = mongoose.model('Order', OrderSchema);
 const Offer = mongoose.model('Offer', {code:String, discount:Number, type:{type:String, default:"PERCENT"}, restaurantId:String, createdAt:{type:Date, default:Date.now}});
+const Restaurant = mongoose.model('Restaurant', {id:String, name:String, address:String, image:String, status:{type:String, default:"Active"}});
 
 // ===== SOCKET.IO =====
 io.on('connection', (socket) => {
@@ -84,7 +89,7 @@ function calculateBill(item_total) {
     return {item_total, commission_5, platform_fee, delivery_fee, grand_total, cash_to_restaurant: item_total, is_peak};
 }
 
-// ===== AUTO CRON WITH SETINTERVAL - NO NODE-CRON =====
+// ===== AUTO CRON WITH SETINTERVAL =====
 let dailyRun = false;
 let weeklyRun = false;
 
@@ -92,9 +97,9 @@ setInterval(async () => {
     const now = new Date();
     const hours = now.getHours();
     const minutes = now.getMinutes();
-    const day = now.getDay(); // 0=Sun, 1=Mon
+    const day = now.getDay();
 
-    // 1. DAILY SETTLEMENT: Raat 12:00 baje
+    // DAILY SETTLEMENT: Raat 12:00 baje
     if(hours === 0 && minutes === 0 && !dailyRun){
         dailyRun = true;
         console.log("🔄 Running Daily Auto Settlement...");
@@ -109,9 +114,9 @@ setInterval(async () => {
             console.log("✅ Daily Settlement Done");
         }catch(e){console.log("Cron Error:", e)}
     }
-    if(hours !== 0 || minutes !== 0) dailyRun = false; // reset flag
+    if(hours !== 0 || minutes !== 0) dailyRun = false;
 
-    // 2. WEEKLY BONUS: Har Somvaar 12:00 baje
+    // WEEKLY BONUS: Har Somvaar 12:00 baje
     if(day === 1 && hours === 0 && minutes === 0 && !weeklyRun){
         weeklyRun = true;
         console.log("🔄 Running Weekly Bonus Reset...");
@@ -125,15 +130,19 @@ setInterval(async () => {
             console.log("✅ Weekly Bonus Done");
         }catch(e){console.log("Cron Error:", e)}
     }
-    if(day !== 1 || hours !== 0 || minutes !== 0) weeklyRun = false; // reset flag
+    if(day !== 1 || hours !== 0 || minutes !== 0) weeklyRun = false;
 
-}, 60000); // Har 1 minute me check karega
+}, 60000);
 
 // ===== API ROUTES =====
 app.get('/api/menu', async (req,res)=> {
     const shopId = req.query.shop || 'default-shop';
     res.json(await MenuItem.find({restaurantId: shopId}));
 });
+
+app.get('/api/restaurants', async (req,res)=>{ // NAYA API
+    res.json(await RestaurantOwner.find({status: "Approved"}));
+})
 
 app.post('/api/orders', async (req,res)=>{
     const trackId = 'QB' + Date.now();
@@ -277,5 +286,10 @@ app.get('/restaurant-dashboard', (req, res) => res.sendFile(path.join(__dirname,
 app.get('/bill-template.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'bill-template.html')));
 app.get('/restaurant-login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-login.html')));
 app.get('/rider-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider-register.html')));
+
+// ===== NAYE 3 PAGE =====
+app.get('/restaurants', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurants.html')));
+app.get('/restaurant-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-register.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
 server.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
