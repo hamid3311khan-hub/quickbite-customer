@@ -1,7 +1,7 @@
-<!DOCTYPE html><html><head><title>Cart - QuickBite</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!DOCTYPE html><html lang="hi"><head><title>Cart - Eat4Bite™</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 *{margin:0;font-family:Arial;background:#f5f5f5}
-nav{background:#ff6600;color:white;padding:15px;font-weight:bold}
+nav{background:#ff4d4d;color:white;padding:15px;font-weight:bold}
 .container{max-width:600px;margin:20px auto;padding:20px}
 .card{background:white;padding:15px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
 input{width:95%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:5px}
@@ -9,16 +9,16 @@ button{background:#28a745;color:white;border:none;padding:15px;width:100%;border
 button:disabled{background:#ccc;cursor:not-allowed}
 .coupon-box{display:flex;gap:10px;margin:15px 0}
 .coupon-box input{margin:0}
-.coupon-box button{width:auto;padding:12px 20px;background:#ff6600;margin:0}
-.total{font-size:22px;font-weight:bold;color:#ff6600;margin:10px 0}
+.coupon-box button{width:auto;padding:12px 20px;background:#ff4d4d;margin:0}
+.total{font-size:22px;font-weight:bold;color:#ff4d4d;margin:10px 0}
 .payment-option{border:2px solid #ddd;padding:12px;border-radius:8px;margin:10px 0;cursor:pointer;transition:0.2s}
-.payment-option.active{border-color:#ff6600;background:#fff5f0}
-#qrBox{text-align:center;display:none;padding:15px;border:1px dashed #ff6600;border-radius:8px;margin:10px 0;background:#fff}
+.payment-option.active{border-color:#ff4d4d;background:#fff5f0}
+#qrBox{text-align:center;display:none;padding:15px;border:1px dashed #ff4d4d;border-radius:8px;margin:10px 0;background:#fff}
 .cart-item{display:flex;justify-content:space-between;align-items:center;margin:10px 0;padding:8px 0;border-bottom:1px solid #eee}
 .remove-btn{width:auto;padding:5px 10px;background:red;font-size:12px;border-radius:5px}
 .empty{text-align:center;color:#888;padding:20px}
 </style></head><body>
-<nav><a href="/restaurants" style="color:white;text-decoration:none">← Back to Menu</a></nav>  <!-- /index ko /restaurants kiya -->
+<nav><a href="/restaurants" style="color:white;text-decoration:none">🍴 Eat4Bite™ ← Back to Menu</a></nav>
 
 <div class="container">
     <div class="card">
@@ -32,7 +32,9 @@ button:disabled{background:#ccc;cursor:not-allowed}
         </div>
         <p id="discountMsg" style="color:green;font-weight:bold"></p>
 
-        <div id="billBreakup"></div> <!-- NAYA: Bill breakdown dikhane ke liye -->
+        <div id="billBreakup"></div>
+
+        <h3>Total: ₹<span id="total">0</span></h3>
 
         <h3>Payment Method</h3>
         <div class="payment-option active" onclick="selectPay('COD', this)">
@@ -58,12 +60,12 @@ button:disabled{background:#ccc;cursor:not-allowed}
 </div>
 
 <script>
-const API = 'https://quickbite-ymqk.onrender.com/api';
+const API = 'https://eat4bite-ymqk.onrender.com/api'; // <- Yaha change karna hai
 let cart = JSON.parse(localStorage.getItem('cart')) || [];
 let discount = 0;
 let paymentMode = 'COD';
 let finalTotal = 0;
-let shopId = localStorage.getItem('shopId'); // NAYA: restaurantId lene ke liye
+let shopId = localStorage.getItem('shopId');
 
 function loadCart(){
     if(cart.length==0){
@@ -77,7 +79,6 @@ function loadCart(){
     document.getElementById('placeBtn').disabled = false;
     let item_total = cart.reduce((s,i)=>s+i.price*i.qty,0);
     
-    // NAYA: Backend jaisa bill calculation
     let commission_5 = Math.round(item_total * 0.05);
     let platform_fee = 10; let delivery_fee = 30;
     let subtotal = item_total - discount;
@@ -91,7 +92,6 @@ function loadCart(){
         </div>
     `).join('');
 
-    // NAYA: Bill breakup dikhao
     document.getElementById('billBreakup').innerHTML = `
         <p>Subtotal: ₹${item_total}</p>
         ${discount > 0 ? `<p style="color:green">Discount: -₹${discount}</p>` : ''}
@@ -121,7 +121,7 @@ function selectPay(mode, el){
 function updateQR(){
     let upiID = "tanbalkhi2014-3@okhdfcbank";
     if(paymentMode=='UPI' && finalTotal > 0){
-        document.getElementById('qr').src = `https://upiqr.in/api/qr?name=QuickBite&vpa=${upiID}&amount=${finalTotal}`;
+        document.getElementById('qr').src = `https://upiqr.in/api/qr?name=Eat4Bite&vpa=${upiID}&amount=${finalTotal}`; // <- Yaha change
         document.getElementById('qrAmount').innerText = finalTotal;
     } else {
         document.getElementById('qr').src = "";
@@ -147,7 +147,6 @@ async function applyCoupon(){
     }
 }
 
-// FIXED FUNCTION
 async function placeOrder(){
     document.getElementById('placeBtn').innerText = "📍 Location le rahe hain...";
     document.getElementById('placeBtn').disabled = true;
@@ -160,11 +159,11 @@ async function placeOrder(){
             phone:document.getElementById('phone').value.trim(),
             address:document.getElementById('address').value.trim(),
             items:cart,
-            restaurantId: shopId, // FIX 1: YE ADD KIYA
+            restaurantId: shopId,
             payment:paymentMode,
             coupon:document.getElementById('coupon').value,
             discount:discount,
-            custLat: pos.coords.latitude,  // FIX 2: LOCATION ADD
+            custLat: pos.coords.latitude,
             custLng: pos.coords.longitude
         }
         if(!order.name ||!order.phone ||!order.address) return alert("Please fill all details");
