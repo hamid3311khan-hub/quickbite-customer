@@ -50,7 +50,7 @@
 </footer>
 
 <script>
-const API = '';
+const API = 'https://quickbite-ymqk.onrender.com'; // <- FIX KIYA
 
 async function loadOwners(){
     try{
@@ -73,8 +73,8 @@ async function loadOwners(){
                 : `<span class="text-danger">Rejected</span>`;
 
             let proofLink = o.payment_proof 
-                ? `<a href="/uploads/${o.payment_proof}" target="_blank">
-                     <img src="/uploads/${o.payment_proof}" class="proof-img" onerror="this.src='https://via.placeholder.com/80x80/cccccc/ffffff?text=No+Proof'">
+                ? `<a href="${API}/uploads/${o.payment_proof}" target="_blank">  <!-- FIX -->
+                     <img src="${API}/uploads/${o.payment_proof}" class="proof-img" onerror="this.src='https://via.placeholder.com/80x80/cccccc/ffffff?text=No+Proof'">
                    </a>` 
                 : '<span class="text-muted">-</span>';
             
