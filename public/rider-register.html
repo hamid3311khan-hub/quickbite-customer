@@ -11,6 +11,7 @@ h2{text-align:center; color:#ff5722;}
 input,select{width:100%; padding:12px; margin:8px 0; border-radius:6px; border:1px solid #ccc; box-sizing:border-box;}
 label{font-weight:bold; font-size:14px;}
 button{width:100%; padding:14px; margin-top:10px; border-radius:6px; border:none; background:#ff5722; color:white; font-size:16px; font-weight:bold; cursor:pointer;}
+button:disabled{background:#ccc; cursor:not-allowed;}
 #msg{text-align:center; margin-top:10px; font-weight:bold;}
 </style>
 </head>
@@ -37,17 +38,28 @@ button{width:100%; padding:14px; margin-top:10px; border-radius:6px; border:none
 const API = '';
 
 async function loadRestaurants(){
-    const res = await fetch('/api/restaurants');
-    const shops = await res.json();
-    const select = document.getElementById('restaurantId');
-    shops.forEach(s=>{
-        select.innerHTML += `<option value="${s.id}">${s.name}</option>`;
-    });
+    try{
+        const res = await fetch('/api/restaurants');
+        const shops = await res.json();
+        const select = document.getElementById('restaurantId');
+        select.innerHTML = '<option value="">-- Restaurant Select Kare --</option>'; // reset
+        if(shops.length === 0){
+            select.innerHTML += `<option disabled>Koi restaurant approved nahi hai</option>`;
+        }
+        shops.forEach(s=>{
+            // FIX: s.name use kiya kyunki server.js se wahi aa raha hai
+            select.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+        });
+    }catch(err){
+        console.log(err);
+        document.getElementById('msg').innerText = "Restaurant list load nahi hui";
+    }
 }
 loadRestaurants();
 
 async function register(){
   const btn = document.querySelector('button');
+  const msg = document.getElementById('msg');
   btn.disabled = true;
   msg.innerText = "Register ho raha hai...";
   msg.style.color = "blue";
