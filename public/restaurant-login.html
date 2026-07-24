@@ -69,8 +69,10 @@ document.getElementById('loginForm').addEventListener('submit', async (e)=>{
                 btn.innerText = "Login";
                 return;
             }
-            // IMPORTANT: restaurantOwner naam se save karna hai
-            localStorage.setItem('restaurantOwner', JSON.stringify(result.owner));
+            // FIX: ALAG ALAG KEY ME SAVE KIYA
+            localStorage.setItem('restaurantId', result.owner.restaurantId);
+            localStorage.setItem('restaurantName', result.owner.restaurantName);
+            localStorage.setItem('restaurantOwner', JSON.stringify(result.owner)); // purana wala bhi rakha
             window.location.href = '/restaurant-dashboard';
         } else {
             document.getElementById('msg').innerHTML = `<div class="alert alert-danger">${result.msg}</div>`;
