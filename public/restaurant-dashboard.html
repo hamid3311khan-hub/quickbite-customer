@@ -8,7 +8,7 @@
 <style>
     body{background:#f8f9fa}
 .navbar-brand{color:#ff6600!important; font-weight:bold}
-.nav-tabs.nav-link.active{background:#ff6600; color:white; border:none;} /*.nav-tabs.nav-link thik kiya */
+.nav-tabs.nav-link.active{background:#ff6600; color:white; border:none;} /* TYPO FIX */
 .stat-card{border-radius:15px; color:white; padding:20px; box-shadow:0 4px 10px rgba(0,0,0,0.1)}
 .stat-card h3{font-size:28px; margin:0;}
 .new-order{animation: blink 1.5s infinite; border-left:5px solid #ff6600;}
@@ -60,7 +60,7 @@
                     <input type="file" id="imageFile" class="form-control mb-2">
                     <input type="hidden" id="imageBase64">
                     <img id="preview" style="display:none; width:100px; margin:10px 0;">
-                    <button class="btn btn-success w-100">Add Item</button>
+                    <button class="btn btn-success w-100" style="background:#ff6600; border:none;">Add Item</button>
                 </form>
                 <div id="msg" class="mt-2"></div>
                 <hr>
@@ -92,7 +92,7 @@
                     <hr>
                     <b>Net Payout Due: ₹<span id="netPayout">0</span></b>
                 </div>
-                <button class="btn btn-success btn-lg w-100" onclick="doPayout()">Pay Now UPI</button>
+                <button class="btn btn-success btn-lg w-100" style="background:#ff6600; border:none;" onclick="doPayout()">Pay Now UPI</button>
                 <p class="text-muted mt-2">* Ye amount Eat4Bite™ ko har 3 din me bhejna hai</p>
             </div>
         </div>
@@ -110,7 +110,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// FIX: PEHLE NAYA WALA CHECK KARENGE PHIR PURANA WALA
+// FIX: API URL ADD KIYA
+const API = 'https://eat4bite-ymqk.onrender.com'; // <- YE LINE SABSE IMPORTANT HAI
+
 const restaurantId = localStorage.getItem('restaurantId') || JSON.parse(localStorage.getItem('restaurantOwner') || '{}').restaurantId;
 const restaurantName = localStorage.getItem('restaurantName') || JSON.parse(localStorage.getItem('restaurantOwner') || '{}').restaurantName;
 const owner = JSON.parse(localStorage.getItem('restaurantOwner') || '{}');
@@ -120,7 +122,7 @@ if(!restaurantId){
     window.location.href = '/restaurant-login';
 }
 
-document.getElementById('resName').innerText = restaurantName || 'Default Shop';
+document.getElementById('resName').innerText = restaurantName || 'Eat4Bite™ Shop'; // NAME CHANGE
 let lastOrderCount = 0;
 
 function checkTrial(){
@@ -156,7 +158,7 @@ document.getElementById('itemForm').addEventListener('submit', async (e)=>{
         image: document.getElementById('imageBase64').value,
         restaurantId: restaurantId
     };
-    const res = await fetch('/api/menu', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+    const res = await fetch(`${API}/api/menu`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)}); // API ADDED
     const result = await res.json();
     if(result.success){
         document.getElementById('msg').innerHTML = `<div class="alert alert-success">✅ Item Added!</div>`;
@@ -170,7 +172,7 @@ document.getElementById('itemForm').addEventListener('submit', async (e)=>{
 });
 
 async function loadMenu(){
-    const res = await fetch(`/api/menu?shop=${restaurantId}`);
+    const res = await fetch(`${API}/api/menu?shop=${restaurantId}`); // API ADDED
     const items = await res.json();
     document.getElementById('totalItems').innerText = items.length;
     let rows = '';
@@ -186,12 +188,12 @@ async function loadMenu(){
     document.getElementById('menuList').innerHTML = rows || '<tr><td colspan="5">No items yet</td></tr>';
 }
 
-async function toggleStock(id){ await fetch(`/api/menu/${id}/stock`, {method:'PUT'}); loadMenu(); }
-async function deleteItem(id){ if(confirm('Pakka Delete kare?')){ await fetch(`/api/menu/${id}`, {method:'DELETE'}); loadMenu(); loadStats(); } }
+async function toggleStock(id){ await fetch(`${API}/api/menu/${id}/stock`, {method:'PUT'}); loadMenu(); } // API ADDED
+async function deleteItem(id){ if(confirm('Pakka Delete kare?')){ await fetch(`${API}/api/menu/${id}`, {method:'DELETE'}); loadMenu(); loadStats(); } } // API ADDED
 
 async function loadOrders(){
     try{
-        const res = await fetch(`/api/orders?shop=${restaurantId}`);
+        const res = await fetch(`${API}/api/orders?shop=${restaurantId}`); // API ADDED
         const orders = await res.json();
         if(orders.length > lastOrderCount && lastOrderCount!= 0){ document.getElementById('notifSound').play().catch(()=>{}); }
         lastOrderCount = orders.length;
@@ -223,7 +225,7 @@ async function loadOrders(){
 }
 
 async function loadCashPending(){
-    const res = await fetch(`/api/orders?shop=${restaurantId}`);
+    const res = await fetch(`${API}/api/orders?shop=${restaurantId}`); // API ADDED
     const orders = await res.json();
     const pending = orders.filter(o=>o.cash_deposited === true && o.status=='Delivered');
     const grouped = {};
@@ -241,7 +243,7 @@ async function loadCashPending(){
         let data = grouped[riderId];
         html += `<div class="border p-3 mb-2 rounded">
             <b>${riderId}</b> ne ${data.count} order ka ₹${data.amount} jama kiya<br>
-            <img src="/uploads/${data.proof}" width="100" class="my-2" onerror="this.src='https://via.placeholder.com/100x100/cccccc/ffffff?text=No+Proof'"><br>
+            <img src="${API}/uploads/${data.proof}" width="100" class="my-2" onerror="this.src='https://via.placeholder.com/100x100/cccccc/ffffff?text=No+Proof'"><br> <!-- API ADDED -->
             <button class="btn btn-success btn-sm" onclick="confirmCash('${riderId}')">✅ Cash Mil Gaya Confirm</button>
         </div>`;
     }
@@ -249,13 +251,13 @@ async function loadCashPending(){
 }
 
 async function confirmCash(riderId){
-    await fetch('/api/restaurant/cash-confirm', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({riderId})});
+    await fetch(`${API}/api/restaurant/cash-confirm`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({riderId})}); // API ADDED
     alert('Cash Confirm ho gaya');
     loadCashPending(); loadStats();
 }
 
 async function loadStats(){
-    const res = await fetch(`/api/restaurant/stats?shop=${restaurantId}`);
+    const res = await fetch(`${API}/api/restaurant/stats?shop=${restaurantId}`); // API ADDED
     const data = await res.json();
     const payout = parseInt(data.payout_due) || 0;
     const revenue = parseInt(data.revenue) || 0;
@@ -271,17 +273,17 @@ async function loadStats(){
 
 async function doPayout(){
     if(confirm('Pakka ₹'+document.getElementById('netPayout').innerText+' payout karna hai?')){
-        await fetch('/api/restaurant/payout', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({restaurantId})});
+        await fetch(`${API}/api/restaurant/payout`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({restaurantId})}); // API ADDED
         alert('Payout Request Bhej diya');
         loadStats();
     }
 }
 
-async function updateOrderStatus(id, status){ await fetch(`/api/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})}); loadOrders(); loadStats(); }
+async function updateOrderStatus(id, status){ await fetch(`${API}/api/orders/${id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})}); loadOrders(); loadStats(); } // API ADDED
 
 async function addOffer(){
     const body = {code: document.getElementById('offerCode').value, discount: +document.getElementById('offerDiscount').value, restaurantId: restaurantId};
-    const res = await fetch('/api/restaurant/offer', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    const res = await fetch(`${API}/api/restaurant/offer`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}); // API ADDED
     const data = await res.json();
     document.getElementById('offerMsg').innerHTML = `<div class="alert alert-success">${data.msg}</div>`;
     document.getElementById('offerCode').value=''; document.getElementById('offerDiscount').value='';
