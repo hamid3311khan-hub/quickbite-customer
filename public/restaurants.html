@@ -35,11 +35,10 @@ async function loadRestaurants(){
         }
 
         shops.forEach(shop => {
-            // FIX: name ko encode kiya taaki space se URL break na ho
             const imgText = encodeURIComponent(shop.name);
             list.innerHTML += `
             <div class="col-md-4 col-12">
-                <div class="card shadow-sm p-3" onclick="window.location.href='/?shop=${shop.id}'" style="cursor:pointer">
+                <div class="card shadow-sm p-3" onclick="selectShop('${shop.id}', '${shop.name}')" style="cursor:pointer">
                     <img src="https://via.placeholder.com/400x180/ff5722/ffffff?text=${imgText}" 
                          class="card-img-top mb-2" 
                          style="height:180px; object-fit:cover; border-radius:8px"
@@ -54,6 +53,14 @@ async function loadRestaurants(){
         console.log(err)
     }
 }
+
+function selectShop(shopId, shopName){
+    // FIX: YE 2 LINE ADD KI
+    localStorage.setItem('shopId', shopId); 
+    localStorage.setItem('shopName', shopName);
+    window.location.href = `/?shop=${shopId}` // menu page pe bhej do
+}
+
 loadRestaurants();
 </script>
 </body>
