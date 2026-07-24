@@ -89,17 +89,15 @@ function calculateBill(item_total) {
     return {item_total, commission_5, platform_fee, delivery_fee, grand_total, cash_to_restaurant: item_total, is_peak};
 }
 
-// ===== AUTO CRON WITH SETINTERVAL =====
+// ===== AUTO CRON =====
 let dailyRun = false;
 let weeklyRun = false;
-
 setInterval(async () => {
     const now = new Date();
     const hours = now.getHours();
     const minutes = now.getMinutes();
     const day = now.getDay();
 
-    // DAILY SETTLEMENT: Raat 12:00 baje
     if(hours === 0 && minutes === 0 && !dailyRun){
         dailyRun = true;
         console.log("🔄 Running Daily Auto Settlement...");
@@ -116,7 +114,6 @@ setInterval(async () => {
     }
     if(hours !== 0 || minutes !== 0) dailyRun = false;
 
-    // WEEKLY BONUS: Har Somvaar 12:00 baje
     if(day === 1 && hours === 0 && minutes === 0 && !weeklyRun){
         weeklyRun = true;
         console.log("🔄 Running Weekly Bonus Reset...");
@@ -131,7 +128,6 @@ setInterval(async () => {
         }catch(e){console.log("Cron Error:", e)}
     }
     if(day !== 1 || hours !== 0 || minutes !== 0) weeklyRun = false;
-
 }, 60000);
 
 // ===== API ROUTES =====
@@ -140,7 +136,6 @@ app.get('/api/menu', async (req,res)=> {
     res.json(await MenuItem.find({restaurantId: shopId}));
 });
 
-// FIX 1: Restaurant list with name
 app.get('/api/restaurants', async (req,res)=>{
     const shops = await RestaurantOwner.find({status: "Approved"});
     res.json(shops.map(s => ({id: s.restaurantId, name: s.restaurantName, address: s.address})))
@@ -150,7 +145,14 @@ app.post('/api/orders', async (req,res)=>{
     const trackId = 'QB' + Date.now();
     const item_total = req.body.items.reduce((a,b)=>a+(b.price*b.qty), 0);
     const bill = calculateBill(item_total);
-    const newOrder = await new Order({...req.body, trackId,...bill, total: bill.grand_total}).save();
+    const newOrder = await new Order({
+        ...req.body, 
+        trackId,
+        ...bill, 
+        total: bill.grand_total,
+        custLat: req.body.custLat || null,  // MAP KE LIYE ADD KIYA
+        custLng: req.body.custLng || null
+    }).save();
     res.json({success:true, trackId, bill})
 });
 
@@ -181,7 +183,6 @@ app.post('/api/order/delivered', async (req,res)=>{
 const storage = multer.diskStorage({ destination: './uploads/', filename: (req, file, cb) => { cb(null, Date.now() + path.extname(file.originalname)); }});
 const uploadFile = multer({ storage: storage });
 
-// FIX 2: Rider Register API
 app.post('/api/rider/register', uploadFile.fields([
     {name: 'aadharImg', maxCount: 1},
     {name: 'panImg', maxCount: 1},
@@ -192,7 +193,6 @@ app.post('/api/rider/register', uploadFile.fields([
         if(!name ||!mobile) return res.json({success:false, msg: "Saare field bharo"});
         const exists = await Rider.findOne({mobile});
         if(exists) return res.json({success:false, msg: "Ye mobile pehle se register hai"});
-
         await new Rider({
            name, fatherName, aadhar, pan, mobile, restaurantId,
             aadharImg: req.files.aadharImg[0].filename,
@@ -256,7 +256,6 @@ app.post('/api/restaurant/login', async (req,res)=>{
     res.json({success:true, owner})
 });
 
-// FIX 3: Admin Owner APIs
 app.get('/api/restaurant/owners', async (req,res)=>{
     res.json(await RestaurantOwner.find().sort({createdAt:-1}))
 })
@@ -331,11 +330,10 @@ app.get('/restaurant-dashboard', (req, res) => res.sendFile(path.join(__dirname,
 app.get('/bill-template.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'bill-template.html')));
 app.get('/restaurant-login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-login.html')));
 app.get('/rider-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider-register.html')));
-
-// ===== NAYE 3 PAGE =====
 app.get('/restaurants', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurants.html')));
 app.get('/restaurant-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-register.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
-app.get('/admin-owners', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin-owners.html'))); // NAYA
+app.get('/admin-owners', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin-owners.html')));
+app.get('/track', (req, res) => res.sendFile(path.join(__dirname, 'public', 'track.html'))); // NAYA
 
 server.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
