@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin - Restaurant Approval</title>
+<title>Admin - Eat4Bite™ Restaurant Approval</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
     body{background:#f8f9fa}
@@ -11,17 +11,18 @@
    .badge-trial{background:#0dcaf0}
    .badge-active{background:#198754}
    .proof-img{width:80px; height:80px; object-fit:cover; cursor:pointer; border-radius:5px; border:1px solid #ddd}
+   .navbar-brand{color:#ff4d4d !important; font-weight:bold}
 </style>
 </head>
 <body>
 
 <nav class="navbar bg-dark navbar-dark px-3">
-    <a class="navbar-brand" href="/admin">← Back to Admin</a>
+    <a class="navbar-brand" href="/admin">🍴 Eat4Bite™ ← Back to Admin</a>
 </nav>
 
 <div class="container mt-4">
     <h3>🏪 Restaurant Approval Requests</h3>
-    <p class="text-muted">₹200 dene wale owners yahan dikhenge. Approve karne ke baad 30 din ka trial start hoga.</p>
+    <p class="text-muted">₹200 dene wale restaurant owners yahan dikhenge. Approve karne ke baad 30 din ka trial start hoga.</p>
 
     <div class="table-responsive">
     <table class="table table-bordered bg-white shadow-sm">
@@ -44,6 +45,10 @@
     </div>
 </div>
 
+<footer class="text-center mt-5 mb-3 text-muted">
+    <small>© 2026 Eat4Bite™. All rights reserved.</small>
+</footer>
+
 <script>
 const API = '';
 
@@ -59,7 +64,6 @@ async function loadOwners(){
 
         let rows = '';
         owners.forEach(o => {
-            // FIX 1: Badge status ke hisaab se
             let badge = o.status === 'Pending'? 'badge-pending' : o.plan_status === 'Trial'? 'badge-trial' : 'badge-active';
             
             let actionBtn = o.status === 'Pending'
@@ -68,7 +72,6 @@ async function loadOwners(){
                ? `<span class="text-success fw-bold">Approved</span>`
                 : `<span class="text-danger">Rejected</span>`;
 
-            // FIX 2: Proof image me onerror add kiya
             let proofLink = o.payment_proof 
                 ? `<a href="/uploads/${o.payment_proof}" target="_blank">
                      <img src="/uploads/${o.payment_proof}" class="proof-img" onerror="this.src='https://via.placeholder.com/80x80/cccccc/ffffff?text=No+Proof'">
