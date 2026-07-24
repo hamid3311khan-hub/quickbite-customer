@@ -142,7 +142,7 @@ app.get('/api/restaurants', async (req,res)=>{
 })
 
 app.post('/api/orders', async (req,res)=>{
-    const trackId = 'QB' + Date.now();
+    const trackId = 'EB' + Date.now(); // QB se EB kiya
     const item_total = req.body.items.reduce((a,b)=>a+(b.price*b.qty), 0);
     const bill = calculateBill(item_total);
     const newOrder = await new Order({
@@ -309,8 +309,8 @@ app.get('/invoice', async (req,res)=>{
   const { id } = req.query; const order = await Order.findOne({trackId:id});
   if(!order) return res.status(404).send("Order not found");
   const doc = new PDFDocument({margin: 40}); res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename=QuickBite-${id}.pdf`); doc.pipe(res);
-  doc.fontSize(22).text('QUICKBITE', {align: 'center'});
+  res.setHeader('Content-Disposition', `attachment; filename=Eat4Bite-${id}.pdf`); doc.pipe(res); // CHANGE 1
+  doc.fontSize(22).text('EAT4BITE™', {align: 'center'}); // CHANGE 2
   doc.fontSize(10).text(`Order ID: ${order.trackId} | Date: ${new Date(order.createdAt).toLocaleDateString()}`, {align: 'center'}); doc.moveDown();
   doc.text('-------------------------------------------');
   order.items.forEach(i=>{ doc.text(`${i.name} x ${i.qty} ₹${i.price*i.qty}`); });
