@@ -10,7 +10,7 @@
    .badge-pending{background:#ffc107}
    .badge-trial{background:#0dcaf0}
    .badge-active{background:#198754}
-   .proof-img{width:80px; height:80px; object-fit:cover; cursor:pointer; border-radius:5px}
+   .proof-img{width:80px; height:80px; object-fit:cover; cursor:pointer; border-radius:5px; border:1px solid #ddd}
 </style>
 </head>
 <body>
@@ -59,20 +59,27 @@ async function loadOwners(){
 
         let rows = '';
         owners.forEach(o => {
-            let badge = o.plan_status === 'Trial'? 'badge-trial' : o.plan_status === 'Active'? 'badge-active' : 'badge-pending';
+            // FIX 1: Badge status ke hisaab se
+            let badge = o.status === 'Pending'? 'badge-pending' : o.plan_status === 'Trial'? 'badge-trial' : 'badge-active';
+            
             let actionBtn = o.status === 'Pending'
                ? `<button class="btn btn-sm btn-success" onclick="approveOwner('${o._id}')">✅ Approve</button> <button class="btn btn-sm btn-danger" onclick="rejectOwner('${o._id}')">❌ Reject</button>`
                 : o.status === 'Approved'
                ? `<span class="text-success fw-bold">Approved</span>`
                 : `<span class="text-danger">Rejected</span>`;
 
-            let proofLink = o.payment_proof ? `<a href="/uploads/${o.payment_proof}" target="_blank"><img src="/uploads/${o.payment_proof}" class="proof-img"></a>` : '-';
+            // FIX 2: Proof image me onerror add kiya
+            let proofLink = o.payment_proof 
+                ? `<a href="/uploads/${o.payment_proof}" target="_blank">
+                     <img src="/uploads/${o.payment_proof}" class="proof-img" onerror="this.src='https://via.placeholder.com/80x80/cccccc/ffffff?text=No+Proof'">
+                   </a>` 
+                : '<span class="text-muted">-</span>';
             
             let trialEnd = o.trial_end_date ? new Date(o.trial_end_date).toLocaleDateString('hi-IN') : '-';
 
             rows += `
             <tr>
-                <td><b>${o.restaurantName}</b><br><small class="text-muted">${o.address}</small></td>
+                <td><b>${o.restaurantName}</b><br><small class="text-muted">${o.address || ''}</small></td>
                 <td>${o.ownerName}</td>
                 <td>${o.email}</td>
                 <td>${o.mobile}</td>
