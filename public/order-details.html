@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html>
+<html lang="hi">
 <head>
-<title>QuickBite Order Tracking</title>
+<title>Eat4Bite™ Order Tracking</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 *{margin:0;font-family:Arial} 
-nav{background:#ff5722;color:white;padding:15px;text-align:center;font-size:18px;font-weight:bold}
+nav{background:#ff6600;color:white;padding:15px;text-align:center;font-size:18px;font-weight:bold}
 .container{max-width:700px;margin:20px auto;padding:15px}
 .card{border:2px solid #ff6600;padding:20px;border-radius:10px;margin-bottom:20px;background:white} 
 .wabtn{background:#25D366;color:white;padding:15px;width:100%;border:none;border-radius:8px;font-size:16px;cursor:pointer;margin-top:10px;font-weight:bold}
@@ -14,12 +14,12 @@ nav{background:#ff5722;color:white;padding:15px;text-align:center;font-size:18px
 .steps{display:flex;justify-content:space-between;margin:20px 0}
 .step{text-align:center;flex:1}
 .step .circle{width:30px;height:30px;border-radius:50%;background:#ddd;margin:0 auto 5px;line-height:30px;color:white}
-.step.active .circle{background:#ff5722}
+.step.active .circle{background:#ff6600}
 .error{border:2px solid red;padding:15px;border-radius:10px;background:#ffe6e6;font-weight:bold}
 </style>
 </head>
 <body>
-<nav>🔥 QuickBite Order Tracking</nav>
+<nav>🔥 Eat4Bite™ Order Tracking</nav>
 
 <div class="container">
 <div id="orderBox">Loading...</div>
@@ -32,7 +32,7 @@ nav{background:#ff5722;color:white;padding:15px;text-align:center;font-size:18px
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const API = '';
+const API = 'https://eat4bite-ymqk.onrender.com'; // <- Yaha change
 const urlParams = new URLSearchParams(window.location.search);
 const trackId = urlParams.get('id'); 
 let orderData;
@@ -84,7 +84,7 @@ async function loadOrder(){
         `;
         
         // MAP
-        const lat = orderData.riderLat || 25.5941;
+        const lat = orderData.riderLat || 25.5941; // Patna default
         const lng = orderData.riderLng || 85.1376;
         
         if(!map){
