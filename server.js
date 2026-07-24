@@ -7,7 +7,7 @@ const http = require('http');
 const { Server } = require("socket.io");
 const PDFDocument = require('pdfkit');
 const multer = require('multer');
-const cron = require('node-cron'); // NAYA - auto settlement ke liye
+const cron = require('node-cron');
 const upload = multer();
 const bcrypt = require('bcryptjs');
 
@@ -26,7 +26,7 @@ mongoose.connect(process.env.MONGO_URL)
 .then(()=>console.log('✅ MongoDB Connected'))
 .catch(err => { console.log('Mongo Error:', err); process.exit(1) });
 
-// ===== MODELS - UPDATE KIYE =====
+// ===== MODELS =====
 const MenuItem = mongoose.model('MenuItem', {
     name: String, price: Number, category: String, desc: String,
     image: String, veg: Boolean, inStock: {type:Boolean, default:true}, offer: Number,
@@ -34,44 +34,34 @@ const MenuItem = mongoose.model('MenuItem', {
 });
 
 const RestaurantOwner = mongoose.model('RestaurantOwner', {
-    restaurantId: {type: String, unique: true},
-    restaurantName: String, ownerName: String, mobile: {type: String, unique: true},
-    email: {type: String, unique: true}, address: String, password: String,
-    status: {type: String, default: "Pending"}, plan_status: {type: String, default: "Trial"},
+    restaurantId: {type: String, unique: true}, restaurantName: String, ownerName: String,
+    mobile: {type: String, unique: true}, email: {type: String, unique: true}, address: String,
+    password: String, status: {type: String, default: "Pending"}, plan_status: {type: String, default: "Trial"},
     registration_fee_paid: {type: Number, default: 200}, payment_proof: {type: String, default: null},
-    trial_end_date: {type: Date}, payout_due: {type: Number, default: 0}, // NAYA
+    trial_end_date: {type: Date}, payout_due: {type: Number, default: 0},
     paymentStatus: {type: String, default: "Paid"}, lastPaymentDate: {type: Date, default: Date.now},
     nextDueDate: {type: Date}, createdAt: {type: Date, default: Date.now}
 });
 
-// CHANGE: Rider me cash balance add
 const Rider = mongoose.model('Rider', {
     name:String, fatherName:String, aadhar:String, pan:String,
     mobile:{type:String, unique:true}, aadharImg: String, panImg: String, photoImg: String,
     lat:Number, lng:Number, lastUpdate:Date, status:{type:String, default:"Pending"},
-    restaurantId: {type: String},
-    cash_balance: {type: Number, default: 0}, // NAYA: Rider ke paas kitna cash
-    weekly_orders: {type: Number, default: 0}, // NAYA: Weekly count
-    weekly_bonus: {type: Number, default: 0} // NAYA
+    restaurantId: {type: String}, cash_balance: {type: Number, default: 0},
+    weekly_orders: {type: Number, default: 0}, weekly_bonus: {type: Number, default: 0}
 });
 
-// CHANGE: Order me hisaab ke field add
 const OrderSchema = new mongoose.Schema({
-    trackId: String, name:String, phone:String, address:String, items:[], 
-    item_total: {type: Number, default: 0}, // NAYA
-    commission_5: {type: Number, default: 0}, // NAYA
-    platform_fee: {type: Number, default: 10}, // NAYA
-    delivery_fee: {type: Number, default: 30}, // NAYA
-    total:Number, // Grand Total
-    cash_to_restaurant: {type: Number, default: 0}, // NAYA
-    payment:String, status:{type:String, default:'Pending'}, 
+    trackId: String, name:String, phone:String, address:String, items:[],
+    item_total: {type: Number, default: 0}, commission_5: {type: Number, default: 0},
+    platform_fee: {type: Number, default: 10}, delivery_fee: {type: Number, default: 30},
+    total:Number, cash_to_restaurant: {type: Number, default: 0},
+    payment:String, status:{type:String, default:'Pending'},
     riderLat:Number, riderLng:Number, pointsEarned:Number,
     coupon:String, discount:Number, shopLat: {type:Number, default: 25.5941}, shopLng: {type:Number, default: 85.1376},
-    custLat: Number, custLng: Number, riderId: String,
-    restaurantId: {type: String, default: 'default-shop'},
-    cash_deposited: {type: Boolean, default: false}, // NAYA
-    cash_deposit_proof: {type: String, default: null}, // NAYA
-    is_peak: {type: Boolean, default: false} // NAYA: bonus ke liye
+    custLat: Number, custLng: Number, riderId: String, restaurantId: {type: String, default: 'default-shop'},
+    cash_deposited: {type: Boolean, default: false}, cash_deposit_proof: {type: String, default: null},
+    is_peak: {type: Boolean, default: false}
 }, {timestamps: true});
 const Order = mongoose.model('Order', OrderSchema);
 const Coupon = mongoose.model('Coupon', {code:String, discount:Number, type:String});
@@ -87,43 +77,27 @@ io.on('connection', (socket) => {
     });
 });
 
-// ===== HELPER FUNCTION: BILL CALCULATION =====
+// ===== HELPER =====
 function calculateBill(item_total) {
     const commission_5 = Math.round(item_total * 0.05);
-    const platform_fee = 10;
-    const delivery_fee = 30;
+    const platform_fee = 10; const delivery_fee = 30;
     const grand_total = item_total + commission_5 + platform_fee + delivery_fee;
-    const cash_to_restaurant = item_total; // Restaurant ko item ka paisa milega
-    
     const hour = new Date().getHours();
     const is_peak = (hour >= 12 && hour <= 15) || (hour >= 19 && hour <= 22);
-    
-    return {item_total, commission_5, platform_fee, delivery_fee, grand_total, cash_to_restaurant, is_peak};
+    return {item_total, commission_5, platform_fee, delivery_fee, grand_total, cash_to_restaurant: item_total, is_peak};
 }
 
 // ===== API ROUTES =====
 app.get('/api/menu', async (req,res)=> {
     const shopId = req.query.shop || 'default-shop';
-    const items = await MenuItem.find({restaurantId: shopId});
-    res.json(items);
+    res.json(await MenuItem.find({restaurantId: shopId}));
 });
 
-// CHANGE: Order create karte time bill banega
 app.post('/api/orders', async (req,res)=>{
     const trackId = 'QB' + Date.now();
     const item_total = req.body.items.reduce((a,b)=>a+(b.price*b.qty), 0);
     const bill = calculateBill(item_total);
-    const points = Math.floor(item_total / 10);
-    
-    const newOrder = await new Order({
-        ...req.body, 
-        trackId, 
-        pointsEarned: points,
-        ...bill
-    }).save();
-    
-    const ownerData = await RestaurantOwner.findOne({restaurantId: newOrder.restaurantId});
-    if(ownerData){ console.log(`Owner WA: https://wa.me/91${ownerData.mobile}?text=Naya Order: ${newOrder.trackId} - Total: ₹${bill.grand_total}`); }
+    const newOrder = await new Order({...req.body, trackId,...bill, total: bill.grand_total}).save();
     res.json({success:true, trackId, bill})
 });
 
@@ -133,102 +107,45 @@ app.get('/api/orders', async (req,res)=>{
     res.json(await Order.find().sort({createdAt:-1}))
 });
 
-// CHANGE: Order assign karne se pehle ₹500 check
 app.put('/api/order/assign', async (req,res)=>{
     const rider = await Rider.findOne({mobile: req.body.riderId});
-    if(!rider) return res.json({success:false, msg:"Rider nahi mila"})
-    
-    if(rider.cash_balance >= 500){ 
-        return res.json({success:false, msg:"⚠️ ₹500 cash pending. Pehle jama karein."}) 
-    }
-    
+    if(rider.cash_balance >= 500){ return res.json({success:false, msg:"⚠️ ₹500 cash pending. Pehle jama karein."}) }
     const busyOrder = await Order.findOne({ riderId: req.body.riderId, status: {$ne: 'Delivered'} });
     if(busyOrder){ return res.json({success:false, msg:"Ye rider abhi busy hai."}) }
-    
     await Order.findByIdAndUpdate(req.body.orderId, { riderId: req.body.riderId, status: 'Out for Delivery' });
     res.json({success:true})
 });
 
-// CHANGE: Delivered hote hi rider ka cash badhega
-app.post('/api/order/delivered', async (req,res)=>{ 
+app.post('/api/order/delivered', async (req,res)=>{
     const order = await Order.findById(req.body.orderId);
-    if(!order) return res.json({success:false});
-    
     await Order.findByIdAndUpdate(req.body.orderId, {status: 'Delivered'});
-    await Rider.findOneAndUpdate({mobile: order.riderId}, {
-        $inc: {cash_balance: order.delivery_fee, weekly_orders: 1}
-    });
-    res.json({success:true, msg:"Order Delivered Marked"}); 
+    await Rider.findOneAndUpdate({mobile: order.riderId}, {$inc: {cash_balance: order.delivery_fee, weekly_orders: 1}});
+    res.json({success:true, msg:"Order Delivered Marked"});
 });
 
-// NAYA API: Rider Cash Jama karega
-const storage = multer.diskStorage({
-  destination: './uploads/',
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  }
-});
+const storage = multer.diskStorage({ destination: './uploads/', filename: (req, file, cb) => { cb(null, Date.now() + path.extname(file.originalname)); }});
 const uploadFile = multer({ storage: storage });
 
 app.post('/api/rider/cash-deposit', uploadFile.single('proof'), async (req,res)=>{
-    const {riderId, amount, restaurantId} = req.body;
-    await Order.updateMany({riderId, cash_deposited: false}, {
-        cash_deposited: true, cash_deposit_proof: req.file.filename
-    });
+    const {riderId, amount} = req.body;
+    await Order.updateMany({riderId, cash_deposited: false}, {cash_deposited: true, cash_deposit_proof: req.file.filename});
     await Rider.findOneAndUpdate({mobile: riderId}, {$set: {cash_balance: 0}});
     res.json({success:true, msg:`₹${amount} jama ho gaya. Restaurant confirm karega.`})
 })
 
-// NAYA API: Restaurant Cash Confirm karega
 app.post('/api/restaurant/cash-confirm', async (req,res)=>{
     const {riderId} = req.body;
-    // Yahan hum maan rahe hain cash mil gaya, ab payout_due me jodega
     const orders = await Order.find({riderId, cash_deposited: true});
     let total_cash = orders.reduce((a,b)=>a+b.cash_to_restaurant, 0);
-    
-    await RestaurantOwner.findOneAndUpdate({restaurantId: orders[0].restaurantId}, {
-        $inc: {payout_due: total_cash}
-    });
+    await RestaurantOwner.findOneAndUpdate({restaurantId: orders[0].restaurantId}, {$inc: {payout_due: total_cash}});
     res.json({success:true, msg:`₹${total_cash} confirm ho gaya`})
 })
 
-// NAYA API: Restaurant Payout karega
 app.post('/api/restaurant/payout', async (req,res)=>{
-    const {restaurantId} = req.body;
-    await RestaurantOwner.findOneAndUpdate({restaurantId}, {$set: {payout_due: 0}});
+    await RestaurantOwner.findOneAndUpdate({restaurantId: req.body.restaurantId}, {$set: {payout_due: 0}});
     res.json({success:true, msg:"Payout ho gaya"})
 })
 
-// ===== CRON JOBS =====
-// Raat 12 baje: 5% + ₹10 kaatna
-cron.schedule('0 0 *', async () => {
-    console.log("Running Auto Settlement...");
-    const owners = await RestaurantOwner.find({status: "Approved"});
-    for(let owner of owners){
-        const today_orders = await Order.find({
-            restaurantId: owner.restaurantId, 
-            createdAt: {$gte: new Date(new Date().setHours(0,0,0,0))}
-        });
-        let cut = today_orders.reduce((a,b)=>a+b.commission_5+b.platform_fee, 0);
-        await RestaurantOwner.findByIdAndUpdate(owner._id, {$inc: {payout_due: -cut}});
-    }
-});
-
-// Har Somvaar 12 baje: Weekly Bonus
-cron.schedule('0 0 * 1', async () => {
-    console.log("Running Weekly Bonus...");
-    const riders = await Rider.find();
-    for(let rider of riders){
-        let bonus = 0;
-        if(rider.weekly_orders >= 30) bonus += 50;
-        // Peak bonus hisaab yahan lagega
-        await Rider.findByIdAndUpdate(rider._id, {
-            $set: {weekly_orders: 0, weekly_bonus: bonus}
-        });
-    }
-});
-
-// BAKI KE ROUTE WAHI RAHE...
 app.get('/api/restaurant/stats', async (req,res)=>{
     const shop = req.query.shop;
     const today = new Date(); today.setHours(0,0,0,0);
@@ -238,36 +155,88 @@ app.get('/api/restaurant/stats', async (req,res)=>{
     res.json({ orders: orders.length, revenue, payout_due: payout.payout_due || 0 })
 })
 
-// ... baki saare purane routes same
+app.post('/api/restaurant/register', uploadFile.single('payment_proof'), async (req,res)=>{
+    try{
+        const {restaurantId, restaurantName, ownerName, mobile, email, address, password} = req.body;
+        const exists = await RestaurantOwner.findOne({$or: [{mobile}, {email}, {restaurantId}]});
+        if(exists) return res.json({success:false, msg: "Mobile/Email/ID pehle se hai"});
+        const hashedPassword = await bcrypt.hash(password, 10);
+        let trialEnd = new Date(); trialEnd.setDate(trialEnd.getDate() + 30);
+        await new RestaurantOwner({...req.body, password: hashedPassword, payment_proof: req.file.filename, trial_end_date: trialEnd}).save();
+        res.json({success:true, msg: "Register ho gaya. Approval pending hai."})
+    }catch(e){ res.json({success:false, msg:e.message}) }
+});
 
-// CHANGE: NAYA BILL PDF - IRCTC FORMAT
+app.post('/api/restaurant/login', async (req,res)=>{
+    const {email, password} = req.body;
+    const owner = await RestaurantOwner.findOne({email});
+    if(!owner) return res.json({success:false, msg: "Galat email ya password"});
+    const isMatch = await bcrypt.compare(password, owner.password);
+    if(!isMatch) return res.json({success:false, msg: "Galat email ya password"});
+    if(owner.status!== "Approved") return res.json({success:false, msg: "Approval pending hai"});
+    res.json({success:true, owner})
+});
+
+app.get('/api/rider/orders/:mobile', async (req,res)=>{
+    res.json(await Order.find({riderId: req.params.mobile, status: {$ne: 'Delivered'}}).sort({createdAt:-1}));
+})
+app.post('/api/rider/login', async (req,res)=>{
+    let rider = await Rider.findOne({mobile: req.body.mobile});
+    if(!rider) return res.json({success:false, msg:"Mobile register nahi hai"});
+    if(rider.status === "Pending") return res.json({success:false, msg:"Approval pending hai"});
+    rider = await Rider.findOneAndUpdate({mobile: req.body.mobile}, {status: "Online"}, {new:true});
+    res.json({success:true, rider});
+});
+app.post('/api/riderLocation', async (req,res)=>{
+    const {mobile, lat, lng} = req.body;
+    await Rider.findOneAndUpdate({mobile}, {lat, lng, lastUpdate: new Date()});
+    res.json({success: true});
+})
+app.put('/api/rider/:id/status', async (req,res)=>{ await Rider.findByIdAndUpdate(req.params.id, {status: req.body.status}); res.json({success: true}); })
+
+app.post('/api/menu', upload.none(), async (req,res)=>{
+  await new MenuItem({...req.body, image: req.body.image || '', restaurantId: req.body.restaurantId || 'default-shop', veg: req.body.veg === 'true'}).save();
+  res.json({success:true});
+app.delete('/api/menu/:id', async (req,res)=>{ await MenuItem.findByIdAndDelete(req.params.id); res.json({success:true}); });
+app.put('/api/menu/:id/stock', async (req,res)=>{ const item = await MenuItem.findById(req.params.id); item.inStock =!item.inStock; await item.save(); res.json({success:true}); });
+app.get('/api/orders/track/:id', async (req,res)=>{ res.json(await Order.findOne({trackId:req.params.id})) });
+app.put('/api/orders/:id/status', async (req,res)=>{ await Order.findByIdAndUpdate(req.params.id, req.body); res.json({success:true}) });
+app.post('/api/restaurant/offer', async (req,res)=>{ await new Offer(req.body).save(); res.json({success:true, msg: "Offer Created!"}); })
+
+// ===== CRON =====
+cron.schedule('0 0 *', async () => {
+    const owners = await RestaurantOwner.find({status: "Approved"});
+    for(let owner of owners){
+        const today_orders = await Order.find({restaurantId: owner.restaurantId, createdAt: {$gte: new Date(new Date().setHours(0,0,0,0))}});
+        let cut = today_orders.reduce((a,b)=>a+b.commission_5+b.platform_fee, 0);
+        await RestaurantOwner.findByIdAndUpdate(owner._id, {$inc: {payout_due: -cut}});
+    }
+});
+
+// ===== BILL PDF =====
 app.get('/invoice', async (req,res)=>{
-  const { id } = req.query;
-  const order = await Order.findOne({trackId:id});
-  if(!order) return res.status(404).send("Order not found");
-  const doc = new PDFDocument({margin: 40});
-  res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename=QuickBite-${id}.pdf`);
-  doc.pipe(res);
+  const { id } = req.query; const order = await Order.findOne({trackId:id});
+  const doc = new PDFDocument({margin: 40}); res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename=QuickBite-${id}.pdf`); doc.pipe(res);
   doc.fontSize(22).text('QUICKBITE', {align: 'center'});
-  doc.fontSize(10).text(`Order ID: ${order.trackId} | Date: ${order.createdAt.toLocaleDateString()}`, {align: 'center'});
-  doc.moveDown();
+  doc.fontSize(10).text(`Order ID: ${order.trackId} | Date: ${new Date(order.createdAt).toLocaleDateString()}`, {align: 'center'}); doc.moveDown();
   doc.text('-------------------------------------------');
-  order.items.forEach(i=>{ doc.text(`${i.name} x ${i.qty}         ₹${i.price*i.qty}`); });
+  order.items.forEach(i=>{ doc.text(`${i.name} x ${i.qty} ₹${i.price*i.qty}`); });
   doc.text('-------------------------------------------');
-  doc.text(`Sub Total:                      ₹${order.item_total}`);
-  doc.text(`GST 5%:                         ₹${order.commission_5}`);
-  doc.text(`Delivery Fee:                   ₹${order.delivery_fee}`);
-  doc.text(`Platform Fee:                   ₹${order.platform_fee}`);
+  doc.text(`Sub Total: ₹${order.item_total}`);
+  doc.text(`GST 5%: ₹${order.commission_5}`);
+  doc.text(`Delivery Fee: ₹${order.delivery_fee}`);
+  doc.text(`Platform Fee: ₹${order.platform_fee}`);
   doc.text('-------------------------------------------');
-  doc.fontSize(14).text(`Grand Total:                    ₹${order.total}`);
-  doc.moveDown();
-  doc.fontSize(10).text(`Payment: ${order.payment} | Rider: ${order.riderId}`);
-  doc.end();
+  doc.fontSize(14).text(`Grand Total: ₹${order.total}`); doc.end();
 })
 
 // ===== PAGE ROUTES =====
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
-// ... baki routes same
+app.get('/rider', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider.html')));
+app.get('/restaurant-dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-dashboard.html')));
+app.get('/bill-template.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'bill-template.html')));
+app.get('/restaurant-login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-login.html')));
+app.get('/rider-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'rider-register.html')));
 
 server.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
