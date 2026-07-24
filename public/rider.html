@@ -21,7 +21,7 @@ button{width:100%; padding:14px; background:#ff6600; color:white; border:none; b
 <div id="cashAlert" class="alert" style="display:none;">⚠️ ₹500 Cash Pending! Pehle Jama karein</div>
 <p><b>Status:</b> <span id="riderStatus">Offline</span></p>
 <button onclick="goOnline()">🟢 Online Ho Jao</button><button onclick="goOffline()" style="background:#6c757d;">🔴 Offline</button>
-<div class="tabs"><button class="tab-btn active" onclick="showTab('orders')">📦 Orders</button><button class="tab-btn" onclick="showTab('hisab')">💰 Hisab</button><button class="tab-btn" onclick="showTab('cash')">🏦 Cash Jama</button></div>
+<div class="tabs"><button class="tab-btn active" onclick="showTab('orders', this)">📦 Orders</button><button class="tab-btn" onclick="showTab('hisab', this)">💰 Hisab</button><button class="tab-btn" onclick="showTab('cash', this)">🏦 Cash Jama</button></div>
 <div id="tab-orders"><h3>Mere Orders</h3><div id="myOrders">Loading...</div><h3>📍 Live Location</h3><div id="map"></div></div>
 <div id="tab-hisab" style="display:none;"><h3>💰 Mera Hisab</h3><div class="hisab-box">
 <p><b>Aaj ki Delivery:</b> <span id="todayOrders">0</span> Order</p><p><b>Aaj ki Kamai:</b> ₹<span id="todayEarning">0</span></p>
@@ -31,7 +31,7 @@ button{width:100%; padding:14px; background:#ff6600; color:white; border:none; b
 <input type="file" id="cashProof" accept="image/*"><button onclick="depositCash()">📤 Jama Karein</button></div></div></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
-const API = 'https://eat4bite-ymqk.onrender.com'; // <- Yaha change
+const API = 'https://eat4bite-ymqk.onrender.com'; // <- SAHI HAI
 let riderData = null; let locationInterval = null; let map = null; let riderMarker = null;
 
 window.onload = () => {
@@ -47,11 +47,17 @@ window.onload = () => {
 }
 
 function initMap(){ map = L.map('map').setView([25.0968, 85.3131], 13); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);}
-function showTab(tab){ document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); event.target.classList.add('active'); ['orders','hisab','cash'].forEach(t=>document.getElementById('tab-'+t).style.display='none'); document.getElementById('tab-'+tab).style.display='block';}
+function showTab(tab, btn){ // FIX: event ki jagah btn parameter
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); 
+  btn.classList.add('active'); 
+  ['orders','hisab','cash'].forEach(t=>document.getElementById('tab-'+t).style.display='none'); 
+  document.getElementById('tab-'+tab).style.display='block';
+}
 
 async function riderLogin(){
   const mobile = document.getElementById('riderMobile').value;
-  const res = await fetch(API+'/api/rider/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({mobile})});
+  if(mobile.length!=10) return alert('10 digit mobile daalo');
+  const res = await fetch(`${API}/api/rider/login`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({mobile})}); // API FIX
   const data = await res.json();
   if(data.success){
     riderData = data.rider;
@@ -63,7 +69,7 @@ async function riderLogin(){
 function riderLogout(){ localStorage.removeItem('riderData'); clearInterval(locationInterval); location.reload();}
 
 async function goOnline(){
-  await fetch(API+`/api/rider/${riderData._id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'Online'})});
+  await fetch(`${API}/api/rider/${riderData._id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'Online'})}); // API FIX
   riderData.status = 'Online';
   localStorage.setItem('riderData', JSON.stringify(riderData));
   document.getElementById('riderStatus').innerText = 'Online';
@@ -72,7 +78,7 @@ async function goOnline(){
 
 async function goOffline(){
   clearInterval(locationInterval);
-  await fetch(API+`/api/rider/${riderData._id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'Approved'})});
+  await fetch(`${API}/api/rider/${riderData._id}/status`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'Approved'})}); // API FIX
   riderData.status = 'Approved';
   localStorage.setItem('riderData', JSON.stringify(riderData));
   document.getElementById('riderStatus').innerText = 'Offline';
@@ -89,11 +95,11 @@ function updateRiderLocation(pos){
   const lat = pos.coords.latitude; const lng = pos.coords.longitude;
   if(!riderMarker){ riderMarker = L.marker([lat, lng]).addTo(map); map.setView([lat, lng], 15); }
   else { riderMarker.setLatLng([lat, lng]); }
-  fetch(API+`/api/riderLocation`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({mobile: riderData.mobile, lat: lat, lng: lng})});
+  fetch(`${API}/api/riderLocation`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({mobile: riderData.mobile, lat: lat, lng: lng})}); // API FIX
 }
 
 async function loadHisab(){
-  const res = await fetch(API+`/api/rider/orders/${riderData.mobile}`);
+  const res = await fetch(`${API}/api/rider/orders/${riderData.mobile}`); // API FIX
   const orders = await res.json();
   const today = new Date().toDateString();
   const todayOrders = orders.filter(o => new Date(o.createdAt).toDateString() === today && o.status === 'Delivered');
@@ -105,13 +111,13 @@ async function loadHisab(){
 }
 
 async function loadMyOrders(){
-  const res = await fetch(API+`/api/rider/orders/${riderData.mobile}`);
+  const res = await fetch(`${API}/api/rider/orders/${riderData.mobile}`); // API FIX
   const orders = await res.json();
-  document.getElementById('myOrders').innerHTML = orders.length === 0? 'Koi order nahi hai' : orders.map(o => `<div class="order"><b>${o.trackId}</b> - ₹${o.total} <br><small>${o.name}</small> <br><b>Status:</b> ${o.status} <br><button onclick="markDelivered('${o._id}')">Delivered</button><a href="/invoice?id=${o.trackId}" target="_blank">📄 Bill</a></div>`).join('');
+  document.getElementById('myOrders').innerHTML = orders.length === 0? 'Koi order nahi hai' : orders.map(o => `<div class="order"><b>${o.trackId}</b> - ₹${o.total} <br><small>${o.name}</small> <br><b>Status:</b> ${o.status} <br><button onclick="markDelivered('${o._id}')">Delivered</button><a href="${API}/api/invoice?id=${o.trackId}" target="_blank">📄 Bill</a></div>`).join(''); // INVOICE FIX
 }
 
 async function markDelivered(orderId){
-  await fetch(API+'/api/order/delivered', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({orderId})});
+  await fetch(`${API}/api/order/delivered`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({orderId})}); // API FIX
   alert('Delivered!'); loadMyOrders(); loadHisab();
 }
 
@@ -123,7 +129,7 @@ async function depositCash(){
   formData.append('proof', file);
   formData.append('riderId', riderData.mobile);
   formData.append('amount', amount);
-  const res = await fetch(API+'/api/rider/cash-deposit', {method:'POST', body:formData});
+  const res = await fetch(`${API}/api/rider/cash-deposit`, {method:'POST', body:formData}); // API FIX
   alert((await res.json()).msg); loadHisab();
 }
 </script></body></html>
