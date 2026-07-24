@@ -8,9 +8,9 @@
 <style>
     body{background:#f8f9fa}
    .badge-pending{background:#ffc107}
-   .badge-trial{background:#0dcaf0} /* CHANGE 1: NAYA BADGE */
-   .badge-active{background:#198754} /* CHANGE 2: NAME CHANGE */
-   .proof-img{width:80px; cursor:pointer} /* NAYA CSS */
+   .badge-trial{background:#0dcaf0}
+   .badge-active{background:#198754}
+   .proof-img{width:80px; height:80px; object-fit:cover; cursor:pointer; border-radius:5px}
 </style>
 </head>
 <body>
@@ -21,8 +21,9 @@
 
 <div class="container mt-4">
     <h3>🏪 Restaurant Approval Requests</h3>
-    <p class="text-muted">₹200 dene wale owners yahan dikhenge. Approve karne ke baad 30 din ka trial start hoga.</p> <!-- CHANGE 3 -->
+    <p class="text-muted">₹200 dene wale owners yahan dikhenge. Approve karne ke baad 30 din ka trial start hoga.</p>
 
+    <div class="table-responsive">
     <table class="table table-bordered bg-white shadow-sm">
         <thead class="table-dark">
             <tr>
@@ -30,60 +31,66 @@
                 <th>Owner</th>
                 <th>Email</th>
                 <th>Mobile</th>
-                <th>₹200 Proof</th> <!-- CHANGE 4: NAYA COLUMN -->
-                <th>Trial End</th> <!-- CHANGE 5: NAYA COLUMN -->
+                <th>₹200 Proof</th>
+                <th>Trial End</th>
                 <th>Status</th>
                 <th>Action</th>
             </tr>
         </thead>
         <tbody id="ownersTable">
-            <tr><td colspan="8" class="text-center">Loading...</td></tr> <!-- CHANGE 6: colspan 8 -->
+            <tr><td colspan="8" class="text-center">Loading...</td></tr>
         </tbody>
     </table>
+    </div>
 </div>
 
 <script>
 const API = '';
 
 async function loadOwners(){
-    const res = await fetch(API+'/api/restaurant/owners');
-    const owners = await res.json();
+    try{
+        const res = await fetch(API+'/api/restaurant/owners');
+        const owners = await res.json();
 
-    if(owners.length === 0){
-        document.getElementById('ownersTable').innerHTML = `<tr><td colspan="8" class="text-center">Koi request nahi hai</td></tr>`; // CHANGE 7
-        return;
+        if(owners.length === 0){
+            document.getElementById('ownersTable').innerHTML = `<tr><td colspan="8" class="text-center">Koi request nahi hai</td></tr>`;
+            return;
+        }
+
+        let rows = '';
+        owners.forEach(o => {
+            let badge = o.plan_status === 'Trial'? 'badge-trial' : o.plan_status === 'Active'? 'badge-active' : 'badge-pending';
+            let actionBtn = o.status === 'Pending'
+               ? `<button class="btn btn-sm btn-success" onclick="approveOwner('${o._id}')">✅ Approve</button> <button class="btn btn-sm btn-danger" onclick="rejectOwner('${o._id}')">❌ Reject</button>`
+                : o.status === 'Approved'
+               ? `<span class="text-success fw-bold">Approved</span>`
+                : `<span class="text-danger">Rejected</span>`;
+
+            let proofLink = o.payment_proof ? `<a href="/uploads/${o.payment_proof}" target="_blank"><img src="/uploads/${o.payment_proof}" class="proof-img"></a>` : '-';
+            
+            let trialEnd = o.trial_end_date ? new Date(o.trial_end_date).toLocaleDateString('hi-IN') : '-';
+
+            rows += `
+            <tr>
+                <td><b>${o.restaurantName}</b><br><small class="text-muted">${o.address}</small></td>
+                <td>${o.ownerName}</td>
+                <td>${o.email}</td>
+                <td>${o.mobile}</td>
+                <td>${proofLink}</td>
+                <td>${trialEnd}</td>
+                <td><span class="badge ${badge}">${o.status}</span></td>
+                <td>${actionBtn}</td>
+            </tr>`;
+        });
+        document.getElementById('ownersTable').innerHTML = rows;
+    }catch(err){
+        document.getElementById('ownersTable').innerHTML = `<tr><td colspan="8" class="text-center text-danger">Data load nahi hua</td></tr>`;
+        console.log(err)
     }
-
-    let rows = '';
-    owners.forEach(o => {
-        let badge = o.plan_status === 'Trial'? 'badge-trial' : o.plan_status === 'Active'? 'badge-active' : 'badge-pending'; // CHANGE 8
-        let actionBtn = o.plan_status === 'Trial'
-           ? `<button class="btn btn-sm btn-success" onclick="approveOwner('${o._id}')">✅ Approve</button> <button class="btn btn-sm btn-danger" onclick="rejectOwner('${o._id}')">❌ Reject</button>`
-            : o.plan_status === 'Active'
-           ? `<span class="text-success fw-bold">Active</span>` // CHANGE 9
-            : `<span class="text-muted">Pending</span>`;
-
-        let proofLink = o.payment_proof ? `<a href="/uploads/${o.payment_proof}" target="_blank"><img src="/uploads/${o.payment_proof}" class="proof-img"></a>` : '-'; // CHANGE 10
-        
-        let trialEnd = o.trial_end_date ? new Date(o.trial_end_date).toLocaleDateString('hi-IN') : '-'; // CHANGE 11
-
-        rows += `
-        <tr>
-            <td><b>${o.restaurantName}</b></td>
-            <td>${o.ownerName}</td>
-            <td>${o.email}</td>
-            <td>${o.mobile}</td>
-            <td>${proofLink}</td> <!-- CHANGE 12 -->
-            <td>${trialEnd}</td> <!-- CHANGE 13 -->
-            <td><span class="badge ${badge}">${o.plan_status}</span></td> <!-- CHANGE 14 -->
-            <td>${actionBtn}</td>
-        </tr>`;
-    });
-    document.getElementById('ownersTable').innerHTML = rows;
 }
 
 async function approveOwner(id){
-    if(!confirm('Pakka Approve karna hai? 30 Din ka trial start ho jayega.')) return; // CHANGE 15
+    if(!confirm('Pakka Approve karna hai? 30 Din ka trial start ho jayega.')) return;
     const res = await fetch(API+`/api/restaurant/owner/${id}/approve`, {method:'PUT'});
     const result = await res.json();
     if(result.success){
