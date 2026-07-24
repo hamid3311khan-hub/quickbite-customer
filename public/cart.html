@@ -18,7 +18,7 @@ button:disabled{background:#ccc;cursor:not-allowed}
 .remove-btn{width:auto;padding:5px 10px;background:red;font-size:12px;border-radius:5px}
 .empty{text-align:center;color:#888;padding:20px}
 </style></head><body>
-<nav><a href="/index" style="color:white;text-decoration:none">← Back to Menu</a></nav>
+<nav><a href="/restaurants" style="color:white;text-decoration:none">← Back to Menu</a></nav>  <!-- /index ko /restaurants kiya -->
 
 <div class="container">
     <div class="card">
@@ -32,7 +32,7 @@ button:disabled{background:#ccc;cursor:not-allowed}
         </div>
         <p id="discountMsg" style="color:green;font-weight:bold"></p>
 
-        <p class="total">Total: ₹<span id="total">0</span></p>
+        <div id="billBreakup"></div> <!-- NAYA: Bill breakdown dikhane ke liye -->
 
         <h3>Payment Method</h3>
         <div class="payment-option active" onclick="selectPay('COD', this)">
@@ -63,6 +63,7 @@ let cart = JSON.parse(localStorage.getItem('cart')) || [];
 let discount = 0;
 let paymentMode = 'COD';
 let finalTotal = 0;
+let shopId = localStorage.getItem('shopId'); // NAYA: restaurantId lene ke liye
 
 function loadCart(){
     if(cart.length==0){
@@ -74,8 +75,13 @@ function loadCart(){
         return;
     }
     document.getElementById('placeBtn').disabled = false;
-    let total = cart.reduce((s,i)=>s+i.price*i.qty,0);
-    finalTotal = total - discount;
+    let item_total = cart.reduce((s,i)=>s+i.price*i.qty,0);
+    
+    // NAYA: Backend jaisa bill calculation
+    let commission_5 = Math.round(item_total * 0.05);
+    let platform_fee = 10; let delivery_fee = 30;
+    let subtotal = item_total - discount;
+    finalTotal = subtotal + commission_5 + platform_fee + delivery_fee;
     if(finalTotal<0) finalTotal=0;
 
     document.getElementById('cartItems').innerHTML = cart.map((i,index)=>`
@@ -84,6 +90,16 @@ function loadCart(){
             <button onclick="remove(${index})" class="remove-btn">X</button>
         </div>
     `).join('');
+
+    // NAYA: Bill breakup dikhao
+    document.getElementById('billBreakup').innerHTML = `
+        <p>Subtotal: ₹${item_total}</p>
+        ${discount > 0 ? `<p style="color:green">Discount: -₹${discount}</p>` : ''}
+        <p>Platform Fee: ₹${platform_fee}</p>
+        <p>Delivery Fee: ₹${delivery_fee}</p>
+        <p>Service 5%: ₹${commission_5}</p>
+        <hr>
+    `;
     document.getElementById('total').innerText = finalTotal;
     updateQR();
 }
@@ -119,8 +135,8 @@ async function applyCoupon(){
     const res = await fetch(`${API}/coupon/validate`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code})});
     const data = await res.json();
     if(data.success){
-        let total = cart.reduce((s,i)=>s+i.price*i.qty,0);
-        discount = data.type=='PERCENT'? Math.round(total*data.discount/100) : data.discount;
+        let item_total = cart.reduce((s,i)=>s+i.price*i.qty,0);
+        discount = data.type=='PERCENT'? Math.round(item_total*data.discount/100) : data.discount;
         document.getElementById('discountMsg').innerText = `✅ ${data.discount}${data.type=='PERCENT'?'%':'₹'} Off Applied`;
         loadCart();
     } else {
@@ -131,10 +147,12 @@ async function applyCoupon(){
     }
 }
 
-// YE FUNCTION PURA CHANGE KIYA - LOCATION ADD
+// FIXED FUNCTION
 async function placeOrder(){
     document.getElementById('placeBtn').innerText = "📍 Location le rahe hain...";
     document.getElementById('placeBtn').disabled = true;
+
+    if(!shopId) return alert("Error: Restaurant select nahi hai. Pehle restaurant choose karo");
 
     navigator.geolocation.getCurrentPosition(async (pos) => {
         const order = {
@@ -142,11 +160,11 @@ async function placeOrder(){
             phone:document.getElementById('phone').value.trim(),
             address:document.getElementById('address').value.trim(),
             items:cart,
-            total:finalTotal,
+            restaurantId: shopId, // FIX 1: YE ADD KIYA
             payment:paymentMode,
             coupon:document.getElementById('coupon').value,
             discount:discount,
-            custLat: pos.coords.latitude,
+            custLat: pos.coords.latitude,  // FIX 2: LOCATION ADD
             custLng: pos.coords.longitude
         }
         if(!order.name ||!order.phone ||!order.address) return alert("Please fill all details");
