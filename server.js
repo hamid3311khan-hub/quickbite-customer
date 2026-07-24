@@ -84,6 +84,51 @@ function calculateBill(item_total) {
     return {item_total, commission_5, platform_fee, delivery_fee, grand_total, cash_to_restaurant: item_total, is_peak};
 }
 
+// ===== AUTO CRON WITH SETINTERVAL - NO NODE-CRON =====
+let dailyRun = false;
+let weeklyRun = false;
+
+setInterval(async () => {
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const day = now.getDay(); // 0=Sun, 1=Mon
+
+    // 1. DAILY SETTLEMENT: Raat 12:00 baje
+    if(hours === 0 && minutes === 0 && !dailyRun){
+        dailyRun = true;
+        console.log("🔄 Running Daily Auto Settlement...");
+        try{
+            const owners = await RestaurantOwner.find({status: "Approved"});
+            for(let owner of owners){
+                const today = new Date(); today.setHours(0,0,0,0);
+                const today_orders = await Order.find({restaurantId: owner.restaurantId, createdAt: {$gte: today}});
+                let cut = today_orders.reduce((a,b)=>a+b.commission_5+b.platform_fee, 0);
+                await RestaurantOwner.findByIdAndUpdate(owner._id, {$inc: {payout_due: -cut}});
+            }
+            console.log("✅ Daily Settlement Done");
+        }catch(e){console.log("Cron Error:", e)}
+    }
+    if(hours !== 0 || minutes !== 0) dailyRun = false; // reset flag
+
+    // 2. WEEKLY BONUS: Har Somvaar 12:00 baje
+    if(day === 1 && hours === 0 && minutes === 0 && !weeklyRun){
+        weeklyRun = true;
+        console.log("🔄 Running Weekly Bonus Reset...");
+        try{
+            const riders = await Rider.find();
+            for(let rider of riders){
+                let bonus = 0;
+                if(rider.weekly_orders >= 30) bonus = 50;
+                await Rider.findByIdAndUpdate(rider._id, { $set: {weekly_orders: 0, weekly_bonus: bonus} });
+            }
+            console.log("✅ Weekly Bonus Done");
+        }catch(e){console.log("Cron Error:", e)}
+    }
+    if(day !== 1 || hours !== 0 || minutes !== 0) weeklyRun = false; // reset flag
+
+}, 60000); // Har 1 minute me check karega
+
 // ===== API ROUTES =====
 app.get('/api/menu', async (req,res)=> {
     const shopId = req.query.shop || 'default-shop';
@@ -186,7 +231,7 @@ app.post('/api/rider/login', async (req,res)=>{
     if(rider.status === "Pending") return res.json({success:false, msg:"Approval pending hai"});
     rider = await Rider.findOneAndUpdate({mobile: req.body.mobile}, {status: "Online"}, {new:true});
     res.json({success:true, rider});
-}); // FIX: BRACKET BAND
+});
 
 app.post('/api/riderLocation', async (req,res)=>{
     const {mobile, lat, lng} = req.body;
@@ -205,9 +250,6 @@ app.put('/api/menu/:id/stock', async (req,res)=>{ const item = await MenuItem.fi
 app.get('/api/orders/track/:id', async (req,res)=>{ res.json(await Order.findOne({trackId:req.params.id})) });
 app.put('/api/orders/:id/status', async (req,res)=>{ await Order.findByIdAndUpdate(req.params.id, req.body); res.json({success:true}) });
 app.post('/api/restaurant/offer', async (req,res)=>{ await new Offer(req.body).save(); res.json({success:true, msg: "Offer Created!"}); })
-
-// ===== CRON HATA DIYA TEMPORARY =====
-// Baad me jab chal jaye tab add karenge
 
 // ===== BILL PDF =====
 app.get('/invoice', async (req,res)=>{
