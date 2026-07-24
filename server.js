@@ -140,8 +140,10 @@ app.get('/api/menu', async (req,res)=> {
     res.json(await MenuItem.find({restaurantId: shopId}));
 });
 
-app.get('/api/restaurants', async (req,res)=>{ // NAYA API
-    res.json(await RestaurantOwner.find({status: "Approved"}));
+// FIX 1: Restaurant list with name
+app.get('/api/restaurants', async (req,res)=>{
+    const shops = await RestaurantOwner.find({status: "Approved"});
+    res.json(shops.map(s => ({id: s.restaurantId, name: s.restaurantName, address: s.address})))
 })
 
 app.post('/api/orders', async (req,res)=>{
@@ -178,6 +180,29 @@ app.post('/api/order/delivered', async (req,res)=>{
 
 const storage = multer.diskStorage({ destination: './uploads/', filename: (req, file, cb) => { cb(null, Date.now() + path.extname(file.originalname)); }});
 const uploadFile = multer({ storage: storage });
+
+// FIX 2: Rider Register API
+app.post('/api/rider/register', uploadFile.fields([
+    {name: 'aadharImg', maxCount: 1},
+    {name: 'panImg', maxCount: 1},
+    {name: 'photoImg', maxCount: 1}
+]), async (req,res)=>{
+    try{
+        const {name, fatherName, aadhar, pan, mobile, restaurantId} = req.body;
+        if(!name ||!mobile) return res.json({success:false, msg: "Saare field bharo"});
+        const exists = await Rider.findOne({mobile});
+        if(exists) return res.json({success:false, msg: "Ye mobile pehle se register hai"});
+
+        await new Rider({
+           name, fatherName, aadhar, pan, mobile, restaurantId,
+            aadharImg: req.files.aadharImg[0].filename,
+            panImg: req.files.panImg[0].filename,
+            photoImg: req.files.photoImg[0].filename,
+            status: "Pending"
+        }).save();
+        res.json({success:true, msg: "Register ho gaya. Approval pending hai."})
+    }catch(e){ res.json({success:false, msg:e.message}) }
+});
 
 app.post('/api/rider/cash-deposit', uploadFile.single('proof'), async (req,res)=>{
     const {riderId, amount} = req.body;
@@ -230,6 +255,26 @@ app.post('/api/restaurant/login', async (req,res)=>{
     if(owner.status!== "Approved") return res.json({success:false, msg: "Approval pending hai"});
     res.json({success:true, owner})
 });
+
+// FIX 3: Admin Owner APIs
+app.get('/api/restaurant/owners', async (req,res)=>{
+    res.json(await RestaurantOwner.find().sort({createdAt:-1}))
+})
+
+app.put('/api/restaurant/owner/:id/approve', async (req,res)=>{
+    let trialEnd = new Date(); trialEnd.setDate(trialEnd.getDate() + 30);
+    await RestaurantOwner.findByIdAndUpdate(req.params.id, {
+        status: "Approved", 
+        plan_status: "Trial",
+        trial_end_date: trialEnd
+    });
+    res.json({success:true, msg:"Approved"})
+})
+
+app.delete('/api/restaurant/owner/:id', async (req,res)=>{
+    await RestaurantOwner.findByIdAndDelete(req.params.id);
+    res.json({success:true, msg:"Rejected"})
+})
 
 app.get('/api/rider/orders/:mobile', async (req,res)=>{
     res.json(await Order.find({riderId: req.params.mobile, status: {$ne: 'Delivered'}}).sort({createdAt:-1}));
@@ -291,5 +336,6 @@ app.get('/rider-register', (req, res) => res.sendFile(path.join(__dirname, 'publ
 app.get('/restaurants', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurants.html')));
 app.get('/restaurant-register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'restaurant-register.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+app.get('/admin-owners', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin-owners.html'))); // NAYA
 
 server.listen(PORT, ()=> console.log(`🚀 Server on ${PORT}`));
