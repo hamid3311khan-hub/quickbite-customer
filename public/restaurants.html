@@ -35,12 +35,15 @@ async function loadRestaurants(){
         }
 
         shops.forEach(shop => {
+            // FIX: name ko encode kiya taaki space se URL break na ho
+            const imgText = encodeURIComponent(shop.name);
             list.innerHTML += `
             <div class="col-md-4 col-12">
                 <div class="card shadow-sm p-3" onclick="window.location.href='/?shop=${shop.id}'" style="cursor:pointer">
-                    <img src="https://via.placeholder.com/400x180/ff6600/ffffff?text=${encodeURIComponent(shop.name)}" 
+                    <img src="https://via.placeholder.com/400x180/ff5722/ffffff?text=${imgText}" 
                          class="card-img-top mb-2" 
-                         style="height:180px; object-fit:cover; border-radius:8px">
+                         style="height:180px; object-fit:cover; border-radius:8px"
+                         onerror="this.src='https://via.placeholder.com/400x180/ff5722/ffffff?text=QuickBite'">
                     <h5 class="fw-bold">${shop.name}</h5>
                     <p class="text-muted small">📍 ${shop.address || 'Address not added'}</p>
                 </div>
